@@ -53,7 +53,7 @@ const handlePopState = event => {
 };
 
 onMounted(() => {
-  if (window.history.state == null) {
+  if (window.history.state === null) {
     window.history.replaceState(
       { readerOpen: showReaderPage.value },
       "",
@@ -77,7 +77,6 @@ onBeforeUnmount(() => {
   color: #2c3e50;
   margin: 0;
   height: 100%;
-  /* height: calc(100% + var(--status-bar-height, 0px)); */
   position: relative;
 }
 
@@ -124,21 +123,9 @@ onBeforeUnmount(() => {
 *:focus {
   outline: none !important;
 }
-.el-dialog .el-dialog__header {
-  padding: 20px 40px 10px 20px;
-}
-.el-dialog__header .el-dialog__headerbtn {
-  margin: 0;
-  font-size: 22px;
-  line-height: 24px;
-}
 </style><style lang="stylus">
 .popper-component {
   top: 0 !important;
-}
-.code-editor {
-  max-height: calc(var(--vh, 1vh) * 80 - 54px - 60px - 66px);
-  overflow-y: auto;
 }
 .mini-interface {
   .popper-component {
@@ -148,155 +135,6 @@ onBeforeUnmount(() => {
     box-sizing: border-box;
     margin: 0 !important;
     overflow-x: hidden;
-  }
-  .code-editor {
-    max-height: calc(var(--vh, 1vh) * 100 - 54px - 40px - 66px);
-  }
-}
-.night-theme {
-  background-color: #222;
-
-  .el-message-box {
-    background: #212121;
-    border: 1px solid #212121;
-    .el-message-box__title {
-      color: #888;
-    }
-    .el-message-box__content {
-      color: #777;
-    }
-  }
-  .el-button--default {
-    background: #888;
-    color: #ddd;
-    border: 1px solid #888;
-  }
-  .el-button:focus, .el-button:hover {
-      color: #eee;
-      border-color: #bbb;
-      background-color: #bbb;
-  }
-  .el-button--text:focus, .el-button--text:hover {
-      color: #66b1ff;
-      border-color: transparent;
-      background-color: transparent;
-  }
-  .el-button.is-disabled, .el-button.is-disabled:focus, .el-button.is-disabled:hover {
-      color: #666;
-  }
-  .el-button--primary {
-    background: #185798;
-    border: 1px solid #185798;
-  }
-  .el-button--primary:focus, .el-button--primary:hover {
-      background: #2b67bb;
-      border-color: #2b67bb;
-      color: #FFF;
-  }
-  .el-input-number__increase, .el-input-number__decrease {
-      background-color: #909399;
-      border-color: #909399;
-      color: #fff;
-  }
-  .el-checkbox__inner {
-    background: #bbb;
-  }
-  .el-input__inner {
-    background-color: #444;
-    border: 1px solid #444 !important;
-    color: #ddd;
-  }
-  .el-textarea__inner {
-    background-color: #444;
-    border: 1px solid #444 !important;
-    color: #ddd;
-  }
-  .el-tabs__item {
-    color: #ddd;
-  }
-  .el-tabs__nav-next, .el-tabs__nav-prev {
-    color: #aaa;
-  }
-  .el-tabs__nav-wrap::after {
-    background-color: #444;
-  }
-  .el-select-dropdown {
-    background-color: #333;
-    border: 1px solid #333 !important;
-  }
-  .el-select-dropdown__item {
-    color: #ddd;
-  }
-  .el-select-dropdown__item.hover, .el-select-dropdown__item:hover {
-    background-color: #444;
-  }
-  .el-select .el-tag.el-tag--info {
-    background-color: #777;
-    border-color: #777;
-    color: #ddd;
-  }
-  .el-select-dropdown.is-multiple .el-select-dropdown__item.selected.hover,
-  .el-select-dropdown.is-multiple .el-select-dropdown__item.hover {
-    background-color: #555;
-  }
-  .el-select-dropdown.is-multiple .el-select-dropdown__item.selected {
-    background-color: #444;
-  }
-  .el-popper[x-placement^="bottom"] .popper__arrow, .el-popper[x-placement^="bottom"] .popper__arrow::after {
-    border-bottom-color: #333 !important;
-  }
-  .el-popper[x-placement^="top"] .popper__arrow, .el-popper[x-placement^="top"] .popper__arrow::after {
-    border-top-color: #333 !important;
-  }
-  .el-dialog {
-    background-color: #222;
-  }
-  .el-dialog__title {
-    color: #bbb;
-  }
-  .el-pagination .btn-next, .el-pagination .btn-prev {
-    background: center center no-repeat #444;
-    color: #ddd;
-  }
-  .el-pager li {
-    background: #444;
-    color: #ddd;
-  }
-  .el-pager li.btn-quicknext, .el-pager li.btn-quickprev {
-    color: #ddd;
-  }
-  .el-pager li.active {
-    color: #fff;
-  }
-  .el-pager li:hover {
-    color: #888;
-  }
-  .el-select .el-input .el-input__inner, .el-select .el-input.is-focus .el-input__inner {
-    color: #ddd;
-  }
-  .el-switch__core {
-    background: #555;
-  }
-  .el-switch.is-checked .el-switch__core {
-    border-color: #409EFF;
-    background-color: #409EFF;
-  }
-  .el-radio-button__inner {
-    background-color: #444;
-    color: #ddd;
-    border-color: #444;
-  }
-  .el-radio-button__orig-radio:checked + .el-radio-button__inner {
-    background-color: #888;
-    border-color: #888;
-    color: #ddd;
-    box-shadow: -1px 0 0 0 #888;
-  }
-  .el-radio-button:last-child .el-radio-button__inner {
-    border-left: 1px solid #666;
-  }
-  .el-radio-button__orig-radio:checked + .el-radio-button__inner:last-child {
-    border-left-color: #888;
   }
 }
 </style>

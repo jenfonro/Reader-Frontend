@@ -1,10 +1,10 @@
 <template>
-  <div class="popup-wrapper" :style="popupTheme">
-    <div class="title-zone">
-      <div class="title">书架({{ shelfBooks.length }})</div>
-      <div :class="{ 'title-btn': true, loading: refreshLoading }">
+  <div class="reader-popup" :style="popupTheme">
+    <div class="reader-popup__header">
+      <div class="reader-popup__title">书架({{ shelfBooks.length }})</div>
+      <div class="reader-popup__actions" :class="{ loading: refreshLoading }">
         <span :class="{ loading: refreshLoading }" @click="refreshShelf">
-          <el-icon v-if="refreshLoading" class="el-icon-loading">
+          <el-icon v-if="refreshLoading" class="is-loading">
             <Loading />
           </el-icon>
           {{ refreshLoading ? "刷新中..." : "刷新" }}
@@ -12,7 +12,7 @@
       </div>
     </div>
     <div
-      class="data-wrapper"
+      class="reader-popup__body"
       :class="{ night: isNight, day: !isNight }"
     >
       <div class="shelfbook-list">
@@ -61,7 +61,7 @@ defineProps({
   }
 });
 
-const emit = defineEmits(["changeBook", "toShelf"]);
+const emit = defineEmits(["change-book", "to-shelf"]);
 
 const refreshLoading = ref(false);
 const shelfBooks = ref(previewShelfBooks);
@@ -81,19 +81,19 @@ const refreshShelf = () => {
 };
 
 const changeBook = book => {
-  emit("changeBook", book);
+  emit("change-book", book);
 };
 </script>
 
 <style lang="stylus" scoped>
-.popup-wrapper {
+.reader-popup {
   margin: -16px;
   margin-bottom: -13px;
   padding: 24px;
   padding-top: calc(24px + constant(safe-area-inset-top));
   padding-top: calc(24px + env(safe-area-inset-top));
 
-  .title-zone {
+  .reader-popup__header {
     margin: 0 0 20px 0;
     width: 100%;
     display: flex;
@@ -102,7 +102,7 @@ const changeBook = book => {
     justify-content: space-between;
   }
 
-  .title {
+  .reader-popup__title {
     font-size: 18px;
     font-weight: 400;
     font-family: -apple-system, "Noto Sans", "Helvetica Neue", Helvetica, "Nimbus Sans L", Arial, "Liberation Sans", "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", "Source Han Sans SC", "Source Han Sans CN", "Microsoft YaHei", "Wenquanyi Micro Hei", "WenQuanYi Zen Hei", "ST Heiti", SimHei, "WenQuanYi Zen Hei Sharp", sans-serif;
@@ -111,21 +111,21 @@ const changeBook = book => {
     width: fit-content;
   }
 
-  .title-btn {
+  .reader-popup__actions {
     font-size: 14px;
     line-height: 26px;
     color: #ed4259;
     cursor: pointer;
-    .home-btn {
-      display: inline-block;
-      margin-right: 25px;
-    }
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+
     &.loading {
       color: #606266;
     }
   }
 
-  .data-wrapper {
+  .reader-popup__body {
     height: 300px;
     overflow: auto;
 
@@ -154,7 +154,8 @@ const changeBook = book => {
             text-overflow: ellipsis;
           }
           .book-progress {
-            float: right;
+            margin-left: 12px;
+            flex: 0 0 auto;
             font-size: 12px;
           }
         }
@@ -177,7 +178,7 @@ const changeBook = book => {
     }
   }
 
-  .data-wrapper::-webkit-scrollbar {
+  .reader-popup__body::-webkit-scrollbar {
     width: 0 !important;
   }
 

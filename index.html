@@ -20,48 +20,6 @@
     <meta name="x5-page-mode" content="app">
     <meta name="msapplication-tap-highlight" content="no">
     <title>阅读</title>
-    <script>
-      function loadScript(src, callback, async) {
-        var script = document.createElement('script');
-        if (async) script.async = 'async';
-        script.src = src;
-
-        if (callback) {
-          script.onload = callback;
-        }
-
-        document.head.appendChild(script);
-      }
-
-      function loadLink(href, callback, rel, type) {
-        var link = document.createElement('link');
-        link.rel = rel || "stylesheet";
-        link.type = type || "text/css";
-        link.href = href;
-
-        if (callback) {
-          link.onload = callback;
-        }
-
-        document.getElementsByTagName("head")[0].appendChild(link);
-      }
-
-      function getQueryString(sVar, first) {
-        return decodeURI(window.location.search.replace(new RegExp('^(?:.*' + (first ? '?' : '') + '[&\\?]' + encodeURI(sVar).replace(/[\.\+\*]/g, '\\$&') + '(?:\\=([^&]*))?)?.*$', 'i'), '$1'));
-      }
-
-      window.onerror = function() {
-        if (window.getQueryString('debug')) {
-          alert(JSON.stringify(arguments));
-        }
-      }
-
-      if (window.getQueryString('debug')) {
-        window.loadScript('https://cdn.bootcdn.net/ajax/libs/vConsole/3.9.1/vconsole.min.js', function() {
-          new VConsole();
-        }, true);
-      }
-    </script>
   </head>
   <style>
     :root {
@@ -76,9 +34,6 @@
     }
     body::-webkit-scrollbar {
       display: none;
-    }
-    body.night-theme::-webkit-scrollbar {
-      background-color: #333 !important;
     }
     html,body {
       width: 100%;

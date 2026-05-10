@@ -1,6 +1,6 @@
 <template>
   <div
-    class="chapter-wrapper"
+    class="reader-view"
     :style="bodyTheme"
     :class="{
       night: isNight,
@@ -8,8 +8,8 @@
       'mini-interface': miniInterface
     }"
   >
-    <div class="tool-bar" :style="leftBarTheme">
-      <div class="tools">
+    <div class="reader-main-toolbar" :style="leftBarTheme">
+      <div class="reader-tool-list">
         <el-popover
           v-model:visible="popBookShelfVisible"
           placement="right"
@@ -20,11 +20,11 @@
           :popper-options="menuPopperOptions"
         >
           <template #reference>
-            <div class="tool-icon">
+            <div class="reader-tool">
               <div class="iconfont">
                 &#58892;
               </div>
-              <div class="icon-text">书架</div>
+              <div class="reader-tool__label">书架</div>
             </div>
           </template>
           <BookShelf
@@ -44,13 +44,13 @@
           :popper-options="menuPopperOptions"
         >
           <template #reference>
-            <div class="tool-icon">
-              <div class="tool-el-icon">
-                <el-icon class="el-icon-menu">
+            <div class="reader-tool">
+              <div class="reader-tool__el-icon">
+                <el-icon :size="18">
                   <MenuIcon />
                 </el-icon>
               </div>
-              <div class="icon-text">书源</div>
+              <div class="reader-tool__label">书源</div>
             </div>
           </template>
           <BookSource
@@ -60,7 +60,7 @@
           />
         </el-popover>
         <el-popover
-          v-model:visible="popCataVisible"
+          v-model:visible="catalogPopoverVisible"
           placement="right"
           :width="popperWidth"
           trigger="click"
@@ -69,16 +69,16 @@
           :popper-options="menuPopperOptions"
         >
           <template #reference>
-            <div class="tool-icon">
+            <div class="reader-tool">
               <div class="iconfont">
                 &#58905;
               </div>
-              <div class="icon-text">目录</div>
+              <div class="reader-tool__label">目录</div>
             </div>
           </template>
-          <PopCata
+          <CatalogPopup
             class="popup"
-            :visible="popCataVisible"
+            :visible="catalogPopoverVisible"
             @get-content="getContent"
             @refresh="refreshCatalog"
           />
@@ -93,114 +93,98 @@
           :popper-options="menuPopperOptions"
         >
           <template #reference>
-            <div class="tool-icon">
+            <div class="reader-tool">
               <div class="iconfont">
                 &#58971;
               </div>
-              <div class="icon-text">设置</div>
+              <div class="reader-tool__label">设置</div>
             </div>
           </template>
           <ReadSettings
             class="popup"
             :visible="readSettingsVisible"
             @close="readSettingsVisible = false"
-            @show-click-zone="showClickZone = true"
+            @show-reader-click-map="showReaderClickMap = true"
             @read-method-change="beforeReadMethodChange"
           />
         </el-popover>
-        <div class="tool-icon" :style="miniInterface ? { order: -1 } : {}">
+        <div class="reader-tool" :style="miniInterface ? { order: -1 } : {}">
           <div class="iconfont">
             &#58920;
           </div>
-          <div class="icon-text">首页</div>
+          <div class="reader-tool__label">首页</div>
         </div>
-        <div v-if="!miniInterface" class="tool-icon">
+        <div v-if="!miniInterface" class="reader-tool">
           <div class="iconfont">
             &#58914;
           </div>
-          <div class="icon-text">顶部</div>
+          <div class="reader-tool__label">顶部</div>
         </div>
-        <div v-if="!miniInterface" class="tool-icon">
+        <div v-if="!miniInterface" class="reader-tool">
           <div class="iconfont">
             &#58915;
           </div>
-          <div class="icon-text">底部</div>
+          <div class="reader-tool__label">底部</div>
         </div>
       </div>
     </div>
-    <div class="read-bar" :style="rightBarTheme">
-      <div class="float-btn-zone">
-        <div class="float-left-btn-zone">
-          <div class="float-btn" :style="popupAbsoluteBtnStyle">
-            <el-icon class="el-icon-collection-tag">
+    <div class="reader-bottom-panel" :style="rightBarTheme">
+      <div class="reader-side-actions">
+        <div class="reader-side-actions__left">
+          <div class="reader-side-action" :style="popupAbsoluteBtnStyle">
+            <el-icon :size="18">
               <CollectionTag />
             </el-icon>
           </div>
-          <div class="float-btn" :style="popupAbsoluteBtnStyle">
-            <el-icon class="el-icon-search">
+          <div class="reader-side-action" :style="popupAbsoluteBtnStyle">
+            <el-icon :size="18">
               <Search />
             </el-icon>
           </div>
-          <div class="float-btn" :style="popupAbsoluteBtnStyle">
-            <el-icon class="el-icon-info">
+          <div class="reader-side-action" :style="popupAbsoluteBtnStyle">
+            <el-icon :size="18">
               <InfoFilled />
             </el-icon>
           </div>
-          <div
-            v-if="miniInterface"
-            class="float-btn"
-            :style="popupAbsoluteBtnStyle"
-          >
-            <el-icon class="el-icon-top">
+          <div class="reader-side-action" :style="popupAbsoluteBtnStyle">
+            <el-icon :size="18">
               <Top />
             </el-icon>
           </div>
-          <div
-            v-if="miniInterface"
-            class="float-btn"
-            :style="popupAbsoluteBtnStyle"
-          >
-            <el-icon class="el-icon-bottom">
+          <div class="reader-side-action" :style="popupAbsoluteBtnStyle">
+            <el-icon :size="18">
               <Bottom />
             </el-icon>
           </div>
         </div>
-        <div class="float-right-btn-zone">
-          <div class="float-btn" :style="popupAbsoluteBtnStyle">
-            <el-icon class="el-icon-refresh-right">
+        <div class="reader-side-actions__right">
+          <div class="reader-side-action" :style="popupAbsoluteBtnStyle">
+            <el-icon :size="18">
               <RefreshRight />
             </el-icon>
           </div>
-          <div
-            v-if="!isEpub && !isCarToon && !isAudio"
-            class="float-btn"
-            :style="popupAbsoluteBtnStyle"
-          >
-            <el-icon class="el-icon-view">
+          <div class="reader-side-action" :style="popupAbsoluteBtnStyle">
+            <el-icon :size="18">
               <View />
             </el-icon>
           </div>
-          <div
-            v-if="speechAvalable && !isEpub && !isCarToon && !isAudio"
-            class="float-btn"
-            :style="popupAbsoluteBtnStyle"
-          >
-            <el-icon class="el-icon-headset">
+          <div class="reader-side-action" :style="popupAbsoluteBtnStyle">
+            <el-icon :size="18">
               <Headset />
             </el-icon>
           </div>
-          <div class="float-btn" :style="popupAbsoluteBtnStyle">
-            <el-icon v-if="!isNight" class="el-icon-moon">
+          <div class="reader-side-action" :style="popupAbsoluteBtnStyle">
+            <el-icon v-if="!isNight" :size="18" class="reader-theme-icon reader-theme-icon--moon">
               <Moon />
             </el-icon>
-            <el-icon v-else class="el-icon-sunny">
+            <el-icon v-else :size="18" class="reader-theme-icon reader-theme-icon--sun">
               <Sunny />
             </el-icon>
           </div>
         </div>
       </div>
-      <div v-if="miniInterface && !isAudio" class="progress">
-        <div class="progress-bar">
+      <div v-if="miniInterface && !isAudio" class="reader-slider-row">
+        <div class="reader-slider-row__bar">
           <el-slider
             v-model="currentPage"
             :min="1"
@@ -210,40 +194,40 @@
             @input="progressValue = $event"
           />
         </div>
-        <span class="progress-tip">{{ formatProgressTip() }}</span>
+        <span class="reader-slider-row__label">{{ formatProgressTip() }}</span>
       </div>
-      <div v-if="showCacheContentZone" class="cache-content-zone">
+      <div v-if="showCacheContentZone" class="reader-cache-panel">
         <div>缓存章节</div>
-        <div v-show="!isCachingContent" class="cache-content-btn">
+        <div v-show="!isCachingContent" class="reader-cache-panel__action">
           后面50章
         </div>
-        <div v-show="!isCachingContent" class="cache-content-btn">
+        <div v-show="!isCachingContent" class="reader-cache-panel__action">
           后面100章
         </div>
-        <div v-show="!isCachingContent" class="cache-content-btn">
+        <div v-show="!isCachingContent" class="reader-cache-panel__action">
           后面全部
         </div>
-        <div v-show="isCachingContent" class="caching-tip">
+        <div v-show="isCachingContent" class="reader-cache-panel__status">
           {{ cachingContentTip }}
         </div>
-        <div v-show="isCachingContent" class="caching-cancel-btn">
-          <el-icon class="el-icon-close">
+        <div v-show="isCachingContent" class="reader-cache-panel__cancel">
+          <el-icon :size="18">
             <Close />
           </el-icon>
         </div>
       </div>
-      <div class="tools">
-        <div class="tool-icon progress-text">
+      <div class="reader-tool-list">
+        <div class="reader-tool reader-progress-text">
           <span v-if="miniInterface">阅读进度: </span>
           {{ readingProgress }}
         </div>
-        <div class="tool-icon" :style="miniInterface ? { order: -1 } : {}">
+        <div class="reader-tool" :style="miniInterface ? { order: -1 } : {}">
           <div class="iconfont">
             &#58920;
           </div>
           <span v-if="miniInterface">上一章</span>
         </div>
-        <div class="tool-icon">
+        <div class="reader-tool">
           <span v-if="miniInterface">下一章</span>
           <div class="iconfont">
             &#58913;
@@ -251,68 +235,68 @@
         </div>
       </div>
     </div>
-    <div class="read-bar" :style="readBarTheme">
-      <div class="reader-bar-inner">
-        <div class="operate-bar">
-          <div class="close-btn">
-            <el-icon class="el-icon-close">
+    <div class="reader-bottom-panel" :style="readBarTheme">
+      <div class="reader-speech-panel">
+        <div class="reader-speech-panel__controls">
+          <div class="reader-close-button">
+            <el-icon :size="18">
               <Close />
             </el-icon>
           </div>
-          <div class="center">
-            <span class="ctrl-btn">上一段</span>
-            <span class="play-pause-btn">
+          <div class="reader-speech-panel__center">
+            <span class="reader-speech-panel__segment">上一段</span>
+            <span class="reader-speech-panel__play">
               <el-icon
                 v-if="speechSpeaking"
-                class="el-icon-video-pause"
+               
                 :style="popupAbsoluteBtnStyle"
               >
                 <VideoPause />
               </el-icon>
               <el-icon
                 v-else
-                class="el-icon-video-play"
+               
                 :style="popupAbsoluteBtnStyle"
               >
                 <VideoPlay />
               </el-icon>
             </span>
-            <span class="ctrl-btn">下一段</span>
+            <span class="reader-speech-panel__segment">下一段</span>
           </div>
-          <div class="collapse-btn">
-            <el-icon v-if="showSpeechConfig" class="el-icon-bottom">
+          <div class="reader-collapse-button">
+            <el-icon v-if="showSpeechConfig" :size="18">
               <Bottom />
             </el-icon>
-            <el-icon v-else class="el-icon-top">
+            <el-icon v-else :size="18">
               <Top />
             </el-icon>
           </div>
         </div>
-        <div v-if="showSpeechConfig" class="setting-item">
-          <div class="setting-title">语音库</div>
-          <div class="setting-value">
-            <div class="voice-list">
+        <div v-if="showSpeechConfig" class="reader-speech-setting">
+          <div class="reader-speech-setting__title">语音库</div>
+          <div class="reader-speech-setting__value">
+            <div class="reader-voice-list">
               <el-radio-group
                 v-model="voiceName"
                 size="small"
-                class="radio-group"
+                class="reader-voice-list__group"
               >
                 <el-radio-button
                   v-for="(voice, index) in voiceList"
                   :key="index"
-                  class="radio-button"
+                  class="reader-voice-list__option"
                   :value="voice.name"
                 />
               </el-radio-group>
             </div>
           </div>
         </div>
-        <div v-if="showSpeechConfig" class="setting-item">
-          <div class="setting-title">语音设置</div>
-          <div class="setting-value">
-            <div class="progress">
-              <span class="progress-tip">语速</span>
-              <div class="progress-bar">
+        <div v-if="showSpeechConfig" class="reader-speech-setting">
+          <div class="reader-speech-setting__title">语音设置</div>
+          <div class="reader-speech-setting__value">
+            <div class="reader-slider-row">
+              <span class="reader-slider-row__label">语速</span>
+              <div class="reader-slider-row__bar">
                 <el-slider
                   v-model="speechRate"
                   :min="0.5"
@@ -321,11 +305,11 @@
                   :show-tooltip="false"
                 />
               </div>
-              <span class="setting-btn">重置</span>
+              <span class="reader-speech-setting__action">重置</span>
             </div>
-            <div class="progress">
-              <span class="progress-tip">语调</span>
-              <div class="progress-bar">
+            <div class="reader-slider-row">
+              <span class="reader-slider-row__label">语调</span>
+              <div class="reader-slider-row__bar">
                 <el-slider
                   v-model="speechPitch"
                   :min="0"
@@ -334,11 +318,11 @@
                   :show-tooltip="false"
                 />
               </div>
-              <span class="setting-btn">重置</span>
+              <span class="reader-speech-setting__action">重置</span>
             </div>
-            <div class="progress">
-              <span class="progress-tip">定时</span>
-              <div class="progress-bar">
+            <div class="reader-slider-row">
+              <span class="reader-slider-row__label">定时</span>
+              <div class="reader-slider-row__bar">
                 <el-slider
                   v-model="speechMinutes"
                   :min="0"
@@ -347,7 +331,7 @@
                   :show-tooltip="false"
                 />
               </div>
-              <span class="setting-btn">{{ speechMinutes }}分钟</span>
+              <span class="reader-speech-setting__action">{{ speechMinutes }}分钟</span>
             </div>
           </div>
         </div>
@@ -355,27 +339,27 @@
     </div>
     <div
       ref="contentRef"
-      class="chapter"
+      class="reader-page"
       :class="chapterClass"
       :style="chapterTheme"
     >
       <div
-        v-if="showClickZone"
-        class="click-zone"
+        v-if="showReaderClickMap"
+        class="reader-click-map"
         :style="!isSlideRead ? { position: 'fixed' } : {}"
       >
         <div :style="showPrevPageStyle"><span>点击前一页</span></div>
         <div :style="showMenuZoneStyle"><span>点击显示菜单</span></div>
         <div :style="showNextPageStyle"><span>点击后一页</span></div>
-        <div class="close-btn" @click="showClickZone = false">关闭</div>
+        <div class="reader-close-button" @click="showReaderClickMap = false">关闭</div>
       </div>
-      <div class="top-bar">
+      <div class="reader-page__top">
         {{ miniInterface ? title : "" }}
       </div>
-      <div class="content" @click="handlerClick">
-        <div v-if="show" class="content-inner">
+      <div class="reader-page__content" @click="handlerClick">
+        <div v-if="show" class="reader-page__content-inner">
           <Content
-            class="book-content"
+            class="reader-text-flow"
             :title="title"
             :content="chapterContent"
             :show-content="show"
@@ -386,14 +370,14 @@
           />
         </div>
       </div>
-      <div class="bottom-bar">
+      <div class="reader-page__bottom">
         <span v-if="isSlideRead">
           {{ `第${currentPage}/${totalPages}页 ${readingProgress}` }}
         </span>
         <span v-if="isSlideRead">{{ timeStr }}</span>
         <span
           v-if="show && !isSlideRead && !error && !isScrollRead"
-          class="bottom-btn"
+          class="reader-page__next"
         >
           加载下一章
         </span>
@@ -431,7 +415,7 @@ import {
   VideoPlay,
   View
 } from "@element-plus/icons-vue";
-import PopCata from "../components/PopCatalog.vue";
+import CatalogPopup from "../components/CatalogPopup.vue";
 import ReadSettings from "../components/ReadSettings.vue";
 import BookSource from "../components/BookSource.vue";
 import BookShelf from "../components/BookShelf.vue";
@@ -456,7 +440,7 @@ const chapterContent = ref(
 后续接入真实章节后会替换为真实内容。`
 );
 const error = ref(false);
-const popCataVisible = ref(false);
+const catalogPopoverVisible = ref(false);
 const readSettingsVisible = ref(false);
 const popBookSourceVisible = ref(false);
 const popBookShelfVisible = ref(false);
@@ -465,7 +449,7 @@ const show = ref(true);
 const contentStyle = ref({});
 const currentPage = ref(1);
 const totalPages = ref(1);
-const showClickZone = ref(false);
+const showReaderClickMap = ref(false);
 const timeStr = ref("");
 const progressValue = ref(1);
 const speechAvalable = ref(
@@ -660,7 +644,7 @@ const changeBookSource = () => {
 };
 
 const getContent = () => {
-  popCataVisible.value = false;
+  catalogPopoverVisible.value = false;
 };
 
 const refreshCatalog = () => {
@@ -677,7 +661,7 @@ const eventHandler = point => {
   if (
     popBookSourceVisible.value ||
     popBookShelfVisible.value ||
-    popCataVisible.value ||
+    catalogPopoverVisible.value ||
     readSettingsVisible.value
   ) {
     return;
@@ -720,7 +704,7 @@ onBeforeUnmount(() => {
   margin-left: 10px;
 }
 
-.chapter-wrapper {
+.reader-view {
   padding: 0;
   flex-direction: column;
   align-items: center;
@@ -729,7 +713,7 @@ onBeforeUnmount(() => {
     pointer-events: none;
   }
 
-  .tool-bar {
+  .reader-main-toolbar {
     position: fixed;
     top: 0;
     padding-top: 0;
@@ -738,70 +722,75 @@ onBeforeUnmount(() => {
     left: 50%;
     z-index: 2001;
 
-    .tools {
+    .reader-tool-list {
       display: flex;
       flex-direction: column;
 
-      .tool-icon {
+      .reader-tool {
         font-size: 18px;
         width: 58px;
         height: 48px;
-        text-align: center;
-        padding-top: 12px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
         cursor: pointer;
         outline: none;
 
         .iconfont {
           font-family: iconfont;
           width: 16px;
+          height: 22px;
           font-size: 16px;
-          margin: 0 auto;
-          height: 22px;
-          line-height: 22px;
-          vertical-align: middle;
+          margin: 0;
+          line-height: 1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
 
-        .tool-el-icon {
+        .reader-tool__el-icon {
           font-size: 18px;
-          line-height: 22px;
           height: 22px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
 
-          i {
-            line-height: 22px;
-          }
         }
 
-        .icon-text {
+        .reader-tool__label {
           font-size: 12px;
+          line-height: 1;
         }
       }
     }
   }
 
-  .read-bar {
+  .reader-bottom-panel {
     position: fixed;
     bottom: 0;
     right: 50%;
     z-index: 100;
 
-    .progress {
+    .reader-slider-row {
       padding: 10px 36px;
       display: flex;
       justify-content: space-between;
       align-items: center;
 
-      .progress-bar {
+      .reader-slider-row__bar {
         flex: 1;
         padding: 0 10px;
       }
 
-      .progress-tip {
+      .reader-slider-row__label {
         font-size: 14px;
         margin-left: 5px;
       }
     }
 
-    .cache-content-zone {
+    .reader-cache-panel {
       padding: 10px 36px;
       display: flex;
       justify-content: space-between;
@@ -812,12 +801,12 @@ onBeforeUnmount(() => {
       width: 300px;
       background: inherit;
 
-      .cache-content-btn {
+      .reader-cache-panel__action {
         cursor: pointer;
       }
     }
 
-    .float-left-btn-zone {
+    .reader-side-actions__left {
       position: absolute;
       bottom: 155px;
       left: 4px;
@@ -825,75 +814,70 @@ onBeforeUnmount(() => {
       display: flex;
       flex-direction: column;
 
-      .float-btn {
-        line-height: 32px;
+      .reader-side-action {
         width: 36px;
         height: 36px;
         border-radius: 100%;
-        display: block;
-        cursor: pointer;
-        text-align: center;
-        vertical-align: middle;
-        pointer-events: all;
-        margin-top: 20px;
-
-        .el-icon-top, .el-icon-bottom, .el-icon-info, .el-icon-search, .el-icon-collection-tag {
-          line-height: 36px;
-        }
-      }
-    }
-
-    .float-right-btn-zone {
-      position: absolute;
-      bottom: 155px;
-      left: 4px;
-      right: auto;
-      display: flex;
-      flex-direction: column;
-
-      .float-btn {
-        line-height: 32px;
-        width: 36px;
-        height: 36px;
-        border-radius: 100%;
-        display: block;
-        cursor: pointer;
-        text-align: center;
-        vertical-align: middle;
-        pointer-events: all;
-        margin-top: 20px;
-
-        .el-icon-refresh-right, .el-icon-headset, .el-icon-view {
-          line-height: 36px;
-        }
-        .el-icon-moon {
-          color: #121212;
-          line-height: 34px;
-        }
-        .el-icon-sunny {
-          color: #666;
-          line-height: 34px;
-        }
-      }
-    }
-
-    .tools {
-      display: flex;
-      flex-direction: column;
-
-      .tool-icon {
-        font-size: 18px;
-        width: 42px;
-        height: 31px;
-        padding-top: 12px;
-        text-align: center;
+        display: flex;
         align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        text-align: center;
+        pointer-events: all;
+        margin-top: 20px;
+      }
+    }
+
+    .reader-side-actions__right {
+      position: absolute;
+      bottom: 155px;
+      left: 4px;
+      right: auto;
+      display: flex;
+      flex-direction: column;
+
+      .reader-side-action {
+        width: 36px;
+        height: 36px;
+        border-radius: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        text-align: center;
+        pointer-events: all;
+        margin-top: 20px;
+
+
+        .reader-theme-icon--moon {
+          color: #121212;
+        }
+        .reader-theme-icon--sun {
+          color: #666;
+        }
+      }
+    }
+
+    .reader-tool-list {
+      display: flex;
+      flex-direction: column;
+
+      .reader-tool {
+        font-size: 18px;
+        min-width: 42px;
+        height: 31px;
+        padding: 0 6px;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
         cursor: pointer;
         outline: none;
-        margin-top: -1px;
 
-        &.progress-text {
+        &.reader-progress-text {
           font-size: 16px;
+          min-width: auto;
         }
 
         .iconfont {
@@ -901,12 +885,16 @@ onBeforeUnmount(() => {
           width: 16px;
           height: 16px;
           font-size: 16px;
-          margin: 0 auto 6px;
+          margin: 0;
+          line-height: 1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
       }
     }
 
-    .reader-bar-inner {
+    .reader-speech-panel {
       display: flex;
       flex-direction: column;
       padding-bottom: 10px;
@@ -915,63 +903,66 @@ onBeforeUnmount(() => {
       padding-left: 5px;
       padding-right: 5px;
 
-      .operate-bar {
+      .reader-speech-panel__controls {
         display: flex;
         flex-direction: row;
         justify-content: space-between;
         padding: 10px 10px 0 10px;
         align-items: center;
 
-        .close-btn, .collapse-btn {
+        .reader-close-button, .reader-collapse-button {
           font-size: 22px;
           height: 35px;
           cursor: pointer;
         }
 
-        .center {
+        .reader-speech-panel__center {
           span {
-            display: inline-block;
+            display: inline-flex;
+            align-items: center;
             cursor: pointer;
           }
-          .play-pause-btn {
+          .reader-speech-panel__play {
             font-size: 50px;
             margin-top: -40px;
-            i {
-              border-radius: 100%;
-            }
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 100%;
           }
-          .ctrl-btn {
+          .reader-speech-panel__segment {
             margin: 0px 15px;
           }
         }
       }
 
-      .setting-item {
+      .reader-speech-setting {
         display: flex;
         flex-direction: column;
         padding: 5px 10px;
 
-        .setting-title {
+        .reader-speech-setting__title {
           font-size: 14px;
         }
 
-        .setting-btn {
+        .reader-speech-setting__action {
           font-size: 14px;
           cursor: pointer;
-          display: inline-block;
+          display: inline-flex;
+          align-items: center;
           margin-left: 5px;
         }
 
-        .voice-list {
+        .reader-voice-list {
           display: flex;
           flex-direction: row;
           overflow-x: auto;
           padding: 5px 10px;
 
-          .radio-group {
+          .reader-voice-list__group {
             white-space: nowrap;
 
-            .radio-button {
+            .reader-voice-list__option {
               margin-right: 10px;
 
               .el-radio-button__inner {
@@ -981,10 +972,10 @@ onBeforeUnmount(() => {
           }
         }
 
-        .progress {
+        .reader-slider-row {
           padding: 5px 10px;
 
-          .progress-tip {
+          .reader-slider-row__label {
             margin-left: 0;
             margin-right: 5px;
           }
@@ -993,16 +984,8 @@ onBeforeUnmount(() => {
     }
   }
 
-  .chapter-bar {
-    .el-breadcrumb {
-      .item {
-        font-size: 14px;
-        color: #606266;
-      }
-    }
-  }
 
-  .chapter {
+  .reader-page {
     font-family: 'Microsoft YaHei', PingFangSC-Regular, HelveticaNeue-Light, 'Helvetica Neue Light', sans-serif;
     text-align: left;
     padding: 0 65px;
@@ -1013,17 +996,13 @@ onBeforeUnmount(() => {
     background-size: cover;
     position: relative;
 
-    :deep(.el-icon-loading) {
-      font-size: 36px;
-      color: #B5B5B5;
-    }
 
     :deep(.el-loading-text) {
       font-weight: 500;
       color: #B5B5B5;
     }
 
-    .click-zone {
+    .reader-click-map {
       position: absolute;
       z-index: 120;
       top: 0;
@@ -1044,7 +1023,7 @@ onBeforeUnmount(() => {
         justify-content: center;
       }
 
-      .close-btn {
+      .reader-close-button {
         left: 0;
         right: 0;
         bottom: 20px;
@@ -1057,34 +1036,36 @@ onBeforeUnmount(() => {
       }
     }
 
-    .content {
+    .reader-page__content {
       font-size: 18px;
       line-height: 1.8;
       overflow: hidden;
       font-family: 'Microsoft YaHei', PingFangSC-Regular, HelveticaNeue-Light, 'Helvetica Neue Light', sans-serif;
 
-      .content-inner {
+      .reader-page__content-inner {
         min-height: calc(var(--vh, 1vh) * 80);
         padding-bottom: 25px;
         box-sizing: border-box;
       }
     }
 
-    .bottom-bar, .top-bar {
+    .reader-page__bottom, .reader-page__top {
       box-sizing: border-box;
     }
-    .top-bar {
+    .reader-page__top {
       height: 44px;
       padding: 10px;
     }
-    .bottom-bar {
+      .reader-page__bottom {
       width: 100%;
       text-align: center;
       padding-bottom: 30px;
-      .bottom-btn {
+      .reader-page__next {
         font-size: 14px;
         cursor: pointer;
-        display: inline-block;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
         margin: 0 auto;
         padding: 10px 40px;
         width: 80%;
@@ -1093,11 +1074,11 @@ onBeforeUnmount(() => {
     }
   }
 
-  .chapter.audio {
-    .top-bar, .bottom-bar {
+  .reader-page.audio {
+    .reader-page__top, .reader-page__bottom {
       display: none;
     }
-    .content-inner {
+    .reader-page__content-inner {
       height: calc(var(--vh, 1vh) * 100);
       margin-top: 0 !important;
       padding-top: 0 !important;
@@ -1113,50 +1094,49 @@ onBeforeUnmount(() => {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12), 0 0 6px rgba(0, 0, 0, 0.04);
   }
 
-  :deep(.tool-icon) {
+  :deep(.reader-tool) {
     border: 1px solid rgba(0, 0, 0, 0.1);
-    margin-top: -1px;
     color: #000;
 
-    .icon-text {
+    .reader-tool__label {
       color: rgba(0, 0, 0, 0.4);
     }
   }
 
-  :deep(.progress-tip) {
+  :deep(.reader-slider-row__label) {
     color: rgba(0, 0, 0, 0.4);
   }
 
-  :deep(.cache-content-zone) {
+  :deep(.reader-cache-panel) {
     color: rgba(0, 0, 0, 0.4);
   }
 
-  :deep(.float-left-btn-zone) {
+  :deep(.reader-side-actions__left) {
     color: #121212;
   }
 
-  :deep(.float-right-btn-zone) {
+  :deep(.reader-side-actions__right) {
     color: #121212;
   }
 
-  :deep(.reader-bar-inner) {
+  :deep(.reader-speech-panel) {
     color: #121212;
 
-    .setting-title {
+    .reader-speech-setting__title {
       color: rgba(0, 0, 0, 0.8);
     }
 
-    .setting-value {
+    .reader-speech-setting__value {
       color: rgba(0, 0, 0, 0.4);
     }
   }
 
-  :deep(.chapter) {
+  :deep(.reader-page) {
     border: 1px solid #d8d8d8;
     color: #262626;
   }
 
-  .bottom-bar, .top-bar {
+  .reader-page__bottom, .reader-page__top {
     color: rgba(0, 0, 0, 0.4);
   }
 
@@ -1164,7 +1144,7 @@ onBeforeUnmount(() => {
     background-color: #fff;
   }
 
-  :deep(.play-pause-btn) {
+  :deep(.reader-speech-panel__play) {
     color: #409EFF;
   }
 }
@@ -1174,46 +1154,42 @@ onBeforeUnmount(() => {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.48), 0 0 6px rgba(0, 0, 0, 0.16);
   }
 
-  :deep(.tool-icon) {
+  :deep(.reader-tool) {
     border: 1px solid #444;
-    margin-top: -1px;
     color: #666;
 
-    .icon-text {
+    .reader-tool__label {
       color: #666;
     }
   }
 
-  :deep(.progress-tip) {
+  :deep(.reader-slider-row__label) {
     color: #666;
   }
 
-  :deep(.cache-content-zone) {
+  :deep(.reader-cache-panel) {
     color: #666;
   }
 
-  :deep(.float-left-btn-zone) {
+  :deep(.reader-side-actions__left) {
     color: #666;
   }
 
-  :deep(.float-right-btn-zone) {
+  :deep(.reader-side-actions__right) {
     color: #666;
   }
 
-  :deep(.reader-bar-inner) {
+  :deep(.reader-speech-panel) {
     color: #666;
   }
 
-  :deep(.chapter) {
+  :deep(.reader-page) {
     border: 1px solid #444;
     color: #666;
   }
 
-  :deep(.popper__arrow) {
-    background: #666;
-  }
 
-  .bottom-bar, .top-bar {
+  .reader-page__bottom, .reader-page__top {
     color: #666;
   }
 
@@ -1227,25 +1203,25 @@ onBeforeUnmount(() => {
     border: 2px solid #185798;
     background-color: #282828;
   }
-  :deep(.play-pause-btn) {
+  :deep(.reader-speech-panel__play) {
     color: #185798;
   }
 }
 
-.chapter-wrapper {
-  .read-bar {
-    .float-btn-zone {
+.reader-view {
+  .reader-bottom-panel {
+    .reader-side-actions {
       position: absolute;
       bottom: 135px;
       left: 4px;
 
-      .float-left-btn-zone {
+      .reader-side-actions__left {
         position: relative;
         left: auto;
         bottom: auto;
       }
 
-      .float-right-btn-zone {
+      .reader-side-actions__right {
         position: relative;
         left: auto;
         bottom: auto;
@@ -1256,79 +1232,89 @@ onBeforeUnmount(() => {
   }
 }
 
-.chapter-wrapper.mini-interface {
+.reader-view.mini-interface {
   padding: 0;
   position: relative;
   height: 100%;
 
-  .tool-bar {
+  .reader-main-toolbar {
     left: 0;
     width: 100vw;
     margin-left: 0 !important;
 
-    .tools {
+    .reader-tool-list {
       flex-direction: row;
       justify-content: space-around;
-      .tool-icon {
+      .reader-tool {
         border: none;
       }
     }
   }
 
-  .read-bar {
+  .reader-bottom-panel {
     right: 0;
     width: 100vw;
     margin-right: 0 !important;
 
-    .cache-content-zone {
+    .reader-cache-panel {
       position: relative;
       width: auto;
       right: 0;
       background: inherit;
     }
 
-    .float-btn-zone {
+    .reader-side-actions {
       position: static;
       bottom: 0;
       left: 0;
     }
 
-    .float-left-btn-zone {
+    .reader-side-actions__left {
       position: absolute;
       right: auto;
       left: 20px;
       bottom: 135px;
     }
 
-    .float-right-btn-zone {
+    .reader-side-actions__right {
       position: absolute;
       left: auto;
       right: 20px;
       bottom: 135px;
     }
 
-    .tools {
+    .reader-tool-list {
       flex-direction: row;
       justify-content: space-around;
       padding: 0 15px;
       height: 45px;
-      .tool-icon {
+
+      .reader-tool {
         border: none;
         width: auto;
         padding: 0;
         height: 45px;
-        line-height: 45px;
+        line-height: 1;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+
         .iconfont {
-          display: inline-block;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
         }
+
         span {
-          vertical-align: middle;
+          line-height: 1;
         }
       }
     }
   }
 
-  .chapter {
+  .reader-page {
     width: 100vw !important;
     padding: 0 16px;
     box-sizing: border-box;
@@ -1336,7 +1322,7 @@ onBeforeUnmount(() => {
     text-align: justify;
     position: relative;
 
-    .top-bar {
+    .reader-page__top {
       position: fixed;
       top: 0;
       left: 0;
@@ -1352,7 +1338,7 @@ onBeforeUnmount(() => {
       font-size: 12px;
     }
 
-    .content-inner {
+    .reader-page__content-inner {
       margin-top: 30px;
       margin-top: calc(30px + constant(safe-area-inset-top));
       margin-top: calc(30px + env(safe-area-inset-top));
@@ -1361,19 +1347,19 @@ onBeforeUnmount(() => {
     }
   }
 
-  .chapter.cartoon {
+  .reader-page.cartoon {
     padding: 0;
 
-    .content-inner {
+    .reader-page__content-inner {
       padding-top: 1px;
     }
   }
 
-  .chapter.slide-reader {
+  .reader-page.slide-reader {
     padding: 0;
     height: 100%;
 
-    .bottom-bar {
+    .reader-page__bottom {
       height: 24px;
       position: absolute;
       bottom: 0;
@@ -1384,11 +1370,11 @@ onBeforeUnmount(() => {
       font-size: 12px;
     }
 
-    .top-bar {
+    .reader-page__top {
       position: relative;
     }
 
-    .content {
+    .reader-page__content {
       position: absolute;
       overflow: visible;
       top: 30px;
@@ -1397,7 +1383,7 @@ onBeforeUnmount(() => {
       bottom: 24px;
     }
 
-    .content-inner {
+    .reader-page__content-inner {
       margin: 0 16px;
       overflow: hidden;
       text-align: justify;
@@ -1405,7 +1391,7 @@ onBeforeUnmount(() => {
       height: 100%;
     }
 
-    .book-content {
+    .reader-text-flow {
       height: 100%;
       -webkit-columns: calc(100vw - 32px) 1;
       -webkit-column-gap: 32px;
@@ -1414,69 +1400,15 @@ onBeforeUnmount(() => {
     }
   }
 }
-.chapter-wrapper.mini-interface::-webkit-scrollbar {
+.reader-view.mini-interface::-webkit-scrollbar {
   width: 0 !important;
 }
 </style><style lang="stylus">
-.voice-list {
+.reader-voice-list {
   .el-radio-button__inner {
     border-radius: 4px !important;
     border-left: 1px solid #DCDFE6;
     box-shadow: none;
-  }
-}
-.night-theme {
-  .voice-list {
-    .el-radio-button {
-      box-shadow: none !important;
-    }
-    .el-radio-button__inner {
-      background-color: #bbb;
-      border-color: #bbb;
-    }
-    .el-radio-button__inner:hover {
-      color: #185798;
-    }
-    .el-radio-button__orig-radio:checked+.el-radio-button__inner {
-      background-color: #185798;
-      border-color: #185798;
-      color: #fff;
-      box-shadow: none;
-    }
-  }
-}
-.kindle-page {
-  .day {
-    .tool-icon {
-      border: 1px solid #fefefefe;
-
-      .icon-text {
-        color: #444;
-      }
-    }
-
-    .progress-tip {
-      color: #444;
-    }
-
-    .cache-content-zone {
-      color: #444;
-    }
-
-    .reader-bar-inner {
-
-      .setting-title {
-        color: rgba(0, 0, 0, 0.8);
-      }
-
-      .setting-value {
-        color: #444;
-      }
-    }
-
-    .bottom-bar, .top-bar {
-      color: #444;
-    }
   }
 }
 </style>

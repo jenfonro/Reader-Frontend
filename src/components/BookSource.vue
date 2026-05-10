@@ -1,8 +1,8 @@
 <template>
-  <div class="popup-wrapper" :style="popupTheme">
-    <div class="title-zone">
-      <div class="title">来源({{ bookSource.length }})</div>
-      <div :class="{ 'title-btn': true, loading: loadingMore }">
+  <div class="reader-popup" :style="popupTheme">
+    <div class="reader-popup__header">
+      <div class="reader-popup__title">来源({{ bookSource.length }})</div>
+      <div class="reader-popup__actions" :class="{ loading: loadingMore }">
         <el-select
           v-model="bookSourceGroup"
           size="small"
@@ -18,16 +18,16 @@
           />
         </el-select>
         <span :class="{ loading }" @click="refresh">
-          <el-icon v-if="loading" class="el-icon-loading">
+          <el-icon v-if="loading" class="is-loading">
             <Loading />
           </el-icon>
           {{ loading ? "刷新中..." : "刷新" }}
         </span>
         <span
           :class="{ loading: loadingMore }"
-          @click="searchBookSourceByEventStream"
+          @click="loadMoreBookSources"
         >
-          <el-icon v-if="loadingMore" class="el-icon-loading">
+          <el-icon v-if="loadingMore" class="is-loading">
             <Loading />
           </el-icon>
           {{ loadingMore ? "加载中..." : "加载更多" }}
@@ -35,7 +35,7 @@
       </div>
     </div>
     <div
-      class="data-wrapper"
+      class="reader-popup__body"
       :class="{ night: isNight, day: !isNight }"
     >
       <div class="source-list">
@@ -88,7 +88,7 @@ defineProps({
   }
 });
 
-const emit = defineEmits(["changeBookSource"]);
+const emit = defineEmits(["change-book-source"]);
 
 const bookSource = ref(previewBookSources);
 const bookSourceGroup = ref("");
@@ -110,7 +110,7 @@ const refresh = () => {
   }, 300);
 };
 
-const searchBookSourceByEventStream = () => {
+const loadMoreBookSources = () => {
   loadingMore.value = true;
   window.setTimeout(() => {
     loadingMore.value = false;
@@ -118,19 +118,19 @@ const searchBookSourceByEventStream = () => {
 };
 
 const changeBookSource = searchBook => {
-  emit("changeBookSource", searchBook);
+  emit("change-book-source", searchBook);
 };
 </script>
 
 <style lang="stylus" scoped>
-.popup-wrapper {
+.reader-popup {
   margin: -16px;
   margin-bottom: -13px;
   padding: 24px;
   padding-top: calc(24px + constant(safe-area-inset-top));
   padding-top: calc(24px + env(safe-area-inset-top));
 
-  .title-zone {
+  .reader-popup__header {
     margin: 0 0 20px 0;
     width: 100%;
     display: flex;
@@ -139,7 +139,7 @@ const changeBookSource = searchBook => {
     justify-content: space-between;
   }
 
-  .title {
+  .reader-popup__title {
     font-size: 18px;
     font-weight: 400;
     font-family: -apple-system, "Noto Sans", "Helvetica Neue", Helvetica, "Nimbus Sans L", Arial, "Liberation Sans", "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", "Source Han Sans SC", "Source Han Sans CN", "Microsoft YaHei", "Wenquanyi Micro Hei", "WenQuanYi Zen Hei", "ST Heiti", SimHei, "WenQuanYi Zen Hei Sharp", sans-serif;
@@ -148,28 +148,32 @@ const changeBookSource = searchBook => {
     width: fit-content;
   }
 
-  .title-btn {
+  .reader-popup__actions {
     font-size: 14px;
     line-height: 26px;
     color: #ed4259;
     cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
 
     .booksource-group-select {
       width: 140px;
     }
     .source-count {
-      display: inline-block;
+      display: inline-flex;
+      align-items: center;
       color: #606266;
     }
     span {
-      margin-left: 15px;
+      margin-left: 0;
     }
     &.loading {
       color: #606266;
     }
   }
 
-  .data-wrapper {
+  .reader-popup__body {
     height: 300px;
     overflow: auto;
 
@@ -198,7 +202,8 @@ const changeBookSource = searchBook => {
 
           }
           .source-time {
-            float: right;
+            margin-left: 12px;
+            flex: 0 0 auto;
             font-size: 12px;
           }
         }
@@ -221,7 +226,7 @@ const changeBookSource = searchBook => {
     }
   }
 
-  .data-wrapper::-webkit-scrollbar {
+  .reader-popup__body::-webkit-scrollbar {
     width: 0 !important;
   }
 

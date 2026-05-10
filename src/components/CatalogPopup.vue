@@ -1,30 +1,30 @@
 <template>
-  <div class="popup-wrapper" :style="popupTheme">
-    <div class="title-zone">
-      <div class="title">
+  <div class="reader-popup" :style="popupTheme">
+    <div class="reader-popup__header">
+      <div class="reader-popup__title">
         目录
         <span v-if="catalog.length">({{ catalog.length }})</span>
       </div>
-      <div :class="{ 'title-btn': true }">
-        <span v-if="catalog.length" class="span-btn" @click="asc = !asc">
+      <div class="reader-popup__actions">
+        <span v-if="catalog.length" class="reader-popup__action" @click="asc = !asc">
           {{ asc ? "倒序" : "顺序" }}
         </span>
-        <span v-if="catalog.length" class="span-btn" @click="toTop">顶部</span>
-        <span v-if="catalog.length" class="span-btn" @click="toBottom">
+        <span v-if="catalog.length" class="reader-popup__action" @click="toTop">顶部</span>
+        <span v-if="catalog.length" class="reader-popup__action" @click="toBottom">
           底部
         </span>
         <span
           v-if="book.origin === 'loc_book'"
-          class="span-btn"
+          class="reader-popup__action"
           @click="changeRule"
         >
           修改规则
         </span>
         <span
-          :class="{ loading: refreshLoading, 'refresh-btn': true }"
+          :class="{ loading: refreshLoading, 'reader-popup__refresh': true }"
           @click="refreshChapter"
         >
-          <el-icon v-if="refreshLoading" class="el-icon-loading">
+          <el-icon v-if="refreshLoading" class="is-loading">
             <Loading />
           </el-icon>
           {{ refreshLoading ? "刷新中..." : "刷新" }}
@@ -32,22 +32,22 @@
       </div>
     </div>
     <div
-      ref="cataDataRef"
-      class="data-wrapper"
+      ref="catalogBodyRef"
+      class="reader-popup__body"
       :class="{ night: isNight, day: !isNight }"
     >
-      <div class="cata">
+      <div class="catalog-list">
         <div
-          v-for="(note, index) in cataList"
+          v-for="(note, index) in catalogList"
           :key="note.index"
-          class="log"
+          class="catalog-list__item"
           :class="{ selected: isSelected(index) }"
           @click="gotoChapter(note)"
         >
           <div
             :class="{
-              'log-text': true,
-              cached: cachedCataMap[note.index]
+              'catalog-list__text': true,
+              cached: cachedChapterMap[note.index]
             }"
           >
             {{ note.title }}
@@ -68,7 +68,7 @@ import { Loading } from "@element-plus/icons-vue";
 import { previewBook, previewCatalog, previewTheme } from "../previewData";
 
 defineOptions({
-  name: "PopCata"
+  name: "CatalogPopup"
 });
 
 defineProps({
@@ -78,17 +78,17 @@ defineProps({
   }
 });
 
-const emit = defineEmits(["getContent", "refresh"]);
+const emit = defineEmits(["get-content", "refresh"]);
 
-const cataDataRef = ref(null);
+const catalogBodyRef = ref(null);
 const refreshLoading = ref(false);
 const asc = ref(true);
-const cachedCataMap = ref({});
+const cachedChapterMap = ref({});
 const book = ref(previewBook);
 const catalog = ref(previewCatalog);
 const isNight = ref(false);
 
-const cataList = computed(() =>
+const catalogList = computed(() =>
   asc.value ? catalog.value : [...catalog.value].reverse()
 );
 const popupTheme = computed(() => ({
@@ -98,7 +98,7 @@ const popupTheme = computed(() => ({
 const isSelected = index => index === (book.value.index || 0);
 
 const gotoChapter = note => {
-  emit("getContent", note);
+  emit("get-content", note);
 };
 
 const refreshChapter = () => {
@@ -114,27 +114,27 @@ const changeRule = () => {
 };
 
 const toTop = () => {
-  if (cataDataRef.value) {
-    cataDataRef.value.scrollTop = 0;
+  if (catalogBodyRef.value) {
+    catalogBodyRef.value.scrollTop = 0;
   }
 };
 
 const toBottom = () => {
-  if (cataDataRef.value) {
-    cataDataRef.value.scrollTop = cataDataRef.value.scrollHeight;
+  if (catalogBodyRef.value) {
+    catalogBodyRef.value.scrollTop = catalogBodyRef.value.scrollHeight;
   }
 };
 </script>
 
 <style lang="stylus" scoped>
-.popup-wrapper {
+.reader-popup {
   margin: -16px;
   margin-bottom: -13px;
   padding: 24px;
   padding-top: calc(24px + constant(safe-area-inset-top));
   padding-top: calc(24px + env(safe-area-inset-top));
 
-  .title-zone {
+  .reader-popup__header {
     margin: 0 0 20px 0;
     width: 100%;
     display: flex;
@@ -143,7 +143,7 @@ const toBottom = () => {
     justify-content: space-between;
   }
 
-  .title {
+  .reader-popup__title {
     font-size: 18px;
     font-weight: 400;
     font-family: -apple-system, "Noto Sans", "Helvetica Neue", Helvetica, "Nimbus Sans L", Arial, "Liberation Sans", "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", "Source Han Sans SC", "Source Han Sans CN", "Microsoft YaHei", "Wenquanyi Micro Hei", "WenQuanYi Zen Hei", "ST Heiti", SimHei, "WenQuanYi Zen Hei Sharp", sans-serif;
@@ -152,23 +152,27 @@ const toBottom = () => {
     width: fit-content;
   }
 
-  .title-btn {
+  .reader-popup__actions {
     font-size: 14px;
     line-height: 26px;
     color: #606266;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+
     .progress-percent {
-      display: inline-block;
-      margin-right: 25px;
+      display: inline-flex;
+      align-items: center;
     }
-    .span-btn {
-      display: inline-block;
+    .reader-popup__action {
+      display: inline-flex;
+      align-items: center;
       color: #ed4259;
-      margin-left: 15px;
       cursor: pointer;
     }
-    .refresh-btn {
-      display: inline-block;
-      margin-left: 15px;
+    .reader-popup__refresh {
+      display: inline-flex;
+      align-items: center;
       color: #ed4259;
       cursor: pointer;
       &.loading {
@@ -177,11 +181,11 @@ const toBottom = () => {
     }
   }
 
-  .data-wrapper {
+  .reader-popup__body {
     height: 300px;
     overflow: auto;
 
-    .cata {
+    .catalog-list {
       display: flex;
       flex-direction: row;
       flex-wrap: wrap;
@@ -191,18 +195,19 @@ const toBottom = () => {
         color: #444;
       }
 
-      .selected .log-text {
+      .selected .catalog-list__text {
         color: #EB4259 !important;
       }
 
-      .log {
+      .catalog-list__item {
         width: 50%;
         height: 40px;
         cursor: pointer;
-        float: left;
+        display: flex;
+        align-items: center;
         font: 16px / 40px PingFangSC-Regular, HelveticaNeue-Light, 'Helvetica Neue Light', 'Microsoft YaHei', sans-serif;
 
-        .log-text {
+        .catalog-list__text {
           margin-right: 26px;
           overflow: hidden;
           white-space: nowrap;
@@ -212,18 +217,18 @@ const toBottom = () => {
     }
   }
 
-  .data-wrapper::-webkit-scrollbar {
+  .reader-popup__body::-webkit-scrollbar {
     width: 0 !important;
   }
 
   .night {
-    :deep(.log) {
+    :deep(.catalog-list__item) {
       border-bottom: 1px solid #333;
     }
   }
 
   .day {
-    :deep(.log) {
+    :deep(.catalog-list__item) {
       border-bottom: 1px solid #eee;
     }
 
@@ -233,10 +238,10 @@ const toBottom = () => {
   }
 }
 @media screen and (max-width: 500px) {
-  .popup-wrapper .data-wrapper .cata .log {
+  .reader-popup .reader-popup__body .catalog-list .catalog-list__item {
     width: 100%;
 
-    .log-text {
+    .catalog-list__text {
       margin-right: 0;
     }
   }
