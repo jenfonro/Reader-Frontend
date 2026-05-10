@@ -1,73 +1,85 @@
-<script>
-import { getWindowSize, previewConfig, previewTheme } from "../previewData";
+<template>
+  <div
+    v-if="showContent"
+    class="content-body chapter-content reading-chapter"
+    :style="containerStyle"
+  >
+    <h3 data-pos="0">{{ title }}</h3>
+    <p
+      v-for="paragraph in paragraphs"
+      :key="paragraph.pos"
+      :style="pStyle"
+      :data-pos="paragraph.pos"
+      v-html="paragraph.text"
+    ></p>
+  </div>
+  <div v-else></div>
+</template>
 
-export default {
-  name: "Content",
-  props: [
-    "content",
-    "error",
-    "title",
-    "showContent",
-    "isScrollRead",
-    "showChapterList",
-    "currentShowChapter"
-  ],
-  computed: {
-    fontSize() {
-      return previewConfig.fontSize + "px";
-    },
-    containerStyle() {
-      return {
-        fontSize: previewConfig.fontSize + "px",
-        fontWeight: previewConfig.fontWeight || undefined,
-        color: previewConfig.fontColor,
-        background: previewTheme.content
-      };
-    },
-    pStyle() {
-      return {
-        lineHeight: previewConfig.lineHeight,
-        marginTop: previewConfig.paragraphSpace + "em",
-        marginBottom: previewConfig.paragraphSpace + "em"
-      };
-    },
-    windowSize() {
-      return getWindowSize();
-    }
+<script setup>
+import { computed } from "vue";
+import { previewConfig, previewTheme } from "../previewData";
+
+defineOptions({
+  name: "Content"
+});
+
+const props = defineProps({
+  content: {
+    type: String,
+    default: ""
   },
-  render(h) {
-    if (!this.showContent) {
-      return h("div");
-    }
-    let wordCount = (this.title || "").length + 2;
-    const children = [h("h3", { attrs: { "data-pos": 0 } }, this.title)];
-    String(this.content || "")
-      .split(/\n+/)
-      .forEach(paragraph => {
-        const text = paragraph.replace(/^\s+/g, "");
-        if (!text) {
-          return;
-        }
-        const pos = wordCount;
-        wordCount += text.length + 2;
-        children.push(
-          h("p", {
-            style: this.pStyle,
-            domProps: { innerHTML: text },
-            attrs: { "data-pos": pos }
-          })
-        );
-      });
-    return h(
-      "div",
-      {
-        class: "content-body chapter-content reading-chapter",
-        style: this.containerStyle
-      },
-      children
-    );
+  error: {
+    type: Boolean,
+    default: false
+  },
+  title: {
+    type: String,
+    default: ""
+  },
+  showContent: {
+    type: Boolean,
+    default: true
+  },
+  isScrollRead: {
+    type: Boolean,
+    default: false
+  },
+  showChapterList: {
+    type: Array,
+    default: () => []
+  },
+  currentShowChapter: {
+    type: Object,
+    default: null
   }
-};
+});
+
+const containerStyle = computed(() => ({
+  fontSize: `${previewConfig.fontSize}px`,
+  fontWeight: previewConfig.fontWeight || undefined,
+  color: previewConfig.fontColor,
+  background: previewTheme.content
+}));
+
+const pStyle = computed(() => ({
+  lineHeight: previewConfig.lineHeight,
+  marginTop: `${previewConfig.paragraphSpace}em`,
+  marginBottom: `${previewConfig.paragraphSpace}em`
+}));
+
+const paragraphs = computed(() => {
+  let wordCount = (props.title || "").length + 2;
+  return String(props.content || "")
+    .split(/\n+/)
+    .map(paragraph => paragraph.replace(/^\s+/g, ""))
+    .filter(Boolean)
+    .map(text => {
+      const pos = wordCount;
+      wordCount += text.length + 2;
+      return { pos, text };
+    });
+});
 </script>
 
 <style lang="stylus" scoped>

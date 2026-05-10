@@ -1,7 +1,4 @@
-import Vue from "vue";
-import VueRouter from "vue-router";
-
-Vue.use(VueRouter);
+import { createRouter, createWebHashHistory } from "vue-router";
 
 const routes = [
   {
@@ -11,11 +8,12 @@ const routes = [
   },
   {
     path: "/reader",
-    name: "Reader",
+    name: "reader",
     component: () => import("../views/Reader.vue")
   }
 ];
 
-export default new VueRouter({
+export default createRouter({
+  history: createWebHashHistory(),
   routes
 });

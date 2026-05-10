@@ -6,16 +6,16 @@
         <span v-if="catalog.length">({{ catalog.length }})</span>
       </div>
       <div :class="{ 'title-btn': true }">
-        <span class="span-btn" v-if="catalog.length" @click="asc = !asc">{{
-          asc ? "倒序" : "顺序"
-        }}</span>
-        <span class="span-btn" v-if="catalog.length" @click="toTop">顶部</span>
-        <span class="span-btn" v-if="catalog.length" @click="toBottom"
-          >底部</span
-        >
+        <span v-if="catalog.length" class="span-btn" @click="asc = !asc">
+          {{ asc ? "倒序" : "顺序" }}
+        </span>
+        <span v-if="catalog.length" class="span-btn" @click="toTop">顶部</span>
+        <span v-if="catalog.length" class="span-btn" @click="toBottom">
+          底部
+        </span>
         <span
-          class="span-btn"
           v-if="book.origin === 'loc_book'"
+          class="span-btn"
           @click="changeRule"
         >
           修改规则
@@ -24,24 +24,25 @@
           :class="{ loading: refreshLoading, 'refresh-btn': true }"
           @click="refreshChapter"
         >
-          <i class="el-icon-loading" v-if="refreshLoading"></i>
+          <el-icon v-if="refreshLoading" class="el-icon-loading">
+            <Loading />
+          </el-icon>
           {{ refreshLoading ? "刷新中..." : "刷新" }}
         </span>
       </div>
     </div>
     <div
+      ref="cataDataRef"
       class="data-wrapper"
-      ref="cataData"
       :class="{ night: isNight, day: !isNight }"
     >
       <div class="cata">
         <div
-          class="log"
           v-for="(note, index) in cataList"
-          :class="{ selected: isSelected(index) }"
           :key="note.index"
+          class="log"
+          :class="{ selected: isSelected(index) }"
           @click="gotoChapter(note)"
-          ref="cata"
         >
           <div
             :class="{
@@ -57,58 +58,67 @@
   </div>
 </template>
 
-<script>
+<script setup>
+import { computed, ref } from "vue";
+import { ElMessage } from "element-plus";
+import { Loading } from "@element-plus/icons-vue";
 import { previewBook, previewCatalog, previewTheme } from "../previewData";
 
-export default {
-  name: "PopCata",
-  props: ["visible"],
-  data() {
-    return {
-      refreshLoading: false,
-      asc: true,
-      cachedCataMap: {},
-      book: previewBook,
-      catalog: previewCatalog,
-      isNight: false
-    };
-  },
-  computed: {
-    cataList() {
-      return this.asc ? this.catalog : [].concat(this.catalog).reverse();
-    },
-    popupTheme() {
-      return {
-        background: previewTheme.popup
-      };
-    }
-  },
-  methods: {
-    isSelected(index) {
-      return index === (this.book.index || 0);
-    },
-    gotoChapter(note) {
-      this.$emit("getContent", note);
-    },
-    refreshChapter() {
-      this.refreshLoading = true;
-      setTimeout(() => {
-        this.refreshLoading = false;
-        this.$emit("refresh");
-      }, 300);
-    },
-    changeRule() {
-      this.$message.success("修改规则预览");
-    },
-    toTop() {
-      this.$refs.cataData && (this.$refs.cataData.scrollTop = 0);
-    },
-    toBottom() {
-      const target = this.$refs.cataData;
-      if (target) {
-        target.scrollTop = target.scrollHeight;
-      }
-    }
+defineOptions({
+  name: "PopCata"
+});
+
+defineProps({
+  visible: {
+    type: Boolean,
+    default: false
+  }
+});
+
+const emit = defineEmits(["getContent", "refresh"]);
+
+const cataDataRef = ref(null);
+const refreshLoading = ref(false);
+const asc = ref(true);
+const cachedCataMap = ref({});
+const book = ref(previewBook);
+const catalog = ref(previewCatalog);
+const isNight = ref(false);
+
+const cataList = computed(() =>
+  asc.value ? catalog.value : [...catalog.value].reverse()
+);
+const popupTheme = computed(() => ({
+  background: previewTheme.popup
+}));
+
+const isSelected = index => index === (book.value.index || 0);
+
+const gotoChapter = note => {
+  emit("getContent", note);
+};
+
+const refreshChapter = () => {
+  refreshLoading.value = true;
+  window.setTimeout(() => {
+    refreshLoading.value = false;
+    emit("refresh");
+  }, 300);
+};
+
+const changeRule = () => {
+  ElMessage.success("修改规则预览");
+};
+
+const toTop = () => {
+  if (cataDataRef.value) {
+    cataDataRef.value.scrollTop = 0;
+  }
+};
+
+const toBottom = () => {
+  if (cataDataRef.value) {
+    cataDataRef.value.scrollTop = cataDataRef.value.scrollHeight;
   }
 };
 </script>
@@ -204,17 +214,17 @@ export default {
   }
 
   .night {
-    >>>.log {
+    :deep(.log) {
       border-bottom: 1px solid #333;
     }
   }
 
   .day {
-    >>>.log {
+    :deep(.log) {
       border-bottom: 1px solid #eee;
     }
 
-    >>>.cached {
+    :deep(.cached) {
       color: #bbb !important;
     }
   }

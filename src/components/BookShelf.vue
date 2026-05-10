@@ -3,34 +3,33 @@
     <div class="title-zone">
       <div class="title">书架({{ shelfBooks.length }})</div>
       <div :class="{ 'title-btn': true, loading: refreshLoading }">
-        <!-- <span class="home-btn" @click="backToHome">回首页</span> -->
         <span :class="{ loading: refreshLoading }" @click="refreshShelf">
-          <i class="el-icon-loading" v-if="refreshLoading"></i>
+          <el-icon v-if="refreshLoading" class="el-icon-loading">
+            <Loading />
+          </el-icon>
           {{ refreshLoading ? "刷新中..." : "刷新" }}
         </span>
       </div>
     </div>
     <div
       class="data-wrapper"
-      ref="bookList"
       :class="{ night: isNight, day: !isNight }"
     >
       <div class="shelfbook-list">
         <div
-          class="book-item"
           v-for="book in shelfBooks"
-          :class="{ selected: isSelected(book) }"
           :key="book.bookUrl"
+          class="book-item"
+          :class="{ selected: isSelected(book) }"
           @click="changeBook(book)"
-          ref="book"
         >
           <div class="book-title">
             <div class="book-name">
               {{ book.name }}
             </div>
             <div
-              class="book-progress"
               v-if="book.totalChapterNum - 1 - book.durChapterIndex"
+              class="book-progress"
             >
               {{ book.totalChapterNum - 1 - book.durChapterIndex }}
             </div>
@@ -44,46 +43,43 @@
   </div>
 </template>
 
-<script>
-import { previewShelfBooks, previewTheme, previewBook } from "../previewData";
+<script setup>
+import { computed, ref } from "vue";
+import { Loading } from "@element-plus/icons-vue";
+import { previewBook, previewShelfBooks, previewTheme } from "../previewData";
 
-export default {
-  name: "BookShelf",
-  props: ["visible"],
-  data() {
-    return {
-      refreshLoading: false,
-      shelfBooks: previewShelfBooks,
-      isNight: false
-    };
-  },
-  computed: {
-    popupTheme() {
-      return {
-        background: previewTheme.popup
-      };
-    }
-  },
-  methods: {
-    isSelected(book) {
-      return book.bookUrl === previewBook.bookUrl;
-    },
-    refreshShelf() {
-      this.refreshLoading = true;
-      setTimeout(() => {
-        this.refreshLoading = false;
-      }, 300);
-    },
-    changeBook(book) {
-      this.$emit("changeBook", book);
-    },
-    toShelf() {
-      this.$emit("toShelf");
-    },
-    backToHome() {
-      this.toShelf();
-    }
+defineOptions({
+  name: "BookShelf"
+});
+
+defineProps({
+  visible: {
+    type: Boolean,
+    default: false
   }
+});
+
+const emit = defineEmits(["changeBook", "toShelf"]);
+
+const refreshLoading = ref(false);
+const shelfBooks = ref(previewShelfBooks);
+const isNight = ref(false);
+
+const popupTheme = computed(() => ({
+  background: previewTheme.popup
+}));
+
+const isSelected = book => book.bookUrl === previewBook.bookUrl;
+
+const refreshShelf = () => {
+  refreshLoading.value = true;
+  window.setTimeout(() => {
+    refreshLoading.value = false;
+  }, 300);
+};
+
+const changeBook = book => {
+  emit("changeBook", book);
 };
 </script>
 
@@ -200,7 +196,7 @@ export default {
   }
 
   .day {
-    >>>.book-item {
+    :deep(.book-item) {
       border-bottom: 1px solid #eee;
     }
   }

@@ -41,14 +41,16 @@
               @click="setCustomConfig(customConfig)"
             >
               <span>{{ customConfig.name }}</span>
-              <i
-                class="el-icon-close delete-custom-config-icon"
+              <el-icon
                 v-if="
                   index > 1 &&
                     config.customConfig !== customConfig.name
                 "
+                class="el-icon-close delete-custom-config-icon"
                 @click.stop="deleteCustomConfig(index, customConfig.name)"
-              ></i>
+              >
+                <Close />
+              </el-icon>
             </span>
             <span
               class="span-item"
@@ -158,10 +160,12 @@
                   alt=""
                   @click="setBGImg(item)"
                 />
-                <i
+                <el-icon
                   class="el-icon-close delete-bg-icon"
                   @click.stop="deleteCustomBGImg(item)"
-                ></i>
+                >
+                  <Close />
+                </el-icon>
               </div>
 
               <span class="upload-bg-btn" @click="uploadBGFile">上传</span>
@@ -184,7 +188,7 @@
               :class="{ selected: config.font == index }"
               @click="setConfig('font', index)"
               >{{ font }}
-              <i
+              <el-icon
                 :class="{
                   'el-icon-upload': true,
                   'upload-font-icon': true,
@@ -193,7 +197,9 @@
                     config.customFontsMap[customFonts[index]]
                 }"
                 @click.stop="uploadFontFile(customFonts[index], font)"
-              ></i>
+              >
+                <Upload />
+              </el-icon>
             </span>
             <input
               ref="fontFileRef"
@@ -226,7 +232,7 @@
               <el-input
                 class="setting-input"
                 v-model="config.fontSize"
-                size="mini"
+                size="small"
               ></el-input></span
             ><b></b>
             <span class="more" @click="incConfig('fontSize')"
@@ -238,54 +244,51 @@
           <span class="setting-item-title">字体粗细</span>
           <div class="resize">
             <span class="less" @click="decConfig('fontWeight')"
-              ><i class="el-icon-minus"></i></span
+              ><el-icon class="el-icon-minus"><Minus /></el-icon></span
             ><b></b>
             <span class="lang">
               <el-input
                 class="setting-input"
                 v-model="config.fontWeight"
-                size="mini"
+                size="small"
               ></el-input></span
             ><b></b>
             <span class="less" @click="incConfig('fontWeight')"
-              ><i class="el-icon-plus"></i
-            ></span>
+              ><el-icon class="el-icon-plus"><Plus /></el-icon></span>
           </div>
         </li>
         <li>
           <span class="setting-item-title">段落行高</span>
           <div class="resize">
             <span class="less" @click="decConfig('lineHeight')"
-              ><i class="el-icon-minus"></i></span
+              ><el-icon class="el-icon-minus"><Minus /></el-icon></span
             ><b></b>
             <span class="lang">
               <el-input
                 class="setting-input"
                 v-model="config.lineHeight"
-                size="mini"
+                size="small"
               ></el-input></span
             ><b></b>
             <span class="less" @click="incConfig('lineHeight')"
-              ><i class="el-icon-plus"></i
-            ></span>
+              ><el-icon class="el-icon-plus"><Plus /></el-icon></span>
           </div>
         </li>
         <li>
           <span class="setting-item-title">段落间距</span>
           <div class="resize">
             <span class="less" @click="decConfig('paragraphSpace')"
-              ><i class="el-icon-minus"></i></span
+              ><el-icon class="el-icon-minus"><Minus /></el-icon></span
             ><b></b>
             <span class="lang">
               <el-input
                 class="setting-input"
                 v-model="config.paragraphSpace"
-                size="mini"
+                size="small"
               ></el-input></span
             ><b></b>
             <span class="less" @click="incConfig('paragraphSpace')"
-              ><i class="el-icon-plus"></i
-            ></span>
+              ><el-icon class="el-icon-plus"><Plus /></el-icon></span>
           </div>
         </li>
         <li>
@@ -341,18 +344,17 @@
           <span class="setting-item-title">动画时长</span>
           <div class="resize">
             <span class="less" @click="decConfig('animateMSTime')"
-              ><i class="el-icon-minus"></i></span
+              ><el-icon class="el-icon-minus"><Minus /></el-icon></span
             ><b></b>
             <span class="lang">
               <el-input
                 class="setting-input"
                 v-model="config.animateMSTime"
-                size="mini"
+                size="small"
               ></el-input></span
             ><b></b>
             <span class="less" @click="incConfig('animateMSTime')"
-              ><i class="el-icon-plus"></i
-            ></span>
+              ><el-icon class="el-icon-plus"><Plus /></el-icon></span>
           </div>
         </li>
         <li>
@@ -372,36 +374,34 @@
           <span class="setting-item-title">滚动像素</span>
           <div class="resize">
             <span class="less" @click="decConfig('autoReadingPixel')"
-              ><i class="el-icon-minus"></i></span
+              ><el-icon class="el-icon-minus"><Minus /></el-icon></span
             ><b></b>
             <span class="lang">
               <el-input
                 class="setting-input"
                 v-model="config.autoReadingPixel"
-                size="mini"
+                size="small"
               ></el-input> </span
             ><b></b>
             <span class="less" @click="incConfig('autoReadingPixel')"
-              ><i class="el-icon-plus"></i
-            ></span>
+              ><el-icon class="el-icon-plus"><Plus /></el-icon></span>
           </div>
         </li>
         <li>
           <span class="setting-item-title">翻页速度</span>
           <div class="resize">
             <span class="less" @click="decConfig('autoReadingLineTime')"
-              ><i class="el-icon-minus"></i></span
+              ><el-icon class="el-icon-minus"><Minus /></el-icon></span
             ><b></b>
             <span class="lang"
               ><el-input
                 class="setting-input"
                 v-model="config.autoReadingLineTime"
-                size="mini"
+                size="small"
               ></el-input></span
             ><b></b>
             <span class="less" @click="incConfig('autoReadingLineTime')"
-              ><i class="el-icon-plus"></i
-            ></span>
+              ><el-icon class="el-icon-plus"><Plus /></el-icon></span>
           </div>
         </li>
         <li>
@@ -440,7 +440,10 @@
   </div>
 </template>
 
-<script>
+<script setup>
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
+import { ElMessage } from "element-plus";
+import { Close, Minus, Plus, Upload } from "@element-plus/icons-vue";
 import {
   getMiniInterface,
   previewConfig,
@@ -448,196 +451,212 @@ import {
   previewTheme
 } from "../previewData";
 
-export default {
-  name: "ReadSettings",
-  props: ["visible"],
-  data() {
-    return {
-      themeColors: [
-        { background: "rgba(250, 245, 235, 0.8)" },
-        { background: "rgba(245, 234, 204, 0.8)" },
-        { background: "rgba(230, 242, 230, 0.8)" },
-        { background: "rgba(228, 241, 245, 0.8)" },
-        { background: "rgba(245, 228, 228, 0.8)" },
-        { background: "rgba(224, 224, 224, 0.8)" },
-        { background: "rgba(0, 0, 0, 0.5)" },
-        { background: "rgba(255, 255, 255, 0.8)" }
-      ],
-      builtinBG: [
-        { src: "bg/山水画.jpg" },
-        { src: "bg/山水墨影.jpg" },
-        { src: "bg/羊皮纸1.jpg" },
-        { src: "bg/护眼漫绿.jpg" },
-        { src: "bg/羊皮纸2.jpg" },
-        { src: "bg/新羊皮纸.jpg" },
-        { src: "bg/羊皮纸3.jpg" },
-        { src: "bg/明媚倾城.jpg" },
-        { src: "bg/羊皮纸4.jpg" },
-        { src: "bg/深宫魅影.jpg" },
-        { src: "bg/午后沙滩.jpg" },
-        { src: "bg/清新时光.jpg" },
-        { src: "bg/宁静夜色.jpg" },
-        { src: "bg/边彩画布.jpg" }
-      ],
-      fonts: ["系统", "黑体", "楷体", "宋体", "仿宋"],
-      readMethods: ["上下滑动", "左右滑动", "上下滚动", "上下滚动2"],
-      clickMethods: ["下一页", "自动", "不翻页"],
-      selectionActions: ["操作弹窗", "忽略"],
-      pageModes: ["自适应", "手机模式"],
-      pageTypes: ["正常", "Kindle"],
-      themeTypes: ["day", "night"],
-      configDefaultTypeList: ["白天默认", "黑夜默认"],
-      autoReadingMethods: ["像素滚动", "段落滚动"],
-      chineseFonts: ["简体", "繁体"],
-      customFonts: [],
-      customFontName: "",
-      customConfigList: previewCustomConfigs.map(item => ({ ...item })),
-      config: { ...previewConfig },
-      isNight: false,
-      miniInterface: getMiniInterface(),
-      configRules: {
-        fontSize: { min: 8, delta: 1 },
-        fontWeight: { min: 100, max: 900, delta: 100 },
-        animateMSTime: { min: 0, max: 500, delta: 50 },
-        autoReadingPixel: { min: 1, delta: 5 },
-        autoReadingLineTime: { min: 10, delta: 50 },
-        lineHeight: { min: 1, max: 5, delta: 0.2 },
-        paragraphSpace: { min: 0, max: 5, delta: 0.2 },
-        readWidth: {
-          min: Math.min(Math.floor(window.innerWidth / 160), 4) * 160,
-          max: Math.floor(window.innerWidth / 160) * 160,
-          delta: 160
-        }
-      }
-    };
-  },
-  computed: {
-    moonIcon() {
-      return this.config.themeType === "night" ? "" : "";
-    },
-    popupTheme() {
-      return {
-        background: previewTheme.popup
-      };
-    },
-    currentCustomConfig() {
-      return (
-        this.customConfigList.find(
-          item => item.name === this.config.customConfig
-        ) || this.customConfigList[0]
-      );
-    }
-  },
-  mounted() {
-    window.addEventListener("resize", this.syncInterface);
-  },
-  beforeDestroy() {
-    window.removeEventListener("resize", this.syncInterface);
-  },
-  methods: {
-    syncInterface() {
-      this.miniInterface = getMiniInterface();
-    },
-    setPageType(type) {
-      this.setConfig("pageType", type);
-    },
-    setPageMode(pageMode) {
-      this.setConfig("pageMode", pageMode);
-      this.$emit("pageModeChange");
-    },
-    setReadMethod(readMethod) {
-      this.setConfig("readMethod", readMethod);
-      this.$emit("readMethodChange");
-    },
-    setConfig(name, value) {
-      this.config = {
-        ...this.config,
-        [name]: value
-      };
-    },
-    setAutoTheme() {
-      this.setConfig("autoTheme", !this.config.autoTheme);
-    },
-    incConfig(name) {
-      const rule = this.configRules[name];
-      const value = +this.config[name];
-      const nextValue =
-        "max" in rule ? Math.min(rule.max, value + rule.delta) : value + rule.delta;
-      this.setConfig(name, nextValue);
-    },
-    decConfig(name) {
-      const rule = this.configRules[name];
-      const value = +this.config[name];
-      const nextValue =
-        "min" in rule ? Math.max(rule.min, value - rule.delta) : value - rule.delta;
-      this.setConfig(name, nextValue);
-    },
-    setBGImg(item) {
-      this.setConfig("contentBGImg", typeof item === "string" ? item : item.src);
-    },
-    uploadBGFile() {
-      this.$refs.bgFileRef && this.$refs.bgFileRef.click();
-    },
-    getCustomBGImgURL(src) {
-      return src;
-    },
-    deleteCustomBGImg(src) {
-      this.config = {
-        ...this.config,
-        customBGImgList: (this.config.customBGImgList || []).filter(
-          item => item !== src
-        )
-      };
-    },
-    uploadFontFile(customFontName) {
-      this.customFontName = customFontName || "";
-      this.$refs.fontFileRef && this.$refs.fontFileRef.click();
-    },
-    onBGFileChange(event) {
-      event.target.value = null;
-      this.$message.success("上传背景预览");
-    },
-    onFontFileChange(event) {
-      event.target.value = null;
-      this.$message.success("上传字体预览");
-    },
-    resetConfig() {
-      this.config = { ...previewConfig };
-    },
-    showClickZone() {
-      this.$emit("close");
-      this.$emit("showClickZone");
-    },
-    showRuleEditor() {
-      this.$message.success("过滤规则管理预览");
-    },
-    addNewCustomConfig() {
-      this.$message.success("添加配置方案预览");
-    },
-    setCustomConfig(customConfig) {
-      this.config = {
-        ...this.config,
-        ...customConfig,
-        customConfig: customConfig.name
-      };
-    },
-    deleteCustomConfig() {
-      this.$message.success("删除配置方案预览");
-    },
-    setConfigDefaultType(configDefaultType) {
-      this.currentCustomConfig.configDefaultType = configDefaultType;
-    }
+defineOptions({
+  name: "ReadSettings"
+});
+
+defineProps({
+  visible: {
+    type: Boolean,
+    default: false
+  }
+});
+
+const emit = defineEmits(["close", "showClickZone", "readMethodChange", "pageModeChange"]);
+
+const themeColors = [
+  { background: "rgba(250, 245, 235, 0.8)" },
+  { background: "rgba(245, 234, 204, 0.8)" },
+  { background: "rgba(230, 242, 230, 0.8)" },
+  { background: "rgba(228, 241, 245, 0.8)" },
+  { background: "rgba(245, 228, 228, 0.8)" },
+  { background: "rgba(224, 224, 224, 0.8)" },
+  { background: "rgba(0, 0, 0, 0.5)" },
+  { background: "rgba(255, 255, 255, 0.8)" }
+];
+const builtinBG = [
+  { src: "bg/山水画.jpg" },
+  { src: "bg/山水墨影.jpg" },
+  { src: "bg/羊皮纸1.jpg" },
+  { src: "bg/护眼漫绿.jpg" },
+  { src: "bg/羊皮纸2.jpg" },
+  { src: "bg/新羊皮纸.jpg" },
+  { src: "bg/羊皮纸3.jpg" },
+  { src: "bg/明媚倾城.jpg" },
+  { src: "bg/羊皮纸4.jpg" },
+  { src: "bg/深宫魅影.jpg" },
+  { src: "bg/午后沙滩.jpg" },
+  { src: "bg/清新时光.jpg" },
+  { src: "bg/宁静夜色.jpg" },
+  { src: "bg/边彩画布.jpg" }
+];
+const fonts = ["系统", "黑体", "楷体", "宋体", "仿宋"];
+const customFonts = ["", "", "", "", ""];
+const readMethods = ["上下滑动", "左右滑动", "上下滚动", "上下滚动2"];
+const clickMethods = ["下一页", "自动", "不翻页"];
+const selectionActions = ["操作弹窗", "忽略"];
+const pageModes = ["自适应", "手机模式"];
+const pageTypes = ["正常", "Kindle"];
+const themeTypes = ["day", "night"];
+const configDefaultTypeList = ["白天默认", "黑夜默认"];
+const autoReadingMethods = ["像素滚动", "段落滚动"];
+const chineseFonts = ["简体", "繁体"];
+const configRules = {
+  fontSize: { min: 8, delta: 1 },
+  fontWeight: { min: 100, max: 900, delta: 100 },
+  animateMSTime: { min: 0, max: 500, delta: 50 },
+  autoReadingPixel: { min: 1, delta: 5 },
+  autoReadingLineTime: { min: 10, delta: 50 },
+  lineHeight: { min: 1, max: 5, delta: 0.2 },
+  paragraphSpace: { min: 0, max: 5, delta: 0.2 },
+  readWidth: {
+    min: Math.min(Math.floor(window.innerWidth / 160), 4) * 160,
+    max: Math.floor(window.innerWidth / 160) * 160,
+    delta: 160
   }
 };
+
+const bgFileRef = ref(null);
+const fontFileRef = ref(null);
+const customConfigList = ref(previewCustomConfigs.map(item => ({ ...item })));
+const config = reactive({ ...previewConfig });
+const isNight = ref(false);
+const miniInterface = ref(getMiniInterface());
+
+const moonIcon = computed(() => (config.themeType === "night" ? "" : ""));
+const popupTheme = computed(() => ({
+  background: previewTheme.popup
+}));
+const currentCustomConfig = computed(
+  () =>
+    customConfigList.value.find(item => item.name === config.customConfig) ||
+    customConfigList.value[0]
+);
+
+const syncInterface = () => {
+  miniInterface.value = getMiniInterface();
+};
+
+const setConfig = (name, value) => {
+  config[name] = value;
+};
+
+const setPageType = type => {
+  setConfig("pageType", type);
+};
+
+const setPageMode = pageMode => {
+  setConfig("pageMode", pageMode);
+  emit("pageModeChange");
+};
+
+const setReadMethod = readMethod => {
+  setConfig("readMethod", readMethod);
+  emit("readMethodChange");
+};
+
+const setAutoTheme = () => {
+  setConfig("autoTheme", !config.autoTheme);
+};
+
+const incConfig = name => {
+  const rule = configRules[name];
+  const value = +config[name];
+  const nextValue =
+    "max" in rule ? Math.min(rule.max, value + rule.delta) : value + rule.delta;
+  setConfig(name, nextValue);
+};
+
+const decConfig = name => {
+  const rule = configRules[name];
+  const value = +config[name];
+  const nextValue =
+    "min" in rule ? Math.max(rule.min, value - rule.delta) : value - rule.delta;
+  setConfig(name, nextValue);
+};
+
+const setBGImg = item => {
+  setConfig("contentBGImg", typeof item === "string" ? item : item.src);
+};
+
+const uploadBGFile = () => {
+  bgFileRef.value?.click();
+};
+
+const onBGFileChange = event => {
+  event.target.value = null;
+  ElMessage.success("上传背景预览");
+};
+
+const getCustomBGImgURL = src => src;
+
+const deleteCustomBGImg = src => {
+  config.customBGImgList = (config.customBGImgList || []).filter(
+    item => item !== src
+  );
+};
+
+const uploadFontFile = () => {
+  fontFileRef.value?.click();
+};
+
+const onFontFileChange = event => {
+  event.target.value = null;
+  ElMessage.success("上传字体预览");
+};
+
+const resetConfig = () => {
+  Object.keys(config).forEach(key => {
+    delete config[key];
+  });
+  Object.assign(config, previewConfig);
+};
+
+const showClickZone = () => {
+  emit("close");
+  emit("showClickZone");
+};
+
+const showRuleEditor = () => {
+  ElMessage.success("过滤规则管理预览");
+};
+
+const addNewCustomConfig = () => {
+  ElMessage.success("添加配置方案预览");
+};
+
+const setCustomConfig = customConfig => {
+  Object.assign(config, customConfig, {
+    customConfig: customConfig.name
+  });
+};
+
+const deleteCustomConfig = index => {
+  if (index > 1) {
+    customConfigList.value.splice(index, 1);
+  }
+};
+
+const setConfigDefaultType = configDefaultType => {
+  currentCustomConfig.value.configDefaultType = configDefaultType;
+};
+
+onMounted(() => {
+  window.addEventListener("resize", syncInterface);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("resize", syncInterface);
+});
 </script>
 
 <style lang="stylus" scoped>
->>>.iconfont {
+:deep(.iconfont) {
   font-family: iconfont;
   font-style: normal;
 }
 
->>>.moon-icon {
+:deep(.moon-icon) {
   font-family: iconfont;
   font-style: normal;
 }
@@ -875,15 +894,15 @@ export default {
 }
 
 .night {
-  >>>.theme-item {
+  :deep(.theme-item) {
     border: 1px solid #666;
   }
 
-  >>>.selected {
+  :deep(.selected) {
     border: 1px solid #666;
   }
 
-  >>>.moon-icon {
+  :deep(.moon-icon) {
     color: #ed4259;
   }
 
@@ -892,7 +911,7 @@ export default {
     background: rgba(45, 45, 45, 0.5);
   }
 
-  >>>.resize {
+  :deep(.resize) {
     border: 1px solid #666;
     background: rgba(45, 45, 45, 0.5);
 
@@ -903,15 +922,15 @@ export default {
 }
 
 .day {
-  >>>.theme-item {
+  :deep(.theme-item) {
     border: 1px solid #e5e5e5;
   }
 
-  >>>.selected {
+  :deep(.selected) {
     border: 1px solid #ed4259;
   }
 
-  >>>.moon-icon {
+  :deep(.moon-icon) {
     display: inline;
     color: rgba(255, 255, 255, 0.2);
   }
@@ -921,7 +940,7 @@ export default {
     border: 1px solid rgba(0, 0, 0, 0.1);
   }
 
-  >>>.resize {
+  :deep(.resize) {
     border: 1px solid #e5e5e5;
     background: rgba(255, 255, 255, 0.5);
 

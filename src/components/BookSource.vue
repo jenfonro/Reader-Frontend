@@ -4,53 +4,54 @@
       <div class="title">来源({{ bookSource.length }})</div>
       <div :class="{ 'title-btn': true, loading: loadingMore }">
         <el-select
-          size="mini"
           v-model="bookSourceGroup"
+          size="small"
           class="booksource-group-select"
           filterable
           placeholder="全部分组"
         >
           <el-option
             v-for="(item, index) in bookSourceGroupList"
-            :key="'source-group-' + index"
-            :label="item.name + ' (' + item.count + ')'"
+            :key="`source-group-${index}`"
+            :label="`${item.name} (${item.count})`"
             :value="item.value"
-          >
-          </el-option>
+          />
         </el-select>
-        <span :class="{ loading: loading }" @click="refresh">
-          <i class="el-icon-loading" v-if="loading"></i>
+        <span :class="{ loading }" @click="refresh">
+          <el-icon v-if="loading" class="el-icon-loading">
+            <Loading />
+          </el-icon>
           {{ loading ? "刷新中..." : "刷新" }}
         </span>
         <span
           :class="{ loading: loadingMore }"
           @click="searchBookSourceByEventStream"
         >
-          <i class="el-icon-loading" v-if="loadingMore"></i>
+          <el-icon v-if="loadingMore" class="el-icon-loading">
+            <Loading />
+          </el-icon>
           {{ loadingMore ? "加载中..." : "加载更多" }}
         </span>
       </div>
     </div>
     <div
       class="data-wrapper"
-      ref="sourceList"
       :class="{ night: isNight, day: !isNight }"
     >
       <div class="source-list">
         <div
-          class="source-item"
           v-for="(searchBook, index) in bookSource"
-          :class="{ selected: isSelected(searchBook) }"
           :key="index"
+          class="source-item"
+          :class="{ selected: isSelected(searchBook) }"
           @click="changeBookSource(searchBook)"
-          ref="source"
         >
           <div class="source-title">
             <div class="source-name">
               {{ searchBook.originName }}
             </div>
             <div class="source-time">
-              {{ searchBook.time ? "⏱ " + searchBook.time + "ms" : "" }}
+              {{ searchBook.time ? `⏱ ${searchBook.time}ms` : "" }}
             </div>
           </div>
           <div class="source-latest-chapter">
@@ -62,7 +63,9 @@
   </div>
 </template>
 
-<script>
+<script setup>
+import { computed, ref } from "vue";
+import { Loading } from "@element-plus/icons-vue";
 import {
   previewBook,
   previewBookSourceGroups,
@@ -70,46 +73,48 @@ import {
   previewTheme
 } from "../previewData";
 
-export default {
-  name: "BookSource",
-  props: ["visible"],
-  data() {
-    return {
-      bookSource: previewBookSources,
-      bookSourceGroup: "",
-      bookSourceGroupList: previewBookSourceGroups,
-      loading: false,
-      loadingMore: false,
-      isNight: false
-    };
-  },
-  computed: {
-    popupTheme() {
-      return {
-        background: previewTheme.popup
-      };
-    }
-  },
-  methods: {
-    isSelected(searchBook) {
-      return searchBook.bookUrl === previewBook.bookUrl;
-    },
-    refresh() {
-      this.loading = true;
-      setTimeout(() => {
-        this.loading = false;
-      }, 300);
-    },
-    searchBookSourceByEventStream() {
-      this.loadingMore = true;
-      setTimeout(() => {
-        this.loadingMore = false;
-      }, 300);
-    },
-    changeBookSource(searchBook) {
-      this.$emit("changeBookSource", searchBook);
-    }
+defineOptions({
+  name: "BookSource"
+});
+
+defineProps({
+  visible: {
+    type: Boolean,
+    default: false
   }
+});
+
+const emit = defineEmits(["changeBookSource"]);
+
+const bookSource = ref(previewBookSources);
+const bookSourceGroup = ref("");
+const bookSourceGroupList = ref(previewBookSourceGroups);
+const loading = ref(false);
+const loadingMore = ref(false);
+const isNight = ref(false);
+
+const popupTheme = computed(() => ({
+  background: previewTheme.popup
+}));
+
+const isSelected = searchBook => searchBook.bookUrl === previewBook.bookUrl;
+
+const refresh = () => {
+  loading.value = true;
+  window.setTimeout(() => {
+    loading.value = false;
+  }, 300);
+};
+
+const searchBookSourceByEventStream = () => {
+  loadingMore.value = true;
+  window.setTimeout(() => {
+    loadingMore.value = false;
+  }, 300);
+};
+
+const changeBookSource = searchBook => {
+  emit("changeBookSource", searchBook);
 };
 </script>
 
@@ -217,13 +222,13 @@ export default {
   }
 
   .night {
-    >>>.source-item {
+    :deep(.source-item) {
       border-bottom: 1px solid #333;
     }
   }
 
   .day {
-    >>>.source-item {
+    :deep(.source-item) {
       border-bottom: 1px solid #eee;
     }
   }

@@ -7,6 +7,7 @@
     }"
   >
     <div
+      v-if="isNormalPage"
       class="navigation-wrapper"
       :class="[
         navigationClass,
@@ -16,99 +17,113 @@
       @touchstart="handleTouchStart"
       @touchmove="handleTouchMove"
       @touchend="handleTouchEnd"
-      v-if="isNormalPage"
     >
       <div class="navigation-inner-wrapper"></div>
     </div>
     <div
+      ref="shelfWrapper"
       class="shelf-wrapper"
       :class="isWebApp && !isNight ? 'status-bar-light-bg' : ''"
-      ref="shelfWrapper"
       @click="showNavigation = false"
     >
       <div class="shelf-title">
-        <i
-          class="el-icon-menu"
+        <el-icon
           v-if="isNormalPage && collapseMenu"
+          class="el-icon-menu"
           @click.stop="showNavigation = true"
-        ></i>
-        <span class="title-btn" @click="$router.push('/reader')">进入阅读页</span>
+        >
+          <MenuIcon />
+        </el-icon>
+        <span class="title-btn" @click="goReader">进入阅读页</span>
       </div>
     </div>
   </div>
 </template>
 
-<script>
+<script setup>
+import { onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { useRouter } from "vue-router";
+import { Menu as MenuIcon } from "@element-plus/icons-vue";
 import { getMiniInterface } from "../previewData";
 
-export default {
-  name: "Index",
-  data() {
-    return {
-      showNavigation: false,
-      navigationClass: "",
-      navigationStyle: {},
-      touchStartPoint: null,
-      collapseMenu: getMiniInterface(),
-      isNight: false,
-      isNormalPage: true,
-      isWebApp: false
-    };
-  },
-  watch: {
-    collapseMenu(value) {
-      if (!value) {
-        this.navigationClass = "";
-      } else if (!this.showNavigation) {
-        this.navigationClass = "navigation-hidden";
-      }
-    },
-    showNavigation(value) {
-      if (!this.collapseMenu) {
-        return;
-      }
-      if (!value) {
-        this.navigationClass = "navigation-out";
-        setTimeout(() => {
-          if (!this.showNavigation) {
-            this.navigationClass = "navigation-hidden";
-          }
-        }, 300);
-      } else {
-        this.navigationClass = "navigation-in";
-      }
-    }
-  },
-  mounted() {
-    this.navigationClass =
-      this.collapseMenu && !this.showNavigation ? "navigation-hidden" : "";
-    window.addEventListener("resize", this.syncInterface);
-  },
-  beforeDestroy() {
-    window.removeEventListener("resize", this.syncInterface);
-  },
-  methods: {
-    syncInterface() {
-      this.collapseMenu = getMiniInterface();
-    },
-    handleTouchStart(event) {
-      this.touchStartPoint = event.touches && event.touches[0];
-    },
-    handleTouchMove(event) {
-      if (!this.collapseMenu || !this.touchStartPoint || !event.touches[0]) {
-        return;
-      }
-      const moveX = event.touches[0].clientX - this.touchStartPoint.clientX;
-      if (moveX < 0) {
-        this.navigationStyle = { marginLeft: Math.max(-260, moveX) + "px" };
-      }
-    },
-    handleTouchEnd() {
-      this.navigationStyle = {};
-      this.touchStartPoint = null;
-    }
+defineOptions({
+  name: "Index"
+});
+
+const router = useRouter();
+const showNavigation = ref(false);
+const navigationClass = ref("");
+const navigationStyle = ref({});
+const touchStartPoint = ref(null);
+const collapseMenu = ref(getMiniInterface());
+const isNight = ref(false);
+const isNormalPage = ref(true);
+const isWebApp = ref(false);
+
+const syncNavigationClass = () => {
+  navigationClass.value =
+    collapseMenu.value && !showNavigation.value ? "navigation-hidden" : "";
+};
+
+const syncInterface = () => {
+  collapseMenu.value = getMiniInterface();
+};
+
+const goReader = () => {
+  router.push("/reader");
+};
+
+const handleTouchStart = event => {
+  touchStartPoint.value = event.touches && event.touches[0];
+};
+
+const handleTouchMove = event => {
+  if (!collapseMenu.value || !touchStartPoint.value || !event.touches[0]) {
+    return;
+  }
+  const moveX = event.touches[0].clientX - touchStartPoint.value.clientX;
+  if (moveX < 0) {
+    navigationStyle.value = { marginLeft: `${Math.max(-260, moveX)}px` };
   }
 };
+
+const handleTouchEnd = () => {
+  navigationStyle.value = {};
+  touchStartPoint.value = null;
+};
+
+watch(collapseMenu, value => {
+  if (!value) {
+    navigationClass.value = "";
+  } else if (!showNavigation.value) {
+    navigationClass.value = "navigation-hidden";
+  }
+});
+
+watch(showNavigation, value => {
+  if (!collapseMenu.value) {
+    return;
+  }
+  if (!value) {
+    navigationClass.value = "navigation-out";
+    window.setTimeout(() => {
+      if (!showNavigation.value) {
+        navigationClass.value = "navigation-hidden";
+      }
+    }, 300);
+  } else {
+    navigationClass.value = "navigation-in";
+  }
+});
+
+onMounted(() => {
+  syncNavigationClass();
+  window.addEventListener("resize", syncInterface);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("resize", syncInterface);
+});
 </script>
 
 <style lang="stylus" scoped>
@@ -167,7 +182,7 @@ export default {
         user-select: none;
         margin-left: 10px;
 
-        >>>.el-icon-loading {
+        :deep(.el-icon-loading) {
           font-size: 16px;
         }
       }
@@ -176,14 +191,14 @@ export default {
 }
 
 .night {
-  >>>.navigation-wrapper {
+  :deep(.navigation-wrapper) {
     background-color: #121212;
     border-right: 1px solid #555;
   }
-  >>>.shelf-title {
+  :deep(.shelf-title) {
     color: #bbb;
   }
-  >>>.shelf-wrapper {
+  :deep(.shelf-wrapper) {
     background-color: #222;
   }
 }
@@ -196,12 +211,12 @@ export default {
   .index-wrapper {
     overflow-x: hidden;
 
-    >>>.navigation-wrapper {
+    :deep(.navigation-wrapper) {
       .navigation-inner-wrapper {
         padding: 20px 36px 66px 36px;
       }
     }
-    >>>.shelf-wrapper {
+    :deep(.shelf-wrapper) {
       padding: 0;
       padding-top: constant(safe-area-inset-top) !important;
       padding-top: env(safe-area-inset-top) !important;

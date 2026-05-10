@@ -1,28 +1,30 @@
-import Vue from "vue";
-import ElementUI from "element-ui";
-import "element-ui/lib/theme-chalk/index.css";
+import { createApp } from "vue";
+import ElementPlus from "element-plus";
+import "element-plus/dist/index.css";
 import App from "./App.vue";
 import router from "./router";
 import "./assets/fonts/iconfont.css";
 import noCover from "./assets/imgs/noCover.jpeg";
 import noImage from "./assets/imgs/noImage.png";
 
-Vue.config.productionTip = false;
-Vue.use(ElementUI);
+const app = createApp(App);
 
-Vue.directive("lazy", {
-  bind(el, binding) {
+app.use(ElementPlus);
+
+app.directive("lazy", {
+  mounted(el, binding) {
     const value = binding.value;
     el.src = typeof value === "object" ? value.src || value.error : value;
   },
-  update(el, binding) {
+  updated(el, binding) {
     const value = binding.value;
     el.src = typeof value === "object" ? value.src || value.error : value;
   }
 });
-Vue.directive("lazy-container", {});
 
-Vue.prototype.getCover = function getCover(coverUrl, normal) {
+app.directive("lazy-container", {});
+
+app.config.globalProperties.getCover = function getCover(coverUrl, normal) {
   if (coverUrl) {
     return normal
       ? coverUrl
@@ -34,7 +36,7 @@ Vue.prototype.getCover = function getCover(coverUrl, normal) {
   return noCover;
 };
 
-Vue.prototype.getImage = function getImage(imageUrl, normal) {
+app.config.globalProperties.getImage = function getImage(imageUrl, normal) {
   if (imageUrl) {
     return normal
       ? imageUrl
@@ -46,7 +48,5 @@ Vue.prototype.getImage = function getImage(imageUrl, normal) {
   return noImage;
 };
 
-new Vue({
-  router,
-  render: h => h(App)
-}).$mount("#app");
+app.use(router);
+app.mount("#app");

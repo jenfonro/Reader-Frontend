@@ -7,124 +7,120 @@
       day: !isNight,
       'mini-interface': miniInterface
     }"
-    ref="chapterWrapperRef"
   >
     <div class="tool-bar" :style="leftBarTheme">
       <div class="tools">
         <el-popover
+          v-model:visible="popBookShelfVisible"
           placement="right"
           :width="popperWidth"
           trigger="click"
-          :visible-arrow="false"
-          v-model="popBookShelfVisible"
+          :show-arrow="false"
           popper-class="popper-component"
+          :popper-options="menuPopperOptions"
         >
+          <template #reference>
+            <div class="tool-icon">
+              <div class="iconfont">
+                &#58892;
+              </div>
+              <div class="icon-text">书架</div>
+            </div>
+          </template>
           <BookShelf
-            ref="popBookShelf"
             class="popup"
             :visible="popBookShelfVisible"
-            @changeBook="changeBook"
-            @toShelf="toShelf"
+            @change-book="changeBook"
+            @to-shelf="toShelf"
           />
-          <div class="tool-icon" slot="reference">
-            <div class="iconfont">
-              &#58892;
-            </div>
-            <div class="icon-text">书架</div>
-          </div>
         </el-popover>
         <el-popover
+          v-model:visible="popBookSourceVisible"
           placement="right"
           :width="popperWidth"
           trigger="click"
-          :visible-arrow="false"
-          v-model="popBookSourceVisible"
+          :show-arrow="false"
           popper-class="popper-component"
+          :popper-options="menuPopperOptions"
         >
+          <template #reference>
+            <div class="tool-icon">
+              <div class="tool-el-icon">
+                <el-icon class="el-icon-menu">
+                  <MenuIcon />
+                </el-icon>
+              </div>
+              <div class="icon-text">书源</div>
+            </div>
+          </template>
           <BookSource
-            ref="popBookSource"
             class="popup"
             :visible="popBookSourceVisible"
-            @changeBookSource="changeBookSource()"
-            @close="popBookSourceVisible = false"
+            @change-book-source="changeBookSource"
           />
-
-          <div class="tool-icon" slot="reference">
-            <div class="tool-el-icon">
-              <i class="el-icon-menu"></i>
-            </div>
-            <div class="icon-text">书源</div>
-          </div>
         </el-popover>
         <el-popover
+          v-model:visible="popCataVisible"
           placement="right"
           :width="popperWidth"
           trigger="click"
-          :visible-arrow="false"
-          v-model="popCataVisible"
+          :show-arrow="false"
           popper-class="popper-component"
+          :popper-options="menuPopperOptions"
         >
+          <template #reference>
+            <div class="tool-icon">
+              <div class="iconfont">
+                &#58905;
+              </div>
+              <div class="icon-text">目录</div>
+            </div>
+          </template>
           <PopCata
-            @getContent="getContent"
-            ref="popCata"
             class="popup"
-            @refresh="refreshCatalog"
             :visible="popCataVisible"
-            @close="popCataVisible = false"
+            @get-content="getContent"
+            @refresh="refreshCatalog"
           />
-
-          <div class="tool-icon" slot="reference">
-            <div class="iconfont">
-              &#58905;
-            </div>
-            <div class="icon-text">目录</div>
-          </div>
         </el-popover>
         <el-popover
+          v-model:visible="readSettingsVisible"
           placement="right"
           :width="popperWidth"
           trigger="click"
-          :visible-arrow="false"
-          v-model="readSettingsVisible"
+          :show-arrow="false"
           popper-class="popper-component"
+          :popper-options="menuPopperOptions"
         >
+          <template #reference>
+            <div class="tool-icon">
+              <div class="iconfont">
+                &#58971;
+              </div>
+              <div class="icon-text">设置</div>
+            </div>
+          </template>
           <ReadSettings
             class="popup"
             :visible="readSettingsVisible"
             @close="readSettingsVisible = false"
-            @showClickZone="showClickZone = true"
-            @readMethodChange="beforeReadMethodChange"
+            @show-click-zone="showClickZone = true"
+            @read-method-change="beforeReadMethodChange"
           />
-
-          <div class="tool-icon" slot="reference">
-            <div class="iconfont">
-              &#58971;
-            </div>
-            <div class="icon-text">设置</div>
-          </div>
         </el-popover>
-        <div
-          class="tool-icon"
-          :style="miniInterface ? { order: -1 } : {}"
-        >
+        <div class="tool-icon" :style="miniInterface ? { order: -1 } : {}">
           <div class="iconfont">
             &#58920;
           </div>
           <div class="icon-text">首页</div>
         </div>
-        <div
-          class="tool-icon"
-          v-if="!miniInterface"
-        >
+        <div v-if="!miniInterface" class="tool-icon">
           <div class="iconfont">
             &#58914;
           </div>
           <div class="icon-text">顶部</div>
         </div>
-        <div
-          class="tool-icon"
-          v-if="!miniInterface"
-        >
+        <div v-if="!miniInterface" class="tool-icon">
           <div class="iconfont">
             &#58915;
           </div>
@@ -135,70 +131,75 @@
     <div class="read-bar" :style="rightBarTheme">
       <div class="float-btn-zone">
         <div class="float-left-btn-zone">
-          <div
-            class="float-btn"
-            :style="popupAbsoluteBtnStyle"
-          >
-            <i class="el-icon-collection-tag"></i>
+          <div class="float-btn" :style="popupAbsoluteBtnStyle">
+            <el-icon class="el-icon-collection-tag">
+              <CollectionTag />
+            </el-icon>
+          </div>
+          <div class="float-btn" :style="popupAbsoluteBtnStyle">
+            <el-icon class="el-icon-search">
+              <Search />
+            </el-icon>
+          </div>
+          <div class="float-btn" :style="popupAbsoluteBtnStyle">
+            <el-icon class="el-icon-info">
+              <InfoFilled />
+            </el-icon>
           </div>
           <div
-            class="float-btn"
-            :style="popupAbsoluteBtnStyle"
-          >
-            <i class="el-icon-search"></i>
-          </div>
-          <div
-            class="float-btn"
-            :style="popupAbsoluteBtnStyle"
-          >
-            <i class="el-icon-info"></i>
-          </div>
-          <div
-            class="float-btn"
-            :style="popupAbsoluteBtnStyle"
             v-if="miniInterface"
-          >
-            <i class="el-icon-top"></i>
-          </div>
-          <div
             class="float-btn"
             :style="popupAbsoluteBtnStyle"
-            v-if="miniInterface"
           >
-            <i class="el-icon-bottom"></i>
+            <el-icon class="el-icon-top">
+              <Top />
+            </el-icon>
+          </div>
+          <div
+            v-if="miniInterface"
+            class="float-btn"
+            :style="popupAbsoluteBtnStyle"
+          >
+            <el-icon class="el-icon-bottom">
+              <Bottom />
+            </el-icon>
           </div>
         </div>
         <div class="float-right-btn-zone">
-          <div
-            class="float-btn"
-            :style="popupAbsoluteBtnStyle"
-          >
-            <i class="el-icon-refresh-right"></i>
+          <div class="float-btn" :style="popupAbsoluteBtnStyle">
+            <el-icon class="el-icon-refresh-right">
+              <RefreshRight />
+            </el-icon>
           </div>
           <div
-            class="float-btn"
-            :style="popupAbsoluteBtnStyle"
             v-if="!isEpub && !isCarToon && !isAudio"
-          >
-            <i class="el-icon-view"></i>
-          </div>
-          <div
             class="float-btn"
             :style="popupAbsoluteBtnStyle"
+          >
+            <el-icon class="el-icon-view">
+              <View />
+            </el-icon>
+          </div>
+          <div
             v-if="speechAvalable && !isEpub && !isCarToon && !isAudio"
-          >
-            <i class="el-icon-headset"></i>
-          </div>
-          <div
             class="float-btn"
             :style="popupAbsoluteBtnStyle"
           >
-            <i class="el-icon-moon" v-if="!isNight"></i>
-            <i class="el-icon-sunny" v-else></i>
+            <el-icon class="el-icon-headset">
+              <Headset />
+            </el-icon>
+          </div>
+          <div class="float-btn" :style="popupAbsoluteBtnStyle">
+            <el-icon v-if="!isNight" class="el-icon-moon">
+              <Moon />
+            </el-icon>
+            <el-icon v-else class="el-icon-sunny">
+              <Sunny />
+            </el-icon>
           </div>
         </div>
       </div>
-      <div class="progress" v-if="miniInterface && !isAudio">
+      <div v-if="miniInterface && !isAudio" class="progress">
         <div class="progress-bar">
           <el-slider
             v-model="currentPage"
@@ -207,40 +208,28 @@
             :show-tooltip="false"
             @change="showPage"
             @input="progressValue = $event"
-          ></el-slider>
+          />
         </div>
         <span class="progress-tip">{{ formatProgressTip() }}</span>
       </div>
-      <div class="cache-content-zone" v-if="showCacheContentZone">
-        <div>
-          缓存章节
-        </div>
-        <div
-          class="cache-content-btn"
-          v-show="!isCachingContent"
-        >
+      <div v-if="showCacheContentZone" class="cache-content-zone">
+        <div>缓存章节</div>
+        <div v-show="!isCachingContent" class="cache-content-btn">
           后面50章
         </div>
-        <div
-          class="cache-content-btn"
-          v-show="!isCachingContent"
-        >
+        <div v-show="!isCachingContent" class="cache-content-btn">
           后面100章
         </div>
-        <div
-          class="cache-content-btn"
-          v-show="!isCachingContent"
-        >
+        <div v-show="!isCachingContent" class="cache-content-btn">
           后面全部
         </div>
-        <div class="caching-tip" v-show="isCachingContent">
+        <div v-show="isCachingContent" class="caching-tip">
           {{ cachingContentTip }}
         </div>
-        <div
-          class="caching-cancel-btn"
-          v-show="isCachingContent"
-        >
-          <i class="el-icon-close"></i>
+        <div v-show="isCachingContent" class="caching-cancel-btn">
+          <el-icon class="el-icon-close">
+            <Close />
+          </el-icon>
         </div>
       </div>
       <div class="tools">
@@ -248,10 +237,7 @@
           <span v-if="miniInterface">阅读进度: </span>
           {{ readingProgress }}
         </div>
-        <div
-          class="tool-icon"
-          :style="miniInterface ? { order: -1 } : {}"
-        >
+        <div class="tool-icon" :style="miniInterface ? { order: -1 } : {}">
           <div class="iconfont">
             &#58920;
           </div>
@@ -269,32 +255,40 @@
       <div class="reader-bar-inner">
         <div class="operate-bar">
           <div class="close-btn">
-            <i class="el-icon-close"></i>
+            <el-icon class="el-icon-close">
+              <Close />
+            </el-icon>
           </div>
           <div class="center">
             <span class="ctrl-btn">上一段</span>
             <span class="play-pause-btn">
-              <i
+              <el-icon
+                v-if="speechSpeaking"
                 class="el-icon-video-pause"
                 :style="popupAbsoluteBtnStyle"
-                v-if="speechSpeaking"
-              ></i>
-              <i
+              >
+                <VideoPause />
+              </el-icon>
+              <el-icon
+                v-else
                 class="el-icon-video-play"
                 :style="popupAbsoluteBtnStyle"
-                v-else
-              ></i>
+              >
+                <VideoPlay />
+              </el-icon>
             </span>
             <span class="ctrl-btn">下一段</span>
           </div>
-          <div
-            class="collapse-btn"
-          >
-            <i class="el-icon-bottom" v-if="showSpeechConfig"></i>
-            <i class="el-icon-top" v-else></i>
+          <div class="collapse-btn">
+            <el-icon v-if="showSpeechConfig" class="el-icon-bottom">
+              <Bottom />
+            </el-icon>
+            <el-icon v-else class="el-icon-top">
+              <Top />
+            </el-icon>
           </div>
         </div>
-        <div class="setting-item" v-if="showSpeechConfig">
+        <div v-if="showSpeechConfig" class="setting-item">
           <div class="setting-title">语音库</div>
           <div class="setting-value">
             <div class="voice-list">
@@ -304,16 +298,16 @@
                 class="radio-group"
               >
                 <el-radio-button
-                  class="radio-button"
-                  :label="voice.name"
-                  :key="index"
                   v-for="(voice, index) in voiceList"
-                ></el-radio-button>
+                  :key="index"
+                  class="radio-button"
+                  :value="voice.name"
+                />
               </el-radio-group>
             </div>
           </div>
         </div>
-        <div class="setting-item" v-if="showSpeechConfig">
+        <div v-if="showSpeechConfig" class="setting-item">
           <div class="setting-title">语音设置</div>
           <div class="setting-value">
             <div class="progress">
@@ -325,7 +319,7 @@
                   :max="2"
                   :step="0.1"
                   :show-tooltip="false"
-                ></el-slider>
+                />
               </div>
               <span class="setting-btn">重置</span>
             </div>
@@ -338,11 +332,9 @@
                   :max="2"
                   :step="0.1"
                   :show-tooltip="false"
-                ></el-slider>
+                />
               </div>
-              <span class="setting-btn"
-                >重置</span
-              >
+              <span class="setting-btn">重置</span>
             </div>
             <div class="progress">
               <span class="progress-tip">定时</span>
@@ -353,7 +345,7 @@
                   :max="180"
                   :step="1"
                   :show-tooltip="false"
-                ></el-slider>
+                />
               </div>
               <span class="setting-btn">{{ speechMinutes }}分钟</span>
             </div>
@@ -362,14 +354,14 @@
       </div>
     </div>
     <div
+      ref="contentRef"
       class="chapter"
-      ref="content"
       :class="chapterClass"
       :style="chapterTheme"
     >
       <div
-        class="click-zone"
         v-if="showClickZone"
+        class="click-zone"
         :style="!isSlideRead ? { position: 'fixed' } : {}"
       >
         <div :style="showPrevPageStyle"><span>点击前一页</span></div>
@@ -377,43 +369,60 @@
         <div :style="showNextPageStyle"><span>点击后一页</span></div>
         <div class="close-btn" @click="showClickZone = false">关闭</div>
       </div>
-      <div class="top-bar" ref="top">
+      <div class="top-bar">
         {{ miniInterface ? title : "" }}
       </div>
-      <div
-        class="content"
-        @click="handlerClick"
-      >
-        <div class="content-inner" v-if="show">
+      <div class="content" @click="handlerClick">
+        <div v-if="show" class="content-inner">
           <Content
             class="book-content"
             :title="title"
-            :content="content"
-            :showContent="show"
+            :content="chapterContent"
+            :show-content="show"
             :error="error"
             :style="contentStyle"
-            :showChapterList="showChapterList"
-            :isScrollRead="isScrollRead"
-            ref="bookContentRef"
+            :show-chapter-list="showChapterList"
+            :is-scroll-read="isScrollRead"
           />
         </div>
       </div>
-      <div class="bottom-bar" ref="bottom">
-        <span v-if="isSlideRead">{{
-          `第${currentPage}/${totalPages}页 ${readingProgress}`
-        }}</span>
+      <div class="bottom-bar">
+        <span v-if="isSlideRead">
+          {{ `第${currentPage}/${totalPages}页 ${readingProgress}` }}
+        </span>
         <span v-if="isSlideRead">{{ timeStr }}</span>
         <span
-          class="bottom-btn"
           v-if="show && !isSlideRead && !error && !isScrollRead"
-          >加载下一章</span
+          class="bottom-btn"
         >
+          加载下一章
+        </span>
       </div>
     </div>
   </div>
 </template>
 
-<script>
+
+<script setup>
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { useRouter } from "vue-router";
+import { ElMessage } from "element-plus";
+import {
+  Bottom,
+  Close,
+  CollectionTag,
+  Headset,
+  InfoFilled,
+  Menu as MenuIcon,
+  Moon,
+  RefreshRight,
+  Search,
+  Sunny,
+  Top,
+  VideoPause,
+  VideoPlay,
+  View
+} from "@element-plus/icons-vue";
 import PopCata from "../components/PopCatalog.vue";
 import ReadSettings from "../components/ReadSettings.vue";
 import BookSource from "../components/BookSource.vue";
@@ -425,293 +434,282 @@ import {
   previewBook,
   previewCatalog,
   previewConfig,
-  previewShelfBooks,
   previewTheme
 } from "../previewData";
 
-export default {
-  name: "Reader",
-  components: {
-    PopCata,
-    BookSource,
-    BookShelf,
-    Content,
-    ReadSettings
-  },
-  data() {
-    return {
-      title: "第一章 预览章节",
-      content:
-        "这是阅读器界面预览内容。\n当前阶段只用于验证 reader-server 原版阅读页菜单、按钮和弹出层是否完整复刻。\n后续接入真实章节后会替换为真实内容。",
-      error: false,
-      popCataVisible: false,
-      readSettingsVisible: false,
-      popBookSourceVisible: false,
-      popBookShelfVisible: false,
-      showToolBar: true,
-      show: true,
-      contentStyle: {},
-      currentPage: 1,
-      totalPages: 1,
-      showClickZone: false,
-      timeStr: "",
-      progressValue: 1,
-      speechAvalable:
-        typeof window !== "undefined" &&
-        window.speechSynthesis &&
-        window.speechSynthesis.getVoices,
-      showReadBar: false,
-      voiceList: [],
-      voiceName: "",
-      speechRate: 1,
-      speechPitch: 1,
-      speechSpeaking: false,
-      showSpeechConfig: true,
-      showCacheContentZone: false,
-      isCachingContent: false,
-      cachingContentTip: "",
-      autoReading: false,
-      showChapterList: [],
-      speechMinutes: 0,
-      miniInterface: getMiniInterface(),
-      windowSize: getWindowSize(),
-      config: { ...previewConfig },
-      readingBook: { ...previewBook },
-      catalog: previewCatalog,
-      shelfBooks: previewShelfBooks,
-      currentThemeConfig: previewTheme
-    };
-  },
-  computed: {
-    chapterIndex() {
-      return (this.readingBook.index || 0) | 0;
-    },
-    isNight() {
-      return this.config.themeType === "night";
-    },
-    bodyTheme() {
-      return {
-        background: this.currentThemeConfig.body
-      };
-    },
-    isSlideRead() {
-      return this.autoReading ||
-        this.showReadBar ||
-        this.isEpub ||
-        this.isCarToon ||
-        this.isAudio
-        ? false
-        : this.miniInterface && this.config.readMethod === "左右滑动";
-    },
-    isScrollRead() {
-      return (
-        !this.isEpub &&
-        !this.isAudio &&
-        !this.isSlideRead &&
-        (this.config.readMethod === "上下滚动" ||
-          this.config.readMethod === "上下滚动2")
-      );
-    },
-    chapterClass() {
-      return this.isSlideRead
-        ? "slide-reader"
-        : this.isEpub
-        ? "epub"
-        : this.isCarToon
+defineOptions({
+  name: "Reader"
+});
+
+const router = useRouter();
+const title = ref("第一章 预览章节");
+const chapterContent = ref(
+  `这是阅读器界面预览内容。
+当前阶段只用于验证 reader-server 原版阅读页菜单、按钮和弹出层是否完整复刻。
+后续接入真实章节后会替换为真实内容。`
+);
+const error = ref(false);
+const popCataVisible = ref(false);
+const readSettingsVisible = ref(false);
+const popBookSourceVisible = ref(false);
+const popBookShelfVisible = ref(false);
+const showToolBar = ref(true);
+const show = ref(true);
+const contentStyle = ref({});
+const currentPage = ref(1);
+const totalPages = ref(1);
+const showClickZone = ref(false);
+const timeStr = ref("");
+const progressValue = ref(1);
+const speechAvalable = ref(
+  typeof window !== "undefined" &&
+    window.speechSynthesis &&
+    window.speechSynthesis.getVoices
+);
+const showReadBar = ref(false);
+const voiceList = ref([]);
+const voiceName = ref("");
+const speechRate = ref(1);
+const speechPitch = ref(1);
+const speechSpeaking = ref(false);
+const showSpeechConfig = ref(true);
+const showCacheContentZone = ref(false);
+const isCachingContent = ref(false);
+const cachingContentTip = ref("");
+const autoReading = ref(false);
+const showChapterList = ref([]);
+const speechMinutes = ref(0);
+const miniInterface = ref(getMiniInterface());
+const windowSize = ref(getWindowSize());
+const config = ref({ ...previewConfig });
+const readingBook = ref({ ...previewBook });
+const catalog = ref(previewCatalog);
+const currentThemeConfig = previewTheme;
+
+const chapterIndex = computed(() => (readingBook.value.index || 0) | 0);
+const isNight = computed(() => config.value.themeType === "night");
+const bodyTheme = computed(() => ({
+  background: currentThemeConfig.body
+}));
+const isCarToon = computed(() => false);
+const isAudio = computed(() => false);
+const isEpub = computed(() => false);
+const isSlideRead = computed(() =>
+  autoReading.value ||
+  showReadBar.value ||
+  isEpub.value ||
+  isCarToon.value ||
+  isAudio.value
+    ? false
+    : miniInterface.value && config.value.readMethod === "左右滑动"
+);
+const isScrollRead = computed(
+  () =>
+    !isEpub.value &&
+    !isAudio.value &&
+    !isSlideRead.value &&
+    (config.value.readMethod === "上下滚动" ||
+      config.value.readMethod === "上下滚动2")
+);
+const chapterClass = computed(() =>
+  isSlideRead.value
+    ? "slide-reader"
+    : isEpub.value
+      ? "epub"
+      : isCarToon.value
         ? "cartoon"
-        : this.isAudio
-        ? "audio"
-        : "";
-    },
-    chapterTheme() {
-      const readingStyle = this.showReadBar
-        ? { paddingBottom: (this.showSpeechConfig ? 280 : 80) + "px" }
-        : {};
-      return {
-        ...readingStyle,
-        background: this.currentThemeConfig.content,
-        width: this.readWidth
-      };
-    },
-    leftBarTheme() {
-      return {
-        background: this.currentThemeConfig.popup,
-        marginLeft: this.miniInterface ? 0 : -(this.readWidthConfig / 2 + 68) + "px",
-        display: this.miniInterface && !this.showToolBar ? "none" : "block"
-      };
-    },
-    rightBarTheme() {
-      return {
-        background: this.currentThemeConfig.popupPure,
-        marginRight: this.miniInterface ? 0 : -(this.readWidthConfig / 2 + 52) + "px",
-        display: this.miniInterface && !this.showToolBar ? "none" : "block"
-      };
-    },
-    readBarTheme() {
-      return {
-        background: this.currentThemeConfig.popupPure,
-        marginRight: this.miniInterface ? 0 : -(this.readWidthConfig / 2) + "px",
-        zIndex: 200,
-        display: this.speechAvalable && this.showReadBar ? "block" : "none",
-        width: this.miniInterface ? "100vw" : "500px"
-      };
-    },
-    readWidth() {
-      if (!this.miniInterface) {
-        return this.readWidthConfig - 130 + "px";
+        : isAudio.value
+          ? "audio"
+          : ""
+);
+const chapterTheme = computed(() => {
+  const readingStyle = showReadBar.value
+    ? { paddingBottom: `${showSpeechConfig.value ? 280 : 80}px` }
+    : {};
+  return {
+    ...readingStyle,
+    background: currentThemeConfig.content,
+    width: readWidth.value
+  };
+});
+const readWidthConfig = computed(() => {
+  let width = config.value.readWidth;
+  while (width > windowSize.value.width - 140) {
+    width -= 20;
+  }
+  return width;
+});
+const leftBarTheme = computed(() => ({
+  background: currentThemeConfig.popup,
+  marginLeft: miniInterface.value ? 0 : `${-(readWidthConfig.value / 2 + 68)}px`,
+  display: miniInterface.value && !showToolBar.value ? "none" : "block"
+}));
+const rightBarTheme = computed(() => ({
+  background: currentThemeConfig.popupPure,
+  marginRight: miniInterface.value ? 0 : `${-(readWidthConfig.value / 2 + 52)}px`,
+  display: miniInterface.value && !showToolBar.value ? "none" : "block"
+}));
+const readBarTheme = computed(() => ({
+  background: currentThemeConfig.popupPure,
+  marginRight: miniInterface.value ? 0 : `${-(readWidthConfig.value / 2)}px`,
+  zIndex: 200,
+  display: speechAvalable.value && showReadBar.value ? "block" : "none",
+  width: miniInterface.value ? "100vw" : "500px"
+}));
+const readWidth = computed(() => {
+  if (!miniInterface.value) {
+    return `${readWidthConfig.value - 130}px`;
+  }
+  return `${windowSize.value.width}px`;
+});
+const popperWidth = computed(() => {
+  if (!miniInterface.value) {
+    return readWidthConfig.value - 33;
+  }
+  return windowSize.value.width - 33;
+});
+const menuPopperOptions = computed(() => ({
+  modifiers: [
+    {
+      name: "preventOverflow",
+      options: {
+        altAxis: miniInterface.value,
+        padding: 16
       }
-      return this.windowSize.width + "px";
-    },
-    readWidthConfig() {
-      let width = this.config.readWidth;
-      while (width > this.windowSize.width - 140) {
-        width -= 20;
-      }
-      return width;
-    },
-    popperWidth() {
-      if (!this.miniInterface) {
-        return this.readWidthConfig - 33;
-      }
-      return this.windowSize.width - 33;
-    },
-    readingProgress() {
-      if (this.catalog && this.catalog.length) {
-        return parseInt(((this.chapterIndex + 1) * 100) / this.catalog.length) + "%";
-      }
-      return "";
-    },
-    showPrevPageStyle() {
-      if (this.isSlideRead) {
-        return {
-          left: 0,
-          top: 0,
-          bottom: 0,
-          right: this.windowSize.width / 2 + "px",
-          background: "#43987324",
-          paddingRight: this.windowSize.width * 0.2 + "px"
-        };
-      }
-      return {
-        left: 0,
-        top: 0,
-        right: 0,
-        bottom: this.windowSize.height / 2 + "px",
-        background: "#43987324"
-      };
-    },
-    showMenuZoneStyle() {
-      return {
-        top: this.windowSize.height * 0.3 + "px",
-        bottom: this.windowSize.height * 0.3 + "px",
-        left: this.windowSize.width * 0.3 + "px",
-        right: this.windowSize.width * 0.3 + "px",
-        background: "#636060",
-        zIndex: 10
-      };
-    },
-    showNextPageStyle() {
-      if (this.isSlideRead) {
-        return {
-          right: 0,
-          top: 0,
-          bottom: 0,
-          left: this.windowSize.width / 2 + "px",
-          background: "#6b1a7324",
-          paddingLeft: this.windowSize.width * 0.2 + "px"
-        };
-      }
-      return {
-        left: 0,
-        bottom: 0,
-        right: 0,
-        top: this.windowSize.height / 2 + "px",
-        background: "#6b1a7324"
-      };
-    },
-    popupAbsoluteBtnStyle() {
-      return {
-        background: this.currentThemeConfig.popupPure
-      };
-    },
-    isCarToon() {
-      return false;
-    },
-    isAudio() {
-      return false;
-    },
-    isEpub() {
-      return false;
     }
-  },
-  mounted() {
-    this.formatTime();
-    window.addEventListener("resize", this.syncInterface);
-  },
-  beforeDestroy() {
-    window.removeEventListener("resize", this.syncInterface);
-  },
-  methods: {
-    syncInterface() {
-      this.miniInterface = getMiniInterface();
-      this.windowSize = getWindowSize();
-    },
-    changeBook() {
-      this.popBookShelfVisible = false;
-    },
-    toShelf() {
-      this.$router.push("/");
-    },
-    changeBookSource() {
-      this.popBookSourceVisible = false;
-    },
-    getContent() {
-      this.popCataVisible = false;
-    },
-    refreshCatalog() {
-      this.$message.success("目录刷新预览");
-    },
-    beforeReadMethodChange() {},
-    showPage(value) {
-      this.currentPage = value || this.progressValue;
-    },
-    handlerClick(event) {
-      this.eventHandler(event);
-    },
-    eventHandler(point) {
-      if (
-        this.popBookSourceVisible ||
-        this.popBookShelfVisible ||
-        this.popCataVisible ||
-        this.readSettingsVisible
-      ) {
-        return;
-      }
-      const midX = this.windowSize.width / 2;
-      const midY = this.windowSize.height / 2;
-      if (
-        Math.abs(point.clientY - midY) <= this.windowSize.height * 0.2 &&
-        Math.abs(point.clientX - midX) <= this.windowSize.width * 0.2
-      ) {
-        if (!this.showReadBar) {
-          this.showToolBar = !this.showToolBar;
-        }
-      }
-    },
-    formatProgressTip(value) {
-      return `第 ${value || this.progressValue}/${this.totalPages} 页`;
-    },
-    formatTime() {
-      const now = new Date();
-      const pad = value => (value >= 10 ? "" + value : "0" + value);
-      this.timeStr = pad(now.getHours()) + ":" + pad(now.getMinutes());
-    }
+  ]
+}));
+const readingProgress = computed(() => {
+  if (catalog.value && catalog.value.length) {
+    return `${parseInt(((chapterIndex.value + 1) * 100) / catalog.value.length)}%`;
+  }
+  return "";
+});
+const showPrevPageStyle = computed(() => {
+  if (isSlideRead.value) {
+    return {
+      left: 0,
+      top: 0,
+      bottom: 0,
+      right: `${windowSize.value.width / 2}px`,
+      background: "#43987324",
+      paddingRight: `${windowSize.value.width * 0.2}px`
+    };
+  }
+  return {
+    left: 0,
+    top: 0,
+    right: 0,
+    bottom: `${windowSize.value.height / 2}px`,
+    background: "#43987324"
+  };
+});
+const showMenuZoneStyle = computed(() => ({
+  top: `${windowSize.value.height * 0.3}px`,
+  bottom: `${windowSize.value.height * 0.3}px`,
+  left: `${windowSize.value.width * 0.3}px`,
+  right: `${windowSize.value.width * 0.3}px`,
+  background: "#636060",
+  zIndex: 10
+}));
+const showNextPageStyle = computed(() => {
+  if (isSlideRead.value) {
+    return {
+      right: 0,
+      top: 0,
+      bottom: 0,
+      left: `${windowSize.value.width / 2}px`,
+      background: "#6b1a7324",
+      paddingLeft: `${windowSize.value.width * 0.2}px`
+    };
+  }
+  return {
+    left: 0,
+    bottom: 0,
+    right: 0,
+    top: `${windowSize.value.height / 2}px`,
+    background: "#6b1a7324"
+  };
+});
+const popupAbsoluteBtnStyle = computed(() => ({
+  background: currentThemeConfig.popupPure
+}));
+
+const syncInterface = () => {
+  miniInterface.value = getMiniInterface();
+  windowSize.value = getWindowSize();
+};
+
+const changeBook = () => {
+  popBookShelfVisible.value = false;
+};
+
+const toShelf = () => {
+  router.push("/");
+};
+
+const changeBookSource = () => {
+  popBookSourceVisible.value = false;
+};
+
+const getContent = () => {
+  popCataVisible.value = false;
+};
+
+const refreshCatalog = () => {
+  ElMessage.success("目录刷新预览");
+};
+
+const beforeReadMethodChange = () => {};
+
+const showPage = value => {
+  currentPage.value = value || progressValue.value;
+};
+
+const eventHandler = point => {
+  if (
+    popBookSourceVisible.value ||
+    popBookShelfVisible.value ||
+    popCataVisible.value ||
+    readSettingsVisible.value
+  ) {
+    return;
+  }
+  const midX = windowSize.value.width / 2;
+  const midY = windowSize.value.height / 2;
+  if (
+    Math.abs(point.clientY - midY) <= windowSize.value.height * 0.2 &&
+    Math.abs(point.clientX - midX) <= windowSize.value.width * 0.2 &&
+    !showReadBar.value
+  ) {
+    showToolBar.value = !showToolBar.value;
   }
 };
+
+const handlerClick = event => {
+  eventHandler(event);
+};
+
+const formatProgressTip = value => `第 ${value || progressValue.value}/${totalPages.value} 页`;
+
+const formatTime = () => {
+  const now = new Date();
+  const pad = value => (value >= 10 ? `${value}` : `0${value}`);
+  timeStr.value = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+};
+
+onMounted(() => {
+  formatTime();
+  window.addEventListener("resize", syncInterface);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("resize", syncInterface);
+});
 </script>
 
 <style lang="stylus" scoped>
->>>.popper-component {
+:deep(.popper-component) {
   margin-left: 10px;
 }
 
@@ -720,7 +718,7 @@ export default {
   flex-direction: column;
   align-items: center;
 
-  >>>.no-point {
+  :deep(.no-point) {
     pointer-events: none;
   }
 
@@ -1008,12 +1006,12 @@ export default {
     background-size: cover;
     position: relative;
 
-    >>>.el-icon-loading {
+    :deep(.el-icon-loading) {
       font-size: 36px;
       color: #B5B5B5;
     }
 
-    >>>.el-loading-text {
+    :deep(.el-loading-text) {
       font-weight: 500;
       color: #B5B5B5;
     }
@@ -1104,11 +1102,11 @@ export default {
 }
 
 .day {
-  >>>.popup {
+  :deep(.popup) {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12), 0 0 6px rgba(0, 0, 0, 0.04);
   }
 
-  >>>.tool-icon {
+  :deep(.tool-icon) {
     border: 1px solid rgba(0, 0, 0, 0.1);
     margin-top: -1px;
     color: #000;
@@ -1118,23 +1116,23 @@ export default {
     }
   }
 
-  >>>.progress-tip {
+  :deep(.progress-tip) {
     color: rgba(0, 0, 0, 0.4);
   }
 
-  >>>.cache-content-zone {
+  :deep(.cache-content-zone) {
     color: rgba(0, 0, 0, 0.4);
   }
 
-  >>>.float-left-btn-zone {
+  :deep(.float-left-btn-zone) {
     color: #121212;
   }
 
-  >>>.float-right-btn-zone {
+  :deep(.float-right-btn-zone) {
     color: #121212;
   }
 
-  >>>.reader-bar-inner {
+  :deep(.reader-bar-inner) {
     color: #121212;
 
     .setting-title {
@@ -1146,7 +1144,7 @@ export default {
     }
   }
 
-  >>>.chapter {
+  :deep(.chapter) {
     border: 1px solid #d8d8d8;
     color: #262626;
   }
@@ -1155,21 +1153,21 @@ export default {
     color: rgba(0, 0, 0, 0.4);
   }
 
-  >>>.el-slider__runway {
+  :deep(.el-slider__runway) {
     background-color: #fff;
   }
 
-  >>>.play-pause-btn {
+  :deep(.play-pause-btn) {
     color: #409EFF;
   }
 }
 
 .night {
-  >>>.popup {
+  :deep(.popup) {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.48), 0 0 6px rgba(0, 0, 0, 0.16);
   }
 
-  >>>.tool-icon {
+  :deep(.tool-icon) {
     border: 1px solid #444;
     margin-top: -1px;
     color: #666;
@@ -1179,32 +1177,32 @@ export default {
     }
   }
 
-  >>>.progress-tip {
+  :deep(.progress-tip) {
     color: #666;
   }
 
-  >>>.cache-content-zone {
+  :deep(.cache-content-zone) {
     color: #666;
   }
 
-  >>>.float-left-btn-zone {
+  :deep(.float-left-btn-zone) {
     color: #666;
   }
 
-  >>>.float-right-btn-zone {
+  :deep(.float-right-btn-zone) {
     color: #666;
   }
 
-  >>>.reader-bar-inner {
+  :deep(.reader-bar-inner) {
     color: #666;
   }
 
-  >>>.chapter {
+  :deep(.chapter) {
     border: 1px solid #444;
     color: #666;
   }
 
-  >>>.popper__arrow {
+  :deep(.popper__arrow) {
     background: #666;
   }
 
@@ -1212,17 +1210,17 @@ export default {
     color: #666;
   }
 
-  >>>.el-slider__runway {
+  :deep(.el-slider__runway) {
     background-color: #282828;
   }
-  >>>.el-slider__bar {
+  :deep(.el-slider__bar) {
     background-color: #185798;
   }
-  >>>.el-slider__button {
+  :deep(.el-slider__button) {
     border: 2px solid #185798;
     background-color: #282828;
   }
-  >>>.play-pause-btn {
+  :deep(.play-pause-btn) {
     color: #185798;
   }
 }
