@@ -5,11 +5,19 @@
       @enter-reader="showReader"
       @close-reader="showHome"
     />
+    <StartupOverlay
+      v-if="startupVisible"
+      :status="startupStatus"
+      :progress="startupProgress"
+      :leaving="startupLeaving"
+    />
   </div>
 </template>
 
 <script setup>
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref } from "vue";
+import StartupOverlay from "./components/StartupOverlay.vue";
+import { runStartupCache } from "./startup/startupCache";
 
 defineOptions({
   name: "App"
@@ -20,6 +28,10 @@ const getReaderState = () => Boolean(window.history.state?.readerOpen);
 const showReaderPage = ref(typeof window !== "undefined" ? getReaderState() : false);
 const IndexView = defineAsyncComponent(() => import("./views/Index.vue"));
 const ReaderView = defineAsyncComponent(() => import("./views/Reader.vue"));
+const startupVisible = ref(true);
+const startupLeaving = ref(false);
+const startupStatus = ref("正在连接服务器");
+const startupProgress = ref(0);
 
 const currentView = computed(() =>
   showReaderPage.value ? ReaderView : IndexView
@@ -52,6 +64,25 @@ const handlePopState = event => {
   showReaderPage.value = Boolean(event.state?.readerOpen);
 };
 
+const finishStartup = () => {
+  startupLeaving.value = true;
+  window.setTimeout(() => {
+    startupVisible.value = false;
+  }, 560);
+};
+
+const startApplication = async () => {
+  await runStartupCache({
+    onStatus: status => {
+      startupStatus.value = status;
+    },
+    onProgress: progress => {
+      startupProgress.value = progress;
+    }
+  });
+  finishStartup();
+};
+
 onMounted(() => {
   if (window.history.state === null) {
     window.history.replaceState(
@@ -62,6 +93,7 @@ onMounted(() => {
   }
 
   window.addEventListener("popstate", handlePopState);
+  startApplication();
 });
 
 onBeforeUnmount(() => {
