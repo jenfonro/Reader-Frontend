@@ -44,7 +44,9 @@
 import { onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { Menu as MenuIcon } from "@element-plus/icons-vue";
-import { getMiniInterface } from "../previewData";
+import { ElIcon } from "element-plus/es/components/icon/index.mjs";
+import "element-plus/es/components/icon/style/css.mjs";
+import { getMiniInterface } from "../utils/interface";
 
 defineOptions({
   name: "Index"

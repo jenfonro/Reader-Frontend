@@ -1,6 +1,18 @@
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 
+const elementPlusDeps = [
+  "element-plus/es/components/color-picker/index.mjs",
+  "element-plus/es/components/divider/index.mjs",
+  "element-plus/es/components/icon/index.mjs",
+  "element-plus/es/components/input/index.mjs",
+  "element-plus/es/components/message/index.mjs",
+  "element-plus/es/components/popover/index.mjs",
+  "element-plus/es/components/radio/index.mjs",
+  "element-plus/es/components/select/index.mjs",
+  "element-plus/es/components/slider/index.mjs"
+];
+
 export default defineConfig({
   plugins: [vue()],
   build: {
@@ -16,6 +28,9 @@ export default defineConfig({
         warn(warning);
       }
     }
+  },
+  optimizeDeps: {
+    include: ["vue", "vue-router", "@element-plus/icons-vue", ...elementPlusDeps]
   },
   server: {
     host: "0.0.0.0",

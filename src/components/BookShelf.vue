@@ -45,6 +45,8 @@
 
 <script setup>
 import { computed, ref } from "vue";
+import { ElIcon } from "element-plus/es/components/icon/index.mjs";
+import "element-plus/es/components/icon/style/css.mjs";
 import { Loading } from "@element-plus/icons-vue";
 import { previewBook, previewShelfBooks, previewTheme } from "../previewData";
 

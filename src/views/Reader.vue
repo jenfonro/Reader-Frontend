@@ -406,7 +406,16 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
-import { ElMessage } from "element-plus";
+import { ElMessage } from "element-plus/es/components/message/index.mjs";
+import { ElIcon } from "element-plus/es/components/icon/index.mjs";
+import { ElPopover } from "element-plus/es/components/popover/index.mjs";
+import { ElRadioButton, ElRadioGroup } from "element-plus/es/components/radio/index.mjs";
+import { ElSlider } from "element-plus/es/components/slider/index.mjs";
+import "element-plus/es/components/icon/style/css.mjs";
+import "element-plus/es/components/message/style/css.mjs";
+import "element-plus/es/components/popover/style/css.mjs";
+import "element-plus/es/components/radio/style/css.mjs";
+import "element-plus/es/components/slider/style/css.mjs";
 import {
   Bottom,
   Close,
@@ -428,9 +437,8 @@ import ReadSettings from "../components/ReadSettings.vue";
 import BookSource from "../components/BookSource.vue";
 import BookShelf from "../components/BookShelf.vue";
 import Content from "../components/Content.vue";
+import { getMiniInterface, getWindowSize } from "../utils/interface";
 import {
-  getMiniInterface,
-  getWindowSize,
   previewBook,
   previewCatalog,
   previewConfig,

@@ -442,14 +442,19 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
-import { ElMessage } from "element-plus";
+import { ElMessage } from "element-plus/es/components/message/index.mjs";
+import { ElColorPicker } from "element-plus/es/components/color-picker/index.mjs";
+import { ElDivider } from "element-plus/es/components/divider/index.mjs";
+import { ElIcon } from "element-plus/es/components/icon/index.mjs";
+import { ElInput } from "element-plus/es/components/input/index.mjs";
+import "element-plus/es/components/color-picker/style/css.mjs";
+import "element-plus/es/components/divider/style/css.mjs";
+import "element-plus/es/components/icon/style/css.mjs";
+import "element-plus/es/components/input/style/css.mjs";
+import "element-plus/es/components/message/style/css.mjs";
 import { Close, Minus, Plus, Upload } from "@element-plus/icons-vue";
-import {
-  getMiniInterface,
-  previewConfig,
-  previewCustomConfigs,
-  previewTheme
-} from "../previewData";
+import { getMiniInterface } from "../utils/interface";
+import { previewConfig, previewCustomConfigs, previewTheme } from "../previewData";
 
 defineOptions({
   name: "ReadSettings"
