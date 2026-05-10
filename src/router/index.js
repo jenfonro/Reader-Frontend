@@ -1,23 +1,21 @@
-import { createRouter, createWebHashHistory } from 'vue-router';
-import HomePage from '../pages/HomePage.vue';
-import ReaderPage from '../pages/ReaderPage.vue';
+import Vue from "vue";
+import VueRouter from "vue-router";
+
+Vue.use(VueRouter);
 
 const routes = [
   {
-    path: '/',
-    name: 'index',
-    component: HomePage,
+    path: "/",
+    name: "index",
+    component: () => import("../views/Index.vue")
   },
   {
-    path: '/reader',
-    name: 'Reader',
-    component: ReaderPage,
-  },
+    path: "/reader",
+    name: "Reader",
+    component: () => import("../views/Reader.vue")
+  }
 ];
 
-const router = createRouter({
-  history: createWebHashHistory(),
-  routes,
+export default new VueRouter({
+  routes
 });
-
-export default router;
