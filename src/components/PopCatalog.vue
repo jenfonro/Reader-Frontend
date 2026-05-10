@@ -32,7 +32,7 @@
     <div
       class="data-wrapper"
       ref="cataData"
-      :class="{ night: $store.getters.isNight, day: !$store.getters.isNight }"
+      :class="{ night: isNight, day: !isNight }"
     >
       <div class="cata">
         <div
@@ -58,245 +58,56 @@
 </template>
 
 <script>
-import jump from "../plugins/jump";
-import Axios from "../plugins/axios";
-import Vue from "vue";
+import { previewBook, previewCatalog, previewTheme } from "../previewData";
 
 export default {
   name: "PopCata",
+  props: ["visible"],
   data() {
     return {
       refreshLoading: false,
       asc: true,
       cachedCataMap: {},
-      tocUrl: ""
+      book: previewBook,
+      catalog: previewCatalog,
+      isNight: false
     };
   },
-  props: ["visible"],
   computed: {
-    book() {
-      return this.$store.getters.readingBook;
-    },
-    index() {
-      return this.$store.getters.readingBook.index;
-    },
-    catalog() {
-      return this.$store.getters.readingBook.catalog || [];
-    },
     cataList() {
-      if (this.asc) {
-        return this.catalog;
-      } else {
-        return [].concat(this.catalog).reverse();
-      }
-    },
-    theme() {
-      return this.$store.getters.config.theme;
+      return this.asc ? this.catalog : [].concat(this.catalog).reverse();
     },
     popupTheme() {
       return {
-        background: this.$store.getters.currentThemeConfig.popup
+        background: previewTheme.popup
       };
-    },
-    tocRuleList() {
-      if (!this.book || !this.book.originName) {
-        return [];
-      }
-      if (this.book.originName.toLowerCase().endsWith(".txt")) {
-        // txt
-        return this.$store.state.txtTocRules;
-      } else {
-        // epub
-        return [
-          { name: "根据 Spin 获取章节，使用 Toc 补充章节名", rule: "spin+toc" },
-          { name: "根据 Spin 获取章节，强制使用 Toc 章节名", rule: "spin<toc" },
-          { name: "根据 Spin 获取章节", rule: "spin" },
-          { name: "根据 Toc 获取章节，使用 Spin 补充章节名", rule: "toc+spin" },
-          { name: "根据 Toc 获取章节，强制使用 Spin 章节名", rule: "toc<spin" },
-          { name: "根据 Toc 获取章节", rule: "toc" }
-        ];
-      }
-    }
-  },
-  mounted() {
-    window.popcatalogComp = this;
-  },
-  watch: {
-    visible(isVisible) {
-      if (isVisible) {
-        this.computeCachedCata();
-        this.$nextTick(() => {
-          this.jumpToCurrent();
-        });
-      }
-    },
-    catalog() {
-      this.refreshLoading = false;
-      this.computeCachedCata();
-    },
-    index() {
-      this.computeCachedCata();
-    },
-    asc() {
-      this.jumpToCurrent();
     }
   },
   methods: {
     isSelected(index) {
-      if (this.asc) {
-        return index == this.$store.getters.readingBook.index;
-      } else {
-        return (
-          this.catalog.length - 1 - index ==
-          this.$store.getters.readingBook.index
-        );
-      }
+      return index === (this.book.index || 0);
     },
     gotoChapter(note) {
-      const index = this.catalog.indexOf(note);
-      this.$emit("close");
-      this.$emit("getContent", index);
+      this.$emit("getContent", note);
     },
     refreshChapter() {
       this.refreshLoading = true;
-      this.$emit("refresh");
+      setTimeout(() => {
+        this.refreshLoading = false;
+        this.$emit("refresh");
+      }, 300);
     },
-    async changeRule() {
-      const res = await this.$msgbox({
-        title: "修改目录规则",
-        message: this.renderComp(),
-        showCancelButton: true,
-        confirmButtonText: "确定",
-        cancelButtonText: "取消"
-      }).catch(action => {
-        return action === "close" ? "close" : false;
-      });
-      if (res === "confirm") {
-        //
-        if (this.tocUrl === this.book.tocUrl) {
-          this.$message.error("未修改规则");
-          return;
-        }
-        const shelfBook = this.$store.getters.shelfBooks.find(
-          v => v.bookUrl === this.book.bookUrl
-        );
-        shelfBook.tocUrl = this.tocUrl;
-        return Axios.post(this.api + "/saveBook", shelfBook).then(
-          res => {
-            if (res.data.isSuccess) {
-              this.$message.success("操作成功");
-              this.$store.commit("updateShelfBook", res.data.data);
-              this.refreshLoading = true;
-              this.$emit("refresh");
-            }
-          },
-          error => {
-            this.$message.error("操作失败" + (error && error.toString()));
-          }
-        );
-      } else {
-        return false;
-      }
-    },
-    renderComp() {
-      var tocRuleList = this.tocRuleList;
-      this.tocUrl = this.book.tocUrl;
-      var catalog = this;
-      Vue.component("custComp2", {
-        render() {
-          window.custComp2 = this;
-          return (
-            <div style={{ textAlign: "center" }}>
-              <span>请选择规则：</span>
-              <el-select
-                size="mini"
-                vModel={this.selectedRule}
-                filterable={true}
-                placeholder="未分组"
-                vOn:change={this.change}
-              >
-                {tocRuleList.map((rule, index) => {
-                  return (
-                    <el-option
-                      key={"rule-" + index}
-                      label={rule.name}
-                      value={rule.rule}
-                    ></el-option>
-                  );
-                })}
-              </el-select>
-              <el-input
-                type="textarea"
-                rows={3}
-                style={{ marginTop: "10px" }}
-                vModel={this.selectedRule}
-                size="small"
-                vOn:change={this.change}
-              />
-            </div>
-          );
-        },
-        data() {
-          return {
-            selectedRule: catalog.tocUrl
-          };
-        },
-        methods: {
-          change() {
-            catalog.tocUrl = this.selectedRule;
-          }
-        }
-      });
-      var custComp2 = Vue.component("custComp2");
-      return this.$createElement(custComp2);
-    },
-    jumpToCurrent(index) {
-      if (typeof index === "undefined") {
-        index = this.asc
-          ? this.$store.getters.readingBook.index
-          : this.catalog.length - 1 - this.$store.getters.readingBook.index;
-      }
-      if (!this.$refs.cata || !this.$refs.cata[index]) {
-        setTimeout(() => {
-          this.jumpToCurrent(index);
-        }, 10);
-        return;
-      }
-      let wrapper = this.$refs.cataData;
-      jump(this.$refs.cata[index], { container: wrapper, duration: 0 });
+    changeRule() {
+      this.$message.success("修改规则预览");
     },
     toTop() {
-      this.jumpToCurrent(0);
+      this.$refs.cataData && (this.$refs.cataData.scrollTop = 0);
     },
     toBottom() {
-      this.jumpToCurrent(this.catalog.length - 1);
-    },
-    computeCachedCata() {
-      const cacheMap = {};
-      const cachePrefix =
-        "localCache@" +
-        this.$store.getters.readingBook.name +
-        "_" +
-        this.$store.getters.readingBook.author +
-        "@" +
-        this.$store.getters.readingBook.bookUrl +
-        "@chapterContent-";
-      window.$cacheStorage
-        .iterate(function(value, key) {
-          if (key.startsWith(cachePrefix)) {
-            try {
-              let index = parseInt(key.replace(cachePrefix, ""));
-              cacheMap[index] = true;
-            } catch (error) {
-              //
-              // console.error(error);
-            }
-          }
-        })
-        .then(() => {
-          this.cachedCataMap = cacheMap;
-        })
-        .catch(function() {});
+      const target = this.$refs.cataData;
+      if (target) {
+        target.scrollTop = target.scrollHeight;
+      }
     }
   }
 };

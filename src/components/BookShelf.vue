@@ -13,7 +13,7 @@
     <div
       class="data-wrapper"
       ref="bookList"
-      :class="{ night: $store.getters.isNight, day: !$store.getters.isNight }"
+      :class="{ night: isNight, day: !isNight }"
     >
       <div class="shelfbook-list">
         <div
@@ -45,122 +45,43 @@
 </template>
 
 <script>
-import jump from "../plugins/jump";
-import Axios from "../plugins/axios";
-import { networkFirstRequest } from "../plugins/helper";
+import { previewShelfBooks, previewTheme, previewBook } from "../previewData";
+
 export default {
   name: "BookShelf",
+  props: ["visible"],
   data() {
     return {
-      refreshLoading: false
+      refreshLoading: false,
+      shelfBooks: previewShelfBooks,
+      isNight: false
     };
   },
-  props: ["visible"],
   computed: {
-    theme() {
-      return this.$store.getters.config.theme;
-    },
     popupTheme() {
       return {
-        background: this.$store.getters.currentThemeConfig.popup
+        background: previewTheme.popup
       };
-    },
-    shelfBooks() {
-      return this.$store.getters.shelfBooks;
-    }
-  },
-  mounted() {},
-  watch: {
-    visible(isVisible) {
-      if (isVisible) {
-        this.getBookshelf();
-      }
     }
   },
   methods: {
     isSelected(book) {
-      return book.bookUrl == this.$store.getters.readingBook.bookUrl;
-    },
-    getBookshelf(refresh) {
-      if (this.shelfBooks.length) {
-        return;
-      }
-      networkFirstRequest(
-        () =>
-          Axios.get(this.api + `/getBookshelf`, {
-            params: {
-              refresh: refresh ? 1 : 0
-            }
-          }),
-        "getBookshelf" +
-          ((this.$store.state.userInfo || {}).username || "default")
-      ).then(
-        res => {
-          this.refreshLoading = false;
-          if (res.data.isSuccess) {
-            this.$store.commit("setShelfBooks", res.data.data);
-            if (this.shelfBooks.length) {
-              this.jumpToActive();
-            }
-          }
-        },
-        error => {
-          this.refreshLoading = false;
-          this.$message.error(
-            "获取书架书籍失败 " + (error && error.toString())
-          );
-          throw error;
-        }
-      );
-    },
-    changeBook(book) {
-      const readingBook = {
-        name: book.name,
-        bookUrl: book.bookUrl,
-        index: book.index ?? book.durChapterIndex ?? 0,
-        type: book.type,
-        coverUrl: book.customCoverUrl || book.coverUrl,
-        tocUrl: book.tocUrl,
-        author: book.author,
-        origin: book.origin,
-        originName: book.originName,
-        latestChapterTitle: book.latestChapterTitle,
-        intro: book.intro
-      };
-      this.$emit("changeBook", readingBook);
+      return book.bookUrl === previewBook.bookUrl;
     },
     refreshShelf() {
-      if (this.refreshLoading) return;
       this.refreshLoading = true;
-      this.getBookshelf(true);
+      setTimeout(() => {
+        this.refreshLoading = false;
+      }, 300);
     },
-    jumpToActive() {
-      this.$nextTick(() => {
-        let index = -1;
-        this.shelfBooks.some((v, i) => {
-          if (v.bookUrl == this.$store.getters.readingBook.bookUrl) {
-            index = i;
-            return true;
-          }
-        });
-        if (index < 0) {
-          return;
-        }
-        if (!this.$refs.book || !this.$refs.book[index]) {
-          setTimeout(() => {
-            this.jumpToActive();
-          }, 10);
-          return;
-        }
-        let wrapper = this.$refs.bookList;
-        jump(this.$refs.book[index], {
-          container: wrapper,
-          duration: 0
-        });
-      });
+    changeBook(book) {
+      this.$emit("changeBook", book);
+    },
+    toShelf() {
+      this.$emit("toShelf");
     },
     backToHome() {
-      this.$emit("toShelf");
+      this.toShelf();
     }
   }
 };

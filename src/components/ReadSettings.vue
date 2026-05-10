@@ -2,7 +2,7 @@
   <div
     class="settings-wrapper"
     :style="popupTheme"
-    :class="{ night: $store.getters.isNight, day: !$store.getters.isNight }"
+    :class="{ night: isNight, day: !isNight }"
   >
     <div class="settings-title">
       设置
@@ -32,11 +32,11 @@
           <div class="selection-zone">
             <span
               class="span-item"
-              v-for="(customConfig, index) in $store.state.customConfigList"
+              v-for="(customConfig, index) in customConfigList"
               :key="index"
               :class="{
                 selected:
-                  $store.getters.config.customConfig === customConfig.name
+                  config.customConfig === customConfig.name
               }"
               @click="setCustomConfig(customConfig)"
             >
@@ -45,7 +45,7 @@
                 class="el-icon-close delete-custom-config-icon"
                 v-if="
                   index > 1 &&
-                    $store.getters.config.customConfig !== customConfig.name
+                    config.customConfig !== customConfig.name
                 "
                 @click.stop="deleteCustomConfig(index, customConfig.name)"
               ></i>
@@ -61,7 +61,7 @@
               :key="'autoTheme'"
               ref="themes"
               @click="setAutoTheme"
-              :class="{ selected: $store.getters.config.autoTheme }"
+              :class="{ selected: config.autoTheme }"
               >自动切换</span
             >
           </div>
@@ -115,7 +115,7 @@
                 class="span-item"
                 v-for="(type, index) in themeTypes"
                 :key="index"
-                :class="{ selected: themeType == type }"
+                :class="{ selected: config.themeType == type }"
                 @click="setConfig('themeType', type)"
                 >{{ type === "day" ? "白天" : "黑夜" }}</span
               >
@@ -139,7 +139,7 @@
                 v-for="(item, index) in builtinBG"
                 :key="index"
                 :class="{
-                  selected: $store.getters.config.contentBGImg == item.src
+                  selected: config.contentBGImg == item.src
                 }"
                 :src="item.src"
                 alt=""
@@ -147,10 +147,10 @@
               />
               <div
                 class="content-bg-preview"
-                v-for="item in $store.getters.config.customBGImgList || []"
+                v-for="item in config.customBGImgList || []"
                 :key="item"
                 :class="{
-                  selected: $store.getters.config.contentBGImg == item
+                  selected: config.contentBGImg == item
                 }"
               >
                 <img
@@ -305,7 +305,7 @@
             >
           </div>
         </li>
-        <li v-if="!$store.state.miniInterface">
+        <li v-if="!miniInterface">
           <span class="setting-item-title">页面宽度</span>
           <div class="resize">
             <span class="less" @click="decConfig('readWidth')"
@@ -327,8 +327,8 @@
               :class="{ selected: config.readMethod == method }"
               @click="setReadMethod(method)"
               v-show="
-                (!$store.state.miniInterface && method !== '左右滑动') ||
-                  $store.state.miniInterface
+                (!miniInterface && method !== '左右滑动') ||
+                  miniInterface
               "
               >{{ method }}</span
             >
@@ -441,42 +441,27 @@
 </template>
 
 <script>
-import Axios from "../plugins/axios";
-import settings from "../plugins/config";
-import eventBus from "../plugins/eventBus";
-import { isMiniInterface, removeFont } from "../plugins/helper";
-import { setCache, getCache } from "../plugins/cache";
-import { customFonts } from "../plugins/config";
+import {
+  getMiniInterface,
+  previewConfig,
+  previewCustomConfigs,
+  previewTheme
+} from "../previewData";
 
 export default {
   name: "ReadSettings",
+  props: ["visible"],
   data() {
     return {
       themeColors: [
-        {
-          background: "rgba(250, 245, 235, 0.8)"
-        },
-        {
-          background: "rgba(245, 234, 204, 0.8)"
-        },
-        {
-          background: "rgba(230, 242, 230, 0.8)"
-        },
-        {
-          background: "rgba(228, 241, 245, 0.8)"
-        },
-        {
-          background: "rgba(245, 228, 228, 0.8)"
-        },
-        {
-          background: "rgba(224, 224, 224, 0.8)"
-        },
-        {
-          background: "rgba(0, 0, 0, 0.5)"
-        },
-        {
-          background: "rgba(255, 255, 255, 0.8)"
-        }
+        { background: "rgba(250, 245, 235, 0.8)" },
+        { background: "rgba(245, 234, 204, 0.8)" },
+        { background: "rgba(230, 242, 230, 0.8)" },
+        { background: "rgba(228, 241, 245, 0.8)" },
+        { background: "rgba(245, 228, 228, 0.8)" },
+        { background: "rgba(224, 224, 224, 0.8)" },
+        { background: "rgba(0, 0, 0, 0.5)" },
+        { background: "rgba(255, 255, 255, 0.8)" }
       ],
       builtinBG: [
         { src: "bg/山水画.jpg" },
@@ -504,12 +489,12 @@ export default {
       configDefaultTypeList: ["白天默认", "黑夜默认"],
       autoReadingMethods: ["像素滚动", "段落滚动"],
       chineseFonts: ["简体", "繁体"],
-
+      customFonts: [],
       customFontName: "",
-      customFonts: customFonts,
-
-      config: this.$store.state.config,
-
+      customConfigList: previewCustomConfigs.map(item => ({ ...item })),
+      config: { ...previewConfig },
+      isNight: false,
+      miniInterface: getMiniInterface(),
       configRules: {
         fontSize: { min: 8, delta: 1 },
         fontWeight: { min: 100, max: 900, delta: 100 },
@@ -526,364 +511,121 @@ export default {
       }
     };
   },
-  mounted() {
-    this.config = {
-      ...settings.config,
-      ...this.config,
-      selectionAction:
-        this.$store.state.config.selectionAction === "过滤弹窗"
-          ? "操作弹窗"
-          : "忽略"
-    };
-  },
   computed: {
     moonIcon() {
-      return this.$store.getters.isSystemNight ? "" : "";
+      return this.config.themeType === "night" ? "" : "";
     },
     popupTheme() {
       return {
-        background: this.$store.getters.currentThemeConfig.popup
+        background: previewTheme.popup
       };
     },
     currentCustomConfig() {
-      return this.$store.state.customConfigList.find(
-        v => v.name === this.$store.state.config.customConfig
+      return (
+        this.customConfigList.find(
+          item => item.name === this.config.customConfig
+        ) || this.customConfigList[0]
       );
     }
   },
-  watch: {
-    config: {
-      deep: true,
-      handler(val) {
-        this.$store.commit("setConfig", { ...val });
-      }
-    }
+  mounted() {
+    window.addEventListener("resize", this.syncInterface);
+  },
+  beforeDestroy() {
+    window.removeEventListener("resize", this.syncInterface);
   },
   methods: {
+    syncInterface() {
+      this.miniInterface = getMiniInterface();
+    },
     setPageType(type) {
-      if (type === this.config.pageType) {
-        return;
-      }
-      let lastConfig = {};
-      if (type === "Kindle") {
-        setCache("lastNormalConfig", this.config);
-
-        lastConfig = getCache("lastKindleConfig");
-        lastConfig = lastConfig || {
-          animateMSTime: 0,
-          fontSize: Math.min(this.fontSize, 20),
-          theme: 7,
-          readMethod: "左右滑动",
-          selectionAction: "忽略",
-          pageMode: "手机模式"
-        };
-      } else {
-        setCache("lastKindleConfig", this.config);
-        lastConfig = getCache("lastNormalConfig") || {};
-      }
-
-      this.config = { ...this.config, ...(lastConfig || {}), pageType: type };
-
-      this.$emit("readMethodChange");
-      this.$emit("pageModeChange");
-      if (this.config.pageMode === "手机模式") {
-        this.$store.commit("setMiniInterface", true);
-      } else {
-        this.$store.commit("setMiniInterface", isMiniInterface());
-      }
+      this.setConfig("pageType", type);
     },
     setPageMode(pageMode) {
+      this.setConfig("pageMode", pageMode);
       this.$emit("pageModeChange");
-      this.config = { ...this.config, pageMode };
-      if (this.config.pageMode === "手机模式") {
-        this.$store.commit("setMiniInterface", true);
-      } else {
-        this.$store.commit("setMiniInterface", isMiniInterface());
-      }
     },
     setReadMethod(readMethod) {
+      this.setConfig("readMethod", readMethod);
       this.$emit("readMethodChange");
-      this.config = { ...this.config, readMethod };
     },
     setConfig(name, value) {
-      const data = {};
-      data[name] = value;
-      this.config = { ...this.config, ...data };
+      this.config = {
+        ...this.config,
+        [name]: value
+      };
     },
     setAutoTheme() {
-      this.config = { ...this.config, autoTheme: !this.config.autoTheme };
+      this.setConfig("autoTheme", !this.config.autoTheme);
     },
     incConfig(name) {
-      const data = {};
       const rule = this.configRules[name];
-      const val = +this.config[name];
-      data[name] =
-        "max" in rule ? Math.min(rule.max, val + rule.delta) : val + rule.delta;
-      this.config = {
-        ...this.config,
-        ...data
-      };
+      const value = +this.config[name];
+      const nextValue =
+        "max" in rule ? Math.min(rule.max, value + rule.delta) : value + rule.delta;
+      this.setConfig(name, nextValue);
     },
     decConfig(name) {
-      const data = {};
       const rule = this.configRules[name];
-      const val = +this.config[name];
-      data[name] =
-        "min" in rule ? Math.max(rule.min, val - rule.delta) : val - rule.delta;
-      this.config = {
-        ...this.config,
-        ...data
-      };
+      const value = +this.config[name];
+      const nextValue =
+        "min" in rule ? Math.max(rule.min, value - rule.delta) : value - rule.delta;
+      this.setConfig(name, nextValue);
     },
-    getCustomBGImgURL(src) {
-      return this.api.replace(/\/reader3\/?/, "") + src;
-    },
-    setBGImg(src) {
-      let config = { ...this.config };
-      if (config.contentBGImg === src) {
-        delete config.contentBGImg;
-      } else {
-        config.contentBGImg = src;
-      }
-      this.config = config;
+    setBGImg(item) {
+      this.setConfig("contentBGImg", typeof item === "string" ? item : item.src);
     },
     uploadBGFile() {
-      this.$refs.bgFileRef.dispatchEvent(new MouseEvent("click"));
+      this.$refs.bgFileRef && this.$refs.bgFileRef.click();
     },
-    onBGFileChange(event) {
-      const rawFile = event.target.files && event.target.files[0];
-      // console.log("rawFile", rawFile);
-      let param = new FormData();
-      param.append("file", rawFile);
-      param.append("type", "background");
-      Axios.post(this.api + "/uploadFile", param, {
-        headers: { "Content-Type": "multipart/form-data" }
-      }).then(
-        res => {
-          if (res.data.isSuccess) {
-            if (!res.data.data.length) {
-              this.$message.error("上传文件失败");
-              return;
-            }
-            let config = { ...this.config };
-            config.customBGImgList = config.customBGImgList || [];
-            if (!config.customBGImgList.includes(res.data.data[0])) {
-              config.customBGImgList.push(res.data.data[0]);
-            }
-            config.contentBGImg = res.data.data[0];
-            this.config = config;
-          }
-        },
-        error => {
-          this.$message.error("上传文件失败 " + (error && error.toString()));
-        }
-      );
-      this.$refs.bgFileRef.value = null;
-    },
-    async uploadFontFile(customFontName, fontName) {
-      if (
-        this.config.customFontsMap &&
-        this.config.customFontsMap[customFontName]
-      ) {
-        const res = await this.$confirm(
-          `已上传自定义的${fontName}字体?`,
-          "提示",
-          {
-            confirmButtonText: "继续上传",
-            cancelButtonText: "恢复默认",
-            type: "warning",
-            closeOnClickModal: false,
-            closeOnPressEscape: false,
-            distinguishCancelAndClose: true
-          }
-        ).catch(action => {
-          return action === "close" ? "close" : false;
-        });
-        if (res === "close") {
-          return;
-        }
-        if (!res) {
-          Axios.post(this.api + "/deleteFile", {
-            url: this.config.customFontsMap[customFontName]
-          }).then(
-            res => {
-              if (res.data.isSuccess) {
-                let config = { ...this.config };
-                delete config.customFontsMap[customFontName];
-                this.config = config;
-                removeFont(customFontName);
-              }
-            },
-            error => {
-              this.$message.error(
-                "删除自定义字体文件失败 " + (error && error.toString())
-              );
-            }
-          );
-          return;
-        }
-      }
-      this.customFontName = customFontName;
-      this.$refs.fontFileRef.dispatchEvent(new MouseEvent("click"));
-    },
-    onFontFileChange(event) {
-      const rawFile = event.target.files && event.target.files[0];
-      // console.log("rawFile", rawFile);
-      if (!rawFile.name.toLowerCase().endsWith(".ttf")) {
-        this.$message.error("只支持 TTF 字体文件");
-        return;
-      }
-      let param = new FormData();
-      param.append("file", rawFile);
-      param.append("type", "fonts");
-      Axios.post(this.api + "/uploadFile", param, {
-        headers: { "Content-Type": "multipart/form-data" }
-      }).then(
-        res => {
-          if (res.data.isSuccess) {
-            if (!res.data.data.length) {
-              this.$message.error("上传文件失败");
-              return;
-            }
-            let config = { ...this.config };
-            config.customFontsMap = config.customFontsMap || {};
-            config.customFontsMap[this.customFontName] = res.data.data[0];
-            this.config = config;
-          }
-        },
-        error => {
-          this.$message.error("上传文件失败 " + (error && error.toString()));
-        }
-      );
-      this.$refs.fontFileRef.value = null;
+    getCustomBGImgURL(src) {
+      return src;
     },
     deleteCustomBGImg(src) {
-      Axios.post(this.api + "/deleteFile", {
-        url: src
-      }).then(
-        res => {
-          if (res.data.isSuccess) {
-            let config = { ...this.config };
-            config.customBGImgList = config.customBGImgList || [];
-            var index = config.customBGImgList.indexOf(src);
-            if (index != -1) {
-              config.customBGImgList.splice(index, 1);
-            }
-            if (config.contentBGImg === src) {
-              config.contentBGImg = this.builtinBG[0].src;
-            }
-            this.config = config;
-          }
-        },
-        error => {
-          this.$message.error("删除文件失败 " + (error && error.toString()));
-        }
-      );
+      this.config = {
+        ...this.config,
+        customBGImgList: (this.config.customBGImgList || []).filter(
+          item => item !== src
+        )
+      };
+    },
+    uploadFontFile(customFontName) {
+      this.customFontName = customFontName || "";
+      this.$refs.fontFileRef && this.$refs.fontFileRef.click();
+    },
+    onBGFileChange(event) {
+      event.target.value = null;
+      this.$message.success("上传背景预览");
+    },
+    onFontFileChange(event) {
+      event.target.value = null;
+      this.$message.success("上传字体预览");
     },
     resetConfig() {
-      this.config = { ...settings.config };
+      this.config = { ...previewConfig };
     },
     showClickZone() {
       this.$emit("close");
       this.$emit("showClickZone");
     },
     showRuleEditor() {
-      this.$emit("close");
-      eventBus.$emit("showReplaceRuleDialog");
+      this.$message.success("过滤规则管理预览");
     },
-    async addNewCustomConfig() {
-      const res = await this.$prompt("请输入方案名称", `添加配置方案`, {
-        inputValue: "",
-        confirmButtonText: "确定",
-        cancelButtonText: "取消",
-        inputValidator(v) {
-          if (!v) {
-            return "方案名不能为空";
-          }
-          return true;
-        }
-      }).catch(() => {
-        return false;
-      });
-      if (!res) {
-        return;
-      }
-      const name = res.value.replace(/^\s+/, "").replace(/\s+$/, "");
-      if (!name) {
-        return "方案名不能为空";
-      }
-      const isExist = this.$store.state.customConfigList.find(
-        v => v.name === name
-      );
-      if (isExist) {
-        return "方案名不能重复";
-      }
-      const newConfig = { ...this.$store.state.customConfigList[0] };
-      newConfig.name = name;
-      this.$store.commit(
-        "setCustomConfigList",
-        [].concat(this.$store.state.customConfigList).concat([newConfig])
-      );
+    addNewCustomConfig() {
+      this.$message.success("添加配置方案预览");
     },
     setCustomConfig(customConfig) {
       this.config = {
         ...this.config,
-        customConfig: customConfig.name,
-        ...customConfig
+        ...customConfig,
+        customConfig: customConfig.name
       };
     },
-    async deleteCustomConfig(index, name) {
-      const customConfigList = [].concat(this.$store.state.customConfigList);
-      if (index <= 1) {
-        this.$message.error("内置方案不能删除");
-        return;
-      }
-      if (customConfigList.length <= index) {
-        this.$message.error("方案不存在");
-        return;
-      }
-      if (this.$store.state.config.customConfig === name) {
-        this.$message.error("方案正在使用，无法删除");
-        return;
-      }
-      const res = await this.$confirm(`确认要删除${name}方案吗？`, "提示", {
-        confirmButtonText: "确定",
-        cancelButtonText: "取消",
-        type: "warning"
-      }).catch(() => {
-        return false;
-      });
-      if (!res) {
-        return;
-      }
-      customConfigList.splice(index, 1);
-
-      this.$store.commit("setCustomConfigList", [].concat(customConfigList));
+    deleteCustomConfig() {
+      this.$message.success("删除配置方案预览");
     },
-    async setConfigDefaultType(configDefaultType) {
-      const res = await this.$confirm(
-        `确认要设置当前方案为${configDefaultType}吗？继续操作将替换现有的${configDefaultType}方案`,
-        "提示",
-        {
-          confirmButtonText: "确定",
-          cancelButtonText: "取消",
-          type: "warning"
-        }
-      ).catch(() => {
-        return false;
-      });
-      if (!res) {
-        return;
-      }
-      const customConfigList = [].concat(this.$store.state.customConfigList);
-      customConfigList.forEach(v => {
-        if (v.name === this.$store.state.config.customConfig) {
-          v.configDefaultType = configDefaultType;
-        } else if (v.configDefaultType === configDefaultType) {
-          v.configDefaultType = "";
-        }
-      });
-      this.$store.commit("setCustomConfigList", customConfigList);
+    setConfigDefaultType(configDefaultType) {
+      this.currentCustomConfig.configDefaultType = configDefaultType;
     }
   }
 };
@@ -1200,8 +942,7 @@ export default {
     }
   }
 }
-</style>
-<style lang="stylus">
+</style><style lang="stylus">
 .setting-input {
   .el-input__inner {
     background: transparent;

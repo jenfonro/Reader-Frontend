@@ -5,7 +5,7 @@
     :class="{
       night: isNight,
       day: !isNight,
-      'mini-interface': $store.state.miniInterface
+      'mini-interface': miniInterface
     }"
     ref="chapterWrapperRef"
   >
@@ -105,8 +105,7 @@
         </el-popover>
         <div
           class="tool-icon"
-          @click="toShelf"
-          :style="$store.state.miniInterface ? { order: -1 } : {}"
+          :style="miniInterface ? { order: -1 } : {}"
         >
           <div class="iconfont">
             &#58920;
@@ -115,8 +114,7 @@
         </div>
         <div
           class="tool-icon"
-          @click="toTop(0)"
-          v-if="!$store.state.miniInterface"
+          v-if="!miniInterface"
         >
           <div class="iconfont">
             &#58914;
@@ -125,8 +123,7 @@
         </div>
         <div
           class="tool-icon"
-          @click="toBottom(0)"
-          v-if="!$store.state.miniInterface"
+          v-if="!miniInterface"
         >
           <div class="iconfont">
             &#58915;
@@ -141,37 +138,32 @@
           <div
             class="float-btn"
             :style="popupAbsoluteBtnStyle"
-            @click="showBookmarkDialog"
           >
             <i class="el-icon-collection-tag"></i>
           </div>
           <div
             class="float-btn"
             :style="popupAbsoluteBtnStyle"
-            @click="showSearchBookContentDialog"
           >
             <i class="el-icon-search"></i>
           </div>
           <div
             class="float-btn"
             :style="popupAbsoluteBtnStyle"
-            @click="showReadingBookInfo"
           >
             <i class="el-icon-info"></i>
           </div>
           <div
             class="float-btn"
             :style="popupAbsoluteBtnStyle"
-            @click="toTop(0)"
-            v-if="$store.state.miniInterface"
+            v-if="miniInterface"
           >
             <i class="el-icon-top"></i>
           </div>
           <div
             class="float-btn"
             :style="popupAbsoluteBtnStyle"
-            @click="toBottom(0)"
-            v-if="$store.state.miniInterface"
+            v-if="miniInterface"
           >
             <i class="el-icon-bottom"></i>
           </div>
@@ -180,14 +172,12 @@
           <div
             class="float-btn"
             :style="popupAbsoluteBtnStyle"
-            @click="refreshContent"
           >
             <i class="el-icon-refresh-right"></i>
           </div>
           <div
             class="float-btn"
             :style="popupAbsoluteBtnStyle"
-            @click="toggleAutoReading()"
             v-if="!isEpub && !isCarToon && !isAudio"
           >
             <i class="el-icon-view"></i>
@@ -195,7 +185,6 @@
           <div
             class="float-btn"
             :style="popupAbsoluteBtnStyle"
-            @click="showReadBar = !showReadBar"
             v-if="speechAvalable && !isEpub && !isCarToon && !isAudio"
           >
             <i class="el-icon-headset"></i>
@@ -203,14 +192,13 @@
           <div
             class="float-btn"
             :style="popupAbsoluteBtnStyle"
-            @click="toogleNight"
           >
             <i class="el-icon-moon" v-if="!isNight"></i>
             <i class="el-icon-sunny" v-else></i>
           </div>
         </div>
       </div>
-      <div class="progress" v-if="$store.state.miniInterface && !isAudio">
+      <div class="progress" v-if="miniInterface && !isAudio">
         <div class="progress-bar">
           <el-slider
             v-model="currentPage"
@@ -230,21 +218,18 @@
         <div
           class="cache-content-btn"
           v-show="!isCachingContent"
-          @click="cacheChapterContent(50)"
         >
           后面50章
         </div>
         <div
           class="cache-content-btn"
           v-show="!isCachingContent"
-          @click="cacheChapterContent(100)"
         >
           后面100章
         </div>
         <div
           class="cache-content-btn"
           v-show="!isCachingContent"
-          @click="cacheChapterContent(true)"
         >
           后面全部
         </div>
@@ -254,28 +239,26 @@
         <div
           class="caching-cancel-btn"
           v-show="isCachingContent"
-          @click="cancelCaching"
         >
           <i class="el-icon-close"></i>
         </div>
       </div>
       <div class="tools">
-        <div class="tool-icon progress-text" @click="showCacheContent">
-          <span v-if="$store.state.miniInterface">阅读进度: </span>
+        <div class="tool-icon progress-text">
+          <span v-if="miniInterface">阅读进度: </span>
           {{ readingProgress }}
         </div>
         <div
           class="tool-icon"
-          @click="toLastChapter()"
-          :style="$store.state.miniInterface ? { order: -1 } : {}"
+          :style="miniInterface ? { order: -1 } : {}"
         >
           <div class="iconfont">
             &#58920;
           </div>
-          <span v-if="$store.state.miniInterface">上一章</span>
+          <span v-if="miniInterface">上一章</span>
         </div>
-        <div class="tool-icon" @click="toNextChapter()">
-          <span v-if="$store.state.miniInterface">下一章</span>
+        <div class="tool-icon">
+          <span v-if="miniInterface">下一章</span>
           <div class="iconfont">
             &#58913;
           </div>
@@ -285,12 +268,12 @@
     <div class="read-bar" :style="readBarTheme">
       <div class="reader-bar-inner">
         <div class="operate-bar">
-          <div class="close-btn" @click="exitRead">
+          <div class="close-btn">
             <i class="el-icon-close"></i>
           </div>
           <div class="center">
-            <span class="ctrl-btn" @click="speechPrev">上一段</span>
-            <span class="play-pause-btn" @click="toggleSpeech">
+            <span class="ctrl-btn">上一段</span>
+            <span class="play-pause-btn">
               <i
                 class="el-icon-video-pause"
                 :style="popupAbsoluteBtnStyle"
@@ -302,11 +285,10 @@
                 v-else
               ></i>
             </span>
-            <span class="ctrl-btn" @click="speechNext">下一段</span>
+            <span class="ctrl-btn">下一段</span>
           </div>
           <div
             class="collapse-btn"
-            @click="showSpeechConfig = !showSpeechConfig"
           >
             <i class="el-icon-bottom" v-if="showSpeechConfig"></i>
             <i class="el-icon-top" v-else></i>
@@ -343,10 +325,9 @@
                   :max="2"
                   :step="0.1"
                   :show-tooltip="false"
-                  @change="changeSpeechRate"
                 ></el-slider>
               </div>
-              <span class="setting-btn" @click="changeSpeechRate(1)">重置</span>
+              <span class="setting-btn">重置</span>
             </div>
             <div class="progress">
               <span class="progress-tip">语调</span>
@@ -357,10 +338,9 @@
                   :max="2"
                   :step="0.1"
                   :show-tooltip="false"
-                  @change="changeSpeechPitch"
                 ></el-slider>
               </div>
-              <span class="setting-btn" @click="changeSpeechPitch(1)"
+              <span class="setting-btn"
                 >重置</span
               >
             </div>
@@ -373,7 +353,6 @@
                   :max="180"
                   :step="1"
                   :show-tooltip="false"
-                  @change="changeSpeechMinutes"
                 ></el-slider>
               </div>
               <span class="setting-btn">{{ speechMinutes }}分钟</span>
@@ -399,13 +378,10 @@
         <div class="close-btn" @click="showClickZone = false">关闭</div>
       </div>
       <div class="top-bar" ref="top">
-        {{ $store.state.miniInterface ? title : "" }}
+        {{ miniInterface ? title : "" }}
       </div>
       <div
         class="content"
-        @touchstart="handleTouchStart"
-        @touchmove="handleTouchMove"
-        @touchend="handleTouchEnd"
         @click="handlerClick"
       >
         <div class="content-inner" v-if="show">
@@ -419,15 +395,6 @@
             :showChapterList="showChapterList"
             :isScrollRead="isScrollRead"
             ref="bookContentRef"
-            @prevChapter="toLastChapter"
-            @nextChapter="toNextChapter"
-            @updateProgress="saveReadingPosition"
-            @iframeLoad="$emit('iframeLoad')"
-            @contentChange="computePages()"
-            @epubClick="eventHandler"
-            @epubLocationChange="epubLocationChangeHandler"
-            @epubClickHash="epubClickHash"
-            @epubKeydown="keydownHandler($event, true)"
           />
         </div>
       </div>
@@ -439,7 +406,6 @@
         <span
           class="bottom-btn"
           v-if="show && !isSlideRead && !error && !isScrollRead"
-          @click="toNextChapter()"
           >加载下一章</span
         >
       </div>
@@ -447,14 +413,22 @@
   </div>
 </template>
 
-
 <script>
 import PopCata from "../components/PopCatalog.vue";
 import ReadSettings from "../components/ReadSettings.vue";
 import BookSource from "../components/BookSource.vue";
 import BookShelf from "../components/BookShelf.vue";
 import Content from "../components/Content.vue";
-import eventBus from "../plugins/eventBus";
+import {
+  getMiniInterface,
+  getWindowSize,
+  previewBook,
+  previewCatalog,
+  previewConfig,
+  previewShelfBooks,
+  previewTheme
+} from "../previewData";
+
 export default {
   name: "Reader",
   components: {
@@ -464,16 +438,11 @@ export default {
     Content,
     ReadSettings
   },
-  mounted() {
-    window.readerPage = this;
-    this.speechAvalable =
-      window.speechSynthesis && window.speechSynthesis.getVoices;
-    this.formatTime();
-  },
   data() {
     return {
       title: "第一章 预览章节",
-      content: "这是阅读器界面预览内容。\n当前阶段只用于验证 reader-server 原版阅读页菜单、按钮和弹出层是否完整复刻。\n后续接入真实章节后会替换为真实内容。",
+      content:
+        "这是阅读器界面预览内容。\n当前阶段只用于验证 reader-server 原版阅读页菜单、按钮和弹出层是否完整复刻。\n后续接入真实章节后会替换为真实内容。",
       error: false,
       popCataVisible: false,
       readSettingsVisible: false,
@@ -493,6 +462,9 @@ export default {
         window.speechSynthesis.getVoices,
       showReadBar: false,
       voiceList: [],
+      voiceName: "",
+      speechRate: 1,
+      speechPitch: 1,
       speechSpeaking: false,
       showSpeechConfig: true,
       showCacheContentZone: false,
@@ -500,31 +472,26 @@ export default {
       cachingContentTip: "",
       autoReading: false,
       showChapterList: [],
-      speechMinutes: 0
+      speechMinutes: 0,
+      miniInterface: getMiniInterface(),
+      windowSize: getWindowSize(),
+      config: { ...previewConfig },
+      readingBook: { ...previewBook },
+      catalog: previewCatalog,
+      shelfBooks: previewShelfBooks,
+      currentThemeConfig: previewTheme
     };
   },
   computed: {
-    readingBook() {
-      return this.$store.getters.readingBook || {};
-    },
-    catalog() {
-      return (this.$store.getters.readingBook || {}).catalog || [];
-    },
     chapterIndex() {
-      return ((this.$store.getters.readingBook || {}).index || 0) | 0;
-    },
-    windowSize() {
-      return this.$store.state.windowSize;
-    },
-    config() {
-      return this.$store.getters.config;
+      return (this.readingBook.index || 0) | 0;
     },
     isNight() {
-      return this.$store.getters.isNight;
+      return this.config.themeType === "night";
     },
     bodyTheme() {
       return {
-        background: this.$store.getters.currentThemeConfig.body
+        background: this.currentThemeConfig.body
       };
     },
     isSlideRead() {
@@ -534,7 +501,7 @@ export default {
         this.isCarToon ||
         this.isAudio
         ? false
-        : this.$store.getters.isSlideRead;
+        : this.miniInterface && this.config.readMethod === "左右滑动";
     },
     isScrollRead() {
       return (
@@ -562,60 +529,48 @@ export default {
         : {};
       return {
         ...readingStyle,
-        background: this.$store.getters.currentThemeConfig.content,
+        background: this.currentThemeConfig.content,
         width: this.readWidth
       };
     },
     leftBarTheme() {
       return {
-        background: this.$store.getters.currentThemeConfig.popup,
-        marginLeft: this.$store.state.miniInterface
-          ? 0
-          : -(this.readWidthConfig / 2 + 68) + "px",
-        display:
-          this.$store.state.miniInterface && !this.showToolBar
-            ? "none"
-            : "block"
+        background: this.currentThemeConfig.popup,
+        marginLeft: this.miniInterface ? 0 : -(this.readWidthConfig / 2 + 68) + "px",
+        display: this.miniInterface && !this.showToolBar ? "none" : "block"
       };
     },
     rightBarTheme() {
       return {
-        background: this.$store.getters.currentThemeConfig.popupPure,
-        marginRight: this.$store.state.miniInterface
-          ? 0
-          : -(this.readWidthConfig / 2 + 52) + "px",
-        display:
-          this.$store.state.miniInterface && !this.showToolBar
-            ? "none"
-            : "block"
+        background: this.currentThemeConfig.popupPure,
+        marginRight: this.miniInterface ? 0 : -(this.readWidthConfig / 2 + 52) + "px",
+        display: this.miniInterface && !this.showToolBar ? "none" : "block"
       };
     },
     readBarTheme() {
       return {
-        background: this.$store.getters.currentThemeConfig.popupPure,
-        marginRight: this.$store.state.miniInterface
-          ? 0
-          : -(this.readWidthConfig / 2) + "px",
+        background: this.currentThemeConfig.popupPure,
+        marginRight: this.miniInterface ? 0 : -(this.readWidthConfig / 2) + "px",
         zIndex: 200,
         display: this.speechAvalable && this.showReadBar ? "block" : "none",
-        width: this.$store.state.miniInterface ? "100vw" : "500px"
+        width: this.miniInterface ? "100vw" : "500px"
       };
     },
     readWidth() {
-      if (!this.$store.state.miniInterface) {
+      if (!this.miniInterface) {
         return this.readWidthConfig - 130 + "px";
       }
       return this.windowSize.width + "px";
     },
     readWidthConfig() {
-      let width = this.$store.getters.config.readWidth;
-      while (width > this.$store.state.windowSize.width - 140) {
+      let width = this.config.readWidth;
+      while (width > this.windowSize.width - 140) {
         width -= 20;
       }
       return width;
     },
     popperWidth() {
-      if (!this.$store.state.miniInterface) {
+      if (!this.miniInterface) {
         return this.readWidthConfig - 33;
       }
       return this.windowSize.width - 33;
@@ -676,41 +631,8 @@ export default {
     },
     popupAbsoluteBtnStyle() {
       return {
-        background: this.$store.getters.currentThemeConfig.popupPure
+        background: this.currentThemeConfig.popupPure
       };
-    },
-    voiceName: {
-      get() {
-        return this.$store.state.speechVoiceConfig.voiceName;
-      },
-      set(val) {
-        this.$store.commit("setSpeechVoiceConfig", {
-          ...this.$store.state.speechVoiceConfig,
-          voiceName: val
-        });
-      }
-    },
-    speechRate: {
-      get() {
-        return this.$store.state.speechVoiceConfig.speechRate;
-      },
-      set(val) {
-        this.$store.commit("setSpeechVoiceConfig", {
-          ...this.$store.state.speechVoiceConfig,
-          speechRate: val
-        });
-      }
-    },
-    speechPitch: {
-      get() {
-        return this.$store.state.speechVoiceConfig.speechPitch;
-      },
-      set(val) {
-        this.$store.commit("setSpeechVoiceConfig", {
-          ...this.$store.state.speechVoiceConfig,
-          speechPitch: val
-        });
-      }
     },
     isCarToon() {
       return false;
@@ -722,64 +644,40 @@ export default {
       return false;
     }
   },
+  mounted() {
+    this.formatTime();
+    window.addEventListener("resize", this.syncInterface);
+  },
+  beforeDestroy() {
+    window.removeEventListener("resize", this.syncInterface);
+  },
   methods: {
-    changeBook() {},
-    toShelf() {},
-    changeBookSource() {},
-    getContent() {},
-    refreshCatalog() {},
+    syncInterface() {
+      this.miniInterface = getMiniInterface();
+      this.windowSize = getWindowSize();
+    },
+    changeBook() {
+      this.popBookShelfVisible = false;
+    },
+    toShelf() {
+      this.$router.push("/");
+    },
+    changeBookSource() {
+      this.popBookSourceVisible = false;
+    },
+    getContent() {
+      this.popCataVisible = false;
+    },
+    refreshCatalog() {
+      this.$message.success("目录刷新预览");
+    },
     beforeReadMethodChange() {},
-    toTop() {},
-    toBottom() {},
-    showBookmarkDialog() {
-      let book = { ...this.$store.getters.readingBook };
-      const shelfBook = this.$store.getters.shelfBooks.find(
-        item => item.bookUrl === book.bookUrl
-      );
-      book = Object.assign(book, shelfBook || {});
-      eventBus.$emit("showBookmarkDialog", book);
+    showPage(value) {
+      this.currentPage = value || this.progressValue;
     },
-    showSearchBookContentDialog() {
-      let book = { ...this.$store.getters.readingBook };
-      const shelfBook = this.$store.getters.shelfBooks.find(
-        item => item.bookUrl === book.bookUrl
-      );
-      book = Object.assign(book, shelfBook || {});
-      eventBus.$emit("showSearchBookContentDialog", book);
+    handlerClick(event) {
+      this.eventHandler(event);
     },
-    showReadingBookInfo() {
-      let book = { ...this.$store.getters.readingBook };
-      const shelfBook = this.$store.getters.shelfBooks.find(
-        item => item.bookUrl === book.bookUrl
-      );
-      book = Object.assign(book, shelfBook || {});
-      eventBus.$emit("showBookInfoDialog", book);
-    },
-    refreshContent() {},
-    toggleAutoReading() {},
-    toogleNight() {},
-    showPage() {},
-    cacheChapterContent() {},
-    cancelCaching() {},
-    showCacheContent() {
-      this.showCacheContentZone = !this.showCacheContentZone;
-    },
-    toLastChapter() {},
-    toNextChapter() {},
-    exitRead() {},
-    speechPrev() {},
-    toggleSpeech() {},
-    speechNext() {},
-    changeSpeechRate() {},
-    changeSpeechPitch() {},
-    handleTouchStart() {},
-    handleTouchMove() {},
-    handleTouchEnd() {},
-    handlerClick(e) {
-      this.eventHandler(e);
-    },
-    saveReadingPosition() {},
-    computePages() {},
     eventHandler(point) {
       if (
         this.popBookSourceVisible ||
@@ -800,9 +698,6 @@ export default {
         }
       }
     },
-    epubLocationChangeHandler() {},
-    epubClickHash() {},
-    keydownHandler() {},
     formatProgressTip(value) {
       return `第 ${value || this.progressValue}/${this.totalPages} 页`;
     },
@@ -1517,8 +1412,7 @@ export default {
 .chapter-wrapper.mini-interface::-webkit-scrollbar {
   width: 0 !important;
 }
-</style>
-<style lang="stylus">
+</style><style lang="stylus">
 .voice-list {
   .el-radio-button__inner {
     border-radius: 4px !important;

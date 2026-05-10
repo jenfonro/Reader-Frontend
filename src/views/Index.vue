@@ -16,7 +16,7 @@
       @touchstart="handleTouchStart"
       @touchmove="handleTouchMove"
       @touchend="handleTouchEnd"
-      v-if="$store.getters.isNormalPage"
+      v-if="isNormalPage"
     >
       <div class="navigation-inner-wrapper"></div>
     </div>
@@ -29,7 +29,7 @@
       <div class="shelf-title">
         <i
           class="el-icon-menu"
-          v-if="$store.getters.isNormalPage && collapseMenu"
+          v-if="isNormalPage && collapseMenu"
           @click.stop="showNavigation = true"
         ></i>
         <span class="title-btn" @click="$router.push('/reader')">进入阅读页</span>
@@ -39,22 +39,21 @@
 </template>
 
 <script>
+import { getMiniInterface } from "../previewData";
+
 export default {
+  name: "Index",
   data() {
     return {
       showNavigation: false,
       navigationClass: "",
       navigationStyle: {},
-      touchStartPoint: null
+      touchStartPoint: null,
+      collapseMenu: getMiniInterface(),
+      isNight: false,
+      isNormalPage: true,
+      isWebApp: false
     };
-  },
-  computed: {
-    collapseMenu() {
-      return this.$store.getters.collapseMenu;
-    },
-    isNight() {
-      return this.$store.getters.isNight;
-    }
   },
   watch: {
     collapseMenu(value) {
@@ -83,8 +82,15 @@ export default {
   mounted() {
     this.navigationClass =
       this.collapseMenu && !this.showNavigation ? "navigation-hidden" : "";
+    window.addEventListener("resize", this.syncInterface);
+  },
+  beforeDestroy() {
+    window.removeEventListener("resize", this.syncInterface);
   },
   methods: {
+    syncInterface() {
+      this.collapseMenu = getMiniInterface();
+    },
     handleTouchStart(event) {
       this.touchStartPoint = event.touches && event.touches[0];
     },
@@ -206,9 +212,7 @@ export default {
     }
   }
 }
-</style>
-
-<style>
+</style><style>
 .navigation-hidden {
   margin-left: -260px;
 }

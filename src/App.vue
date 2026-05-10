@@ -1,92 +1,12 @@
 <template>
   <div id="app">
-    <keep-alive>
-      <router-view></router-view>
-    </keep-alive>
-    <BookInfo v-model="showBookInfoDialog" />
-    <SearchBookContent
-      v-model="showSearchBookContentDialog"
-      :book="searchBook"
-    />
-    <Bookmark v-model="showBookmarkDialog" :book="bookmarkInBook" />
-    <BookmarkForm
-      v-model="showBookmarkForm"
-      :bookmark="bookmark"
-      :isAdd="isAddBookmark"
-    />
+    <router-view></router-view>
   </div>
 </template>
 
 <script>
-import { isMiniInterface } from "./plugins/helper";
-import eventBus from "./plugins/eventBus";
-import BookInfo from "./components/BookInfo.vue";
-import SearchBookContent from "./components/SearchBookContent.vue";
-import Bookmark from "./components/Bookmark.vue";
-import BookmarkForm from "./components/BookmarkForm.vue";
-
 export default {
-  components: {
-    BookInfo,
-    SearchBookContent,
-    Bookmark,
-    BookmarkForm
-  },
-  data() {
-    return {
-      showBookInfoDialog: false,
-      showSearchBookContentDialog: false,
-      searchBook: {},
-      showBookmarkDialog: false,
-      bookmarkInBook: {},
-      showBookmarkForm: false,
-      bookmark: {},
-      isAddBookmark: true
-    };
-  },
-  beforeCreate() {
-    const syncInterface = () => {
-      document.documentElement.style.setProperty(
-        "--vh",
-        `${window.innerHeight * 0.01}px`
-      );
-      this.$store.commit("setMiniInterface", isMiniInterface());
-      this.$store.commit("setWindowSize", {
-        width: window.innerWidth,
-        height: window.innerHeight
-      });
-      this.$store.commit("setTouchable", "ontouchstart" in document);
-    };
-
-    syncInterface();
-    window.onresize = syncInterface;
-  },
-  created() {
-    eventBus.$on("showBookInfoDialog", book => {
-      this.$store.commit("setShowBookInfo", book || {});
-      this.showBookInfoDialog = true;
-    });
-    eventBus.$on("showSearchBookContentDialog", book => {
-      this.searchBook = book || {};
-      this.showSearchBookContentDialog = true;
-    });
-    eventBus.$on("showBookmarkDialog", book => {
-      this.bookmarkInBook = book || {};
-      this.showBookmarkDialog = true;
-    });
-    eventBus.$on("showBookmarkForm", (bookmark, isAdd) => {
-      this.bookmark = bookmark || {};
-      this.isAddBookmark = isAdd;
-      this.showBookmarkForm = true;
-    });
-  },
-  methods: {
-    isInShelf() {
-      return true;
-    },
-    loadBookShelf() {},
-    loadBookmarks() {}
-  }
+  name: "App"
 };
 </script>
 
@@ -153,9 +73,7 @@ export default {
   font-size: 22px;
   line-height: 24px;
 }
-</style>
-
-<style lang="stylus">
+</style><style lang="stylus">
 .popper-component {
   top: 0 !important;
 }
