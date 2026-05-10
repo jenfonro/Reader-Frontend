@@ -41,9 +41,19 @@ const fromCache = async request => {
   return null;
 };
 
+const shouldFallbackToCache = response =>
+  !response || response.status === 408 || response.status === 429 || response.status >= 500;
+
 const networkFirst = async request => {
   try {
     const response = await fetch(request);
+    if (shouldFallbackToCache(response)) {
+      const cachedResponse = await fromCache(request);
+      if (cachedResponse) {
+        return cachedResponse;
+      }
+    }
+
     await putInLatestCache(request, response);
     return response;
   } catch (error) {
