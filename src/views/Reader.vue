@@ -405,7 +405,6 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
-import { useRouter } from "vue-router";
 import { ElMessage } from "element-plus/es/components/message/index.mjs";
 import { ElIcon } from "element-plus/es/components/icon/index.mjs";
 import { ElPopover } from "element-plus/es/components/popover/index.mjs";
@@ -449,7 +448,7 @@ defineOptions({
   name: "Reader"
 });
 
-const router = useRouter();
+const emit = defineEmits(["close-reader"]);
 const title = ref("第一章 预览章节");
 const chapterContent = ref(
   `这是阅读器界面预览内容。
@@ -653,7 +652,7 @@ const changeBook = () => {
 };
 
 const toShelf = () => {
-  router.push("/");
+  emit("close-reader");
 };
 
 const changeBookSource = () => {

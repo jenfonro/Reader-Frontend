@@ -42,7 +42,6 @@
 
 <script setup>
 import { onBeforeUnmount, onMounted, ref, watch } from "vue";
-import { useRouter } from "vue-router";
 import { Menu as MenuIcon } from "@element-plus/icons-vue";
 import { ElIcon } from "element-plus/es/components/icon/index.mjs";
 import "element-plus/es/components/icon/style/css.mjs";
@@ -52,7 +51,7 @@ defineOptions({
   name: "Index"
 });
 
-const router = useRouter();
+const emit = defineEmits(["enter-reader"]);
 const showNavigation = ref(false);
 const navigationClass = ref("");
 const navigationStyle = ref({});
@@ -72,7 +71,7 @@ const syncInterface = () => {
 };
 
 const goReader = () => {
-  router.push("/reader");
+  emit("enter-reader");
 };
 
 const handleTouchStart = event => {

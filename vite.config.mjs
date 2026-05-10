@@ -30,7 +30,7 @@ export default defineConfig({
     }
   },
   optimizeDeps: {
-    include: ["vue", "vue-router", "@element-plus/icons-vue", ...elementPlusDeps]
+    include: ["vue", "@element-plus/icons-vue", ...elementPlusDeps]
   },
   server: {
     host: "0.0.0.0",

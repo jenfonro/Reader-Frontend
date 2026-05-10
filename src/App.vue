@@ -1,12 +1,71 @@
 <template>
   <div id="app">
-    <router-view />
+    <component
+      :is="currentView"
+      @enter-reader="showReader"
+      @close-reader="showHome"
+    />
   </div>
 </template>
 
 <script setup>
+import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref } from "vue";
+
 defineOptions({
   name: "App"
+});
+
+const getReaderState = () => Boolean(window.history.state?.readerOpen);
+
+const showReaderPage = ref(typeof window !== "undefined" ? getReaderState() : false);
+const IndexView = defineAsyncComponent(() => import("./views/Index.vue"));
+const ReaderView = defineAsyncComponent(() => import("./views/Reader.vue"));
+
+const currentView = computed(() =>
+  showReaderPage.value ? ReaderView : IndexView
+);
+
+const showReader = () => {
+  if (showReaderPage.value) {
+    return;
+  }
+
+  showReaderPage.value = true;
+
+  window.history.pushState({ readerOpen: true }, "", window.location.href);
+};
+
+const showHome = () => {
+  if (!showReaderPage.value) {
+    return;
+  }
+
+  if (window.history.state?.readerOpen) {
+    window.history.back();
+    return;
+  }
+
+  showReaderPage.value = false;
+};
+
+const handlePopState = event => {
+  showReaderPage.value = Boolean(event.state?.readerOpen);
+};
+
+onMounted(() => {
+  if (window.history.state == null) {
+    window.history.replaceState(
+      { readerOpen: showReaderPage.value },
+      "",
+      window.location.href
+    );
+  }
+
+  window.addEventListener("popstate", handlePopState);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("popstate", handlePopState);
 });
 </script>
 
@@ -207,137 +266,37 @@ defineOptions({
     color: #ddd;
   }
   .el-pager li.active {
-    color: #409EFF;
+    color: #fff;
   }
-  .code-editor {
-    .token.operator,
-    .token.entity,
-    .token.url,
-    .language-css .token.string,
-    .style .token.string {
-      /* This background color was intended by the author of this theme. */
-      background: inherit;
-    }
+  .el-pager li:hover {
+    color: #888;
   }
-
-  .el-table {
-    background-color: transparent;
+  .el-select .el-input .el-input__inner, .el-select .el-input.is-focus .el-input__inner {
+    color: #ddd;
   }
-  .el-table__expanded-cell {
-    background-color: transparent;
+  .el-switch__core {
+    background: #555;
   }
-  .el-table th, .el-table tr{
-    background-color: #222 !important;
+  .el-switch.is-checked .el-switch__core {
+    border-color: #409EFF;
+    background-color: #409EFF;
   }
-  .el-table td {
-    border-bottom: 1px solid #555;
-  }
-  .el-table th.is-leaf {
-    border-bottom: 1px solid #555;
-  }
-  .el-table td.el-table__cell, .el-table th.el-table__cell.is-leaf {
-    border-bottom: 1px solid #555;
-  }
-  .el-dropdown-menu {
-    background-color: #444 !important;
+  .el-radio-button__inner {
+    background-color: #444;
+    color: #ddd;
     border-color: #444;
   }
-  .el-dropdown-menu__item:focus, .el-dropdown-menu__item:not(.is-disabled):hover {
-    background-color: #666 !important;
-    border-color: #666;
+  .el-radio-button__orig-radio:checked + .el-radio-button__inner {
+    background-color: #888;
+    border-color: #888;
+    color: #ddd;
+    box-shadow: -1px 0 0 0 #888;
   }
-  .el-dropdown-menu__item {
-    color: #bbb;
+  .el-radio-button:last-child .el-radio-button__inner {
+    border-left: 1px solid #666;
   }
-  .el-table--border::after {
-    background-color: transparent;
-  }
-  .el-table--group::after {
-    background-color: transparent;
-  }
-  .el-table::before {
-    background-color: transparent;
-  }
-  .el-table {
-    color: #888;
-    background-color: transparent;
-  }
-  .el-table--enable-row-hover .el-table__body tr:hover>td {
-    background-color: #333;
-  }
-  .el-table__fixed-right::before, .el-table__fixed::before {
-    background-color: #333;
-  }
-  .el-table__body tr.hover-row.current-row>td,
-  .el-table__body tr.hover-row.el-table__row--striped.current-row>td,
-  .el-table__body tr.hover-row.el-table__row--striped>td,
-  .el-table__body tr.hover-row>td {
-    background-color: #444;
-  }
-  .el-table__body tr.hover-row.current-row>td.el-table__cell,
-  .el-table__body tr.hover-row.el-table__row--striped.current-row>td.el-table__cell,
-  .el-table__body tr.hover-row.el-table__row--striped>td.el-table__cell,
-  .el-table__body tr.hover-row>td.el-table__cell {
-    background-color: #444;
-    color: #ccc;
-  }
-  .el-table--enable-row-hover .el-table__body tr:hover>td.el-table__cell {
-    background-color: #444;
-    color: #ccc;
-  }
-  .el-table__body-wrapper::-webkit-scrollbar {
-    background-color: #333 !important;
-  }
-
-  .el-dialog__wrapper::-webkit-scrollbar {
-    background-color: #333 !important;
-  }
-
-  .check-tip {
-    color: #bbb;
-  }
-}
-.el-popover:focus, .el-popover:focus:active, .el-popover__reference:focus:hover, .el-popover__reference:focus:not(.focusing) {
-  outline: none;
-}
-.el-message-box {
-  max-width: 85vw;
-}
-.el-dialog__header {
-  position: relative;
-}
-.el-dialog.is-fullscreen {
-  padding-top: 0;
-  padding-top: constant(safe-area-inset-top) !important;
-  padding-top: env(safe-area-inset-top) !important;
-}
-.popper-component.el-popover {
-  border: none;
-  box-shadow: none;
-}
-.kindle-page {
-  -webkit-tap-highlight-color: rbga(255, 255, 255, 0);
-  -webkit-user-select: none;
-}
-.check-tip {
-  display: inline-block;
-  float: left;
-  line-height: 40px;
-  margin-left: 10px;
-  font-size: 14px;
-}
-.float-left {
-  float: left;
-}
-.float-right {
-  float: right;
-}
-.custom-dialog-title {
-  .span-btn {
-    display: inline-block;
-    cursor: pointer;
-    font-size: 15px;
-    margin-right: 10px;
+  .el-radio-button__orig-radio:checked + .el-radio-button__inner:last-child {
+    border-left-color: #888;
   }
 }
 </style>
