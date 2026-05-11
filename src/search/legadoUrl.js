@@ -1,4 +1,5 @@
 import { evaluateLegadoScript } from "./legadoScript.js";
+import { fetchWithEdgeOneProxy } from "./edgeOneProxy.js";
 import {
   createFetchFailureError,
   createHttpError,
@@ -131,11 +132,12 @@ export const buildSearchRequest = ({ source, keyword, page = 1 }) => {
 };
 
 export const fetchSearchResponse = async (request, signal) => {
-  if (isMixedContentRequest(request.url)) throw createMixedContentError(request.url);
-
   let response;
   try {
-    response = await fetch(request.url, {
+    const proxyResponse = await fetchWithEdgeOneProxy(request, signal);
+    if (!proxyResponse && isMixedContentRequest(request.url)) throw createMixedContentError(request.url);
+
+    response = proxyResponse || await fetch(request.url, {
       method: request.method,
       headers: request.headers,
       body: request.body,
@@ -144,7 +146,7 @@ export const fetchSearchResponse = async (request, signal) => {
       signal
     });
   } catch (error) {
-    if (error?.name === "AbortError") throw error;
+    if (error?.name === "AbortError" || error?.name === "SearchRequestError") throw error;
     throw createFetchFailureError(request.url, error);
   }
 
