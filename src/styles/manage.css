@@ -1,0 +1,136 @@
+.reader-manage-dialog-layer {
+  position: fixed;
+  z-index: 80;
+  inset: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 96px 24px 24px;
+  background: rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(10px);
+}
+
+.reader-manage-dialog-layer--page {
+  position: absolute;
+  align-items: center;
+  padding: 10px 24px;
+}
+
+.reader-manage-dialog-layer--page .reader-manage-dialog {
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.reader-manage-dialog {
+  width: min(420px, 100%);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 20px;
+  background: var(--reader-card-solid, #ffffff);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.18);
+}
+
+.reader-manage-dialog--narrow {
+  width: min(380px, 100%);
+}
+
+.reader-manage-dialog--wide {
+  width: min(606px, 100%);
+  min-height: min(100%, 520px);
+}
+
+.reader-manage-dialog__head {
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 18px;
+  border-bottom: 1px solid var(--reader-line, rgba(60, 60, 67, 0.16));
+  background: var(--reader-card-solid, #ffffff);
+  color: var(--reader-app-text);
+}
+
+.reader-manage-dialog__head h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.reader-manage-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 0 20px 20px;
+}
+
+.reader-manage-dialog__actions button {
+  min-width: clamp(66px, 10vw, 76px);
+  height: 36px;
+  border: 0;
+  border-radius: 12px;
+  background: rgba(118, 118, 128, 0.12);
+  color: #3a3a3c;
+  font-size: 14px;
+}
+
+.reader-manage-dialog__actions button.is-primary {
+  border-color: var(--reader-blue, #007aff);
+  background: var(--reader-blue, #007aff);
+  color: #ffffff;
+}
+
+.reader-manage-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px;
+}
+
+.reader-manage-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  color: #3a3a3c;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.reader-manage-form input {
+  width: 100%;
+  height: 40px;
+  border: 0;
+  border-radius: 12px;
+  background: rgba(118, 118, 128, 0.12);
+  color: var(--reader-app-text);
+  outline: 0;
+  padding: 0 11px;
+  font-size: 14px;
+}
+
+.reader-manage-form input:focus {
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.16);
+}
+
+.reader-manage-form__error {
+  margin: 0;
+  color: #ff3b30;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.reader-manage-form .reader-manage-dialog__actions {
+  padding: 0;
+}
+
+@container reader-shell (max-width: 750px) {
+  .reader-manage-dialog-layer {
+    padding: calc(env(safe-area-inset-top) + 20px) 18px calc(24px + env(safe-area-inset-bottom));
+  }
+
+  .reader-manage-dialog-layer--page {
+    padding: 8px 10px;
+  }
+}

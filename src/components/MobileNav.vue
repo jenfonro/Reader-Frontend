@@ -29,7 +29,7 @@ const emit = defineEmits(["navigate"]);
   display: none;
 }
 
-@media (max-width: 750px) {
+@container reader-shell (max-width: 750px) {
   .reader-mobile-nav {
     position: fixed;
     z-index: 45;

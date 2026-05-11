@@ -1,0 +1,244 @@
+.reader-content {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+}
+
+.reader-page {
+  --reader-page-topbar-row-height: 52px;
+  --reader-page-topbar-space: calc(var(--reader-page-topbar-row-height) + env(safe-area-inset-top));
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.reader-settings-home {
+  gap: 18px;
+}
+
+.reader-settings-list-card,
+.reader-settings-detail-card {
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: var(--reader-radius-card, 22px);
+  background: var(--reader-card-solid, #ffffff);
+  box-shadow: var(--reader-shadow-card, 0 10px 30px rgba(0, 0, 0, 0.035));
+}
+
+.reader-settings-list-item {
+  position: relative;
+  width: 100%;
+  min-height: 58px;
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) 16px;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  transition: background 0.16s ease;
+}
+
+.reader-settings-list-item:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  right: 18px;
+  bottom: 0;
+  left: 58px;
+  height: 1px;
+  background: var(--reader-app-line);
+}
+
+.reader-settings-list-item:hover {
+  background: rgba(0, 122, 255, 0.07);
+}
+
+.reader-settings-list-item__icon,
+.reader-settings-detail-card__icon {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 32px;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--reader-app-accent);
+}
+
+.reader-settings-list-item__copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.reader-settings-list-item__copy strong {
+  overflow: hidden;
+  color: var(--reader-app-text);
+  font-size: 14px;
+  line-height: 1.25;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reader-settings-list-item__copy span,
+.reader-settings-detail-card p {
+  overflow: hidden;
+  color: #8a8a8e;
+  font-size: 12px;
+  line-height: 1.35;
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reader-settings-list-item__chevron {
+  justify-self: end;
+  color: #c7c7cc;
+  font-size: 26px;
+  line-height: 1;
+  font-weight: 300;
+}
+
+.reader-settings-detail-card {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 44px 24px;
+  text-align: center;
+}
+
+.reader-settings-detail-card h1 {
+  margin: 16px 0 8px;
+  color: var(--reader-app-text);
+  font-size: 20px;
+  line-height: 1.2;
+  font-weight: 600;
+}
+
+.reader-settings-detail-card p {
+  margin: 0;
+  white-space: normal;
+}
+
+.reader-settings-placeholder-text {
+  margin-top: 24px;
+  padding: 9px 15px;
+  border-radius: 999px;
+  background: rgba(118, 118, 128, 0.12);
+  color: #6e6e73;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.reader-settings-form-card {
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: var(--reader-radius-card, 22px);
+  background: var(--reader-card-solid, #ffffff);
+  box-shadow: var(--reader-shadow-card, 0 10px 30px rgba(0, 0, 0, 0.035));
+}
+
+.reader-settings-field {
+  min-height: 58px;
+  display: grid;
+  grid-template-columns: minmax(88px, auto) minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 9px 18px;
+  color: var(--reader-app-text);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.reader-settings-field--button {
+  width: 100%;
+  grid-template-columns: minmax(88px, auto) minmax(0, 1fr) 16px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
+
+.reader-settings-field--button strong {
+  min-width: 0;
+  overflow: hidden;
+  color: #6e6e73;
+  font-size: 14px;
+  font-weight: 400;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reader-settings-field__chevron {
+  color: #c7c7cc;
+  font-size: 24px;
+  line-height: 1;
+  font-weight: 300;
+}
+
+.reader-settings-field--button:hover,
+.reader-settings-field--switch:hover {
+  background: rgba(0, 122, 255, 0.07);
+}
+
+.reader-settings-message {
+  min-height: 20px;
+  margin: 0;
+  padding: 2px 20px 0;
+  color: #34c759;
+  font-size: 13px;
+}
+
+.reader-settings-message.is-error {
+  color: #ff3b30;
+}
+
+.reader-settings-field--switch {
+  width: 100%;
+  grid-template-columns: minmax(0, 1fr) auto;
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
+
+.reader-settings-switch {
+  width: 48px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 2px;
+  border-radius: 999px;
+  background: rgba(120, 120, 128, 0.24);
+  transition: background 0.18s ease;
+}
+
+.reader-settings-switch span {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+  transition: transform 0.18s ease;
+}
+
+.reader-settings-switch.is-active {
+  background: var(--reader-blue, #007aff);
+}
+
+.reader-settings-switch.is-active span {
+  transform: translateX(20px);
+}

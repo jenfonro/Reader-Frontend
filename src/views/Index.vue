@@ -3,7 +3,8 @@
     class="home-view"
     :class="{
       night: isNight,
-      day: !isNight
+      day: !isNight,
+      'reader-app--fullscreen-mode': fullscreenMode
     }"
   >
     <div class="home-sidebar">
@@ -34,12 +35,30 @@
       </div>
     </div>
     <div class="home-content">
-      <div class="home-header">
+      <SystemSettings
+        v-if="activeSettingKey === 'settings-system'"
+        @back="activeSettingKey = ''"
+      />
+      <InterfaceSettings
+        v-else-if="activeSettingKey === 'settings-interface'"
+        @back="activeSettingKey = ''"
+      />
+      <SettingsDetail
+        v-else-if="activeSettingKey"
+        :setting-key="activeSettingKey"
+        @back="activeSettingKey = ''"
+      />
+      <SettingsHome
+        v-else-if="activeKey === 'settings'"
+        @select="openSettingDetail"
+      />
+      <div v-else class="home-header">
         <span class="home-header__reader-link" @click="goReader">进入阅读页</span>
       </div>
     </div>
 
     <MobileNav
+      v-if="!activeSettingKey"
       :items="mobileNavItems"
       :active-key="activeKey"
       @navigate="handleNavClick"
@@ -48,16 +67,22 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { onBeforeUnmount, ref } from "vue";
 import Icon from "../components/Icon.vue";
 import MobileNav from "../components/MobileNav.vue";
+import { getSystemSettings, subscribeSystemSettings } from "../data/systemSettings";
+import { getUiPreferences, subscribeUiPreferences } from "../data/uiPreferences";
+import InterfaceSettings from "./InterfaceSettings.vue";
+import SettingsDetail from "./SettingsDetail.vue";
+import SettingsHome from "./SettingsHome.vue";
+import SystemSettings from "./SystemSettings.vue";
 
 defineOptions({
   name: "Index"
 });
 
 const emit = defineEmits(["enter-reader"]);
-const siteName = "开源阅读";
+const siteName = ref(getSystemSettings().siteName);
 const navItems = [
   { key: "home", label: "首页", icon: "home" },
   { key: "search", label: "搜索", icon: "search" },
@@ -78,7 +103,15 @@ const mobileNavItems = [
   { key: "settings", label: "设置", icon: "settings" }
 ];
 const activeKey = ref("home");
+const activeSettingKey = ref("");
+const fullscreenMode = ref(getUiPreferences().fullscreenMode);
 const isNight = ref(false);
+const unsubscribeSystemSettings = subscribeSystemSettings(settings => {
+  siteName.value = settings.siteName;
+});
+const unsubscribeUiPreferences = subscribeUiPreferences(preferences => {
+  fullscreenMode.value = preferences.fullscreenMode;
+});
 
 const goReader = () => {
   emit("enter-reader");
@@ -86,7 +119,17 @@ const goReader = () => {
 
 const handleNavClick = key => {
   activeKey.value = key;
+  activeSettingKey.value = "";
 };
+
+const openSettingDetail = key => {
+  activeSettingKey.value = key;
+};
+
+onBeforeUnmount(() => {
+  unsubscribeSystemSettings();
+  unsubscribeUiPreferences();
+});
 </script>
 
 <style lang="stylus" scoped>
@@ -98,11 +141,18 @@ const handleNavClick = key => {
   --reader-sidebar-muted: #6e6e73;
   --reader-sidebar-hover: rgba(0, 122, 255, 0.08);
   --reader-sidebar-active: rgba(0, 122, 255, 0.12);
+  --reader-card-solid: #fff;
+  --reader-radius-card: 22px;
+  --reader-shadow-card: 0 10px 30px rgba(0, 0, 0, 0.035);
+  --reader-mobile-content-bottom: 112px;
+  --reader-mobile-nav-bottom: calc(16px + env(safe-area-inset-bottom));
   height: 100%;
   width: 100%;
   display: flex;
   flex-direction: row;
+  overflow-x: hidden;
   background: var(--reader-app-bg);
+  container: reader-shell / inline-size;
 
   .home-sidebar {
     width: 260px;
@@ -219,7 +269,7 @@ const handleNavClick = key => {
   }
 
   .home-content {
-    padding: 48px 48px;
+    padding: 24px 24px 44px;
     height: 100%;
     max-height: 100%;
     width: 100%;
@@ -227,6 +277,8 @@ const handleNavClick = key => {
     display: flex;
     flex-direction: column;
     box-sizing: border-box;
+    overflow-y: auto;
+    overscroll-behavior: contain;
 
     .home-header {
       display: flex;
@@ -251,6 +303,11 @@ const handleNavClick = key => {
   }
 }
 
+.reader-app--fullscreen-mode {
+  --reader-mobile-nav-bottom: 6px;
+  --reader-mobile-content-bottom: 82px;
+}
+
 .night {
   --reader-app-bg: #222;
   --reader-app-text: #bbb;
@@ -260,6 +317,7 @@ const handleNavClick = key => {
   --reader-sidebar-muted: #8e8e93;
   --reader-sidebar-hover: rgba(10, 132, 255, 0.14);
   --reader-sidebar-active: rgba(10, 132, 255, 0.2);
+  --reader-card-solid: #2c2c2e;
 
   :deep(.home-header) {
     color: #bbb;
@@ -270,22 +328,16 @@ const handleNavClick = key => {
   width: 0 !important;
 }
 
-@media screen and (max-width: 750px) {
-  .home-view {
-    overflow-x: hidden;
+@container reader-shell (max-width: 750px) {
+  .home-sidebar {
+    display: none;
+  }
 
-    .home-sidebar {
-      display: none;
-    }
+  .home-content {
+    padding: 0 14px var(--reader-mobile-content-bottom);
 
-    .home-content {
-      padding: 0;
-      padding-top: constant(safe-area-inset-top) !important;
-      padding-top: env(safe-area-inset-top) !important;
-
-      .home-header {
-        padding: 20px 24px 0 24px;
-      }
+    .home-header {
+      padding: calc(20px + env(safe-area-inset-top)) 10px 0;
     }
   }
 }
