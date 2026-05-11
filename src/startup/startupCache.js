@@ -150,14 +150,15 @@ const updateFromServer = async options => {
 
   await registerServiceWorker();
   const versionInfo = await fetchVersionInfo();
+  const cachedVersion = getCachedVersion();
 
   reporter.setProgress(36);
   await delay(160);
 
-  if (getCachedVersion() === versionInfo.version) {
+  if (cachedVersion === versionInfo.version) {
     reporter.setProgress(100);
     await delay(220);
-    return;
+    return false;
   }
 
   reporter.setStatus(STARTUP_STATUS.updating);
@@ -167,10 +168,7 @@ const updateFromServer = async options => {
   });
   reporter.setProgress(100);
   await delay(260);
-};
-
-const updateSilently = options => {
-  updateFromServer({ ...options, visible: false }).catch(noop);
+  return Boolean(cachedVersion);
 };
 
 export const runStartupCache = async ({ onStatus, onProgress }) => {
@@ -179,20 +177,15 @@ export const runStartupCache = async ({ onStatus, onProgress }) => {
 
   setStatus(STARTUP_STATUS.checking);
 
-  if (getCachedVersion()) {
-    setProgress(100);
-    updateSilently({ onStatus, onProgress });
-    await delay(120);
-    return;
-  }
-
   setProgress(8);
 
   try {
-    await updateFromServer({ onStatus, onProgress });
+    const updated = await updateFromServer({ onStatus, onProgress });
+    return updated;
   } catch (error) {
     setStatus(STARTUP_STATUS.failed);
     setProgress(100);
     await delay(800);
+    return false;
   }
 };

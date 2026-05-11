@@ -40,6 +40,8 @@ const PAGE_HOME = "home";
 const PAGE_READER = "reader";
 const PAGE_SEARCH = "search";
 const PAGE_SYSTEM_SETTINGS = "settings-system";
+const PAGE_API_SETTINGS = "settings-api";
+const PAGE_EDGEONE_SETTINGS = "settings-edgeone";
 const PAGE_INTERFACE_SETTINGS = "settings-interface";
 const PAGE_BOOK_SOURCES = "settings-sources";
 const PAGE_SOURCE_EDITOR = "source-editor";
@@ -50,6 +52,8 @@ const IndexView = defineAsyncComponent(() => import("./views/Index.vue"));
 const ReaderView = defineAsyncComponent(() => import("./views/Reader.vue"));
 const SearchPageView = defineAsyncComponent(() => import("./views/SearchPage.vue"));
 const SystemSettingsView = defineAsyncComponent(() => import("./views/SystemSettings.vue"));
+const ApiSettingsView = defineAsyncComponent(() => import("./views/ApiSettings.vue"));
+const EdgeOneSettingsView = defineAsyncComponent(() => import("./views/EdgeOneSettings.vue"));
 const InterfaceSettingsView = defineAsyncComponent(() => import("./views/InterfaceSettings.vue"));
 const BookSourcePageView = defineAsyncComponent(() => import("./views/BookSourcePage.vue"));
 const BookSourceEditView = defineAsyncComponent(() => import("./views/BookSourceEdit.vue"));
@@ -69,6 +73,12 @@ const normalizePage = value => {
   }
   if (value?.name === PAGE_SYSTEM_SETTINGS) {
     return { name: PAGE_SYSTEM_SETTINGS };
+  }
+  if (value?.name === PAGE_API_SETTINGS) {
+    return { name: PAGE_API_SETTINGS };
+  }
+  if (value?.name === PAGE_EDGEONE_SETTINGS) {
+    return { name: PAGE_EDGEONE_SETTINGS };
   }
   if (value?.name === PAGE_INTERFACE_SETTINGS) {
     return { name: PAGE_INTERFACE_SETTINGS };
@@ -133,6 +143,10 @@ const currentView = computed(() => {
       return SearchPageView;
     case PAGE_SYSTEM_SETTINGS:
       return SystemSettingsView;
+    case PAGE_API_SETTINGS:
+      return ApiSettingsView;
+    case PAGE_EDGEONE_SETTINGS:
+      return EdgeOneSettingsView;
     case PAGE_INTERFACE_SETTINGS:
       return InterfaceSettingsView;
     case PAGE_BOOK_SOURCES:
@@ -230,6 +244,14 @@ const openPage = page => {
     pushPage({ name: PAGE_SYSTEM_SETTINGS });
     return;
   }
+  if (pageName === PAGE_API_SETTINGS) {
+    pushPage({ name: PAGE_API_SETTINGS });
+    return;
+  }
+  if (pageName === PAGE_EDGEONE_SETTINGS) {
+    pushPage({ name: PAGE_EDGEONE_SETTINGS });
+    return;
+  }
   if (pageName === PAGE_INTERFACE_SETTINGS) {
     pushPage({ name: PAGE_INTERFACE_SETTINGS });
     return;
@@ -271,8 +293,12 @@ const finishStartup = () => {
   }, 560);
 };
 
+const reloadApplication = () => {
+  window.location.reload();
+};
+
 const startApplication = async () => {
-  await runStartupCache({
+  const updated = await runStartupCache({
     onStatus: status => {
       startupStatus.value = status;
     },
@@ -280,6 +306,12 @@ const startApplication = async () => {
       startupProgress.value = progress;
     }
   });
+
+  if (updated) {
+    reloadApplication();
+    return;
+  }
+
   finishStartup();
 };
 
