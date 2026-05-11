@@ -14,7 +14,31 @@
       @touchmove="handleSidebarTouchMove"
       @touchend="handleSidebarTouchEnd"
     >
-      <div class="home-sidebar__inner"></div>
+      <div class="home-sidebar__inner">
+        <div class="reader-sidebar__brand" :aria-label="siteName">
+          <span class="reader-sidebar__brand-logo">
+            <Icon name="book-open" :size="21" :stroke-width="2.4" />
+          </span>
+          <span class="reader-sidebar__brand-name">{{ siteName }}</span>
+        </div>
+
+        <nav class="reader-sidebar__nav" aria-label="主导航">
+          <button
+            v-for="item in navItems"
+            :key="item.key"
+            type="button"
+            class="reader-sidebar__item"
+            :class="{
+              'is-active': activeKey === item.key,
+              'reader-sidebar__item--separated': item.separatedBefore
+            }"
+            @click="handleNavClick(item.key)"
+          >
+            <Icon :name="item.icon" :size="20" />
+            <span>{{ item.label }}</span>
+          </button>
+        </nav>
+      </div>
     </div>
     <div
       class="home-content"
@@ -39,6 +63,7 @@ import { onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { Menu as MenuIcon } from "@element-plus/icons-vue";
 import { ElIcon } from "element-plus/es/components/icon/index.mjs";
 import "element-plus/es/components/icon/style/css.mjs";
+import Icon from "../components/Icon.vue";
 import { getMiniInterface } from "../utils/interface";
 
 defineOptions({
@@ -46,6 +71,20 @@ defineOptions({
 });
 
 const emit = defineEmits(["enter-reader"]);
+const siteName = "开源阅读";
+const navItems = [
+  { key: "home", label: "首页", icon: "home" },
+  { key: "search", label: "搜索", icon: "search" },
+  { key: "library", label: "书库", icon: "library" },
+  { key: "ranking", label: "排行榜", icon: "ranking" },
+  { key: "complete", label: "完本小说", icon: "complete" },
+  { key: "tags", label: "标签", icon: "tag" },
+  { key: "authors", label: "作者", icon: "user" },
+  { key: "history", label: "阅读历史", icon: "history", separatedBefore: true },
+  { key: "bookshelf", label: "我的书架", icon: "bookshelf" },
+  { key: "settings", label: "设置", icon: "settings", separatedBefore: true }
+];
+const activeKey = ref("home");
 const showSidebar = ref(false);
 const sidebarClass = ref("");
 const sidebarStyle = ref({});
@@ -64,6 +103,11 @@ const syncResponsiveState = () => {
 
 const goReader = () => {
   emit("enter-reader");
+};
+
+const handleNavClick = key => {
+  activeKey.value = key;
+  showSidebar.value = false;
 };
 
 const handleSidebarTouchStart = event => {
@@ -121,27 +165,130 @@ onBeforeUnmount(() => {
 
 <style lang="stylus" scoped>
 .home-view {
+  --reader-blue: var(--reader-app-accent);
+  --reader-line: var(--reader-app-line);
+  --reader-sidebar-text: var(--reader-app-text);
+  --reader-sidebar-item: #1f2937;
+  --reader-sidebar-muted: #6e6e73;
+  --reader-sidebar-hover: rgba(0, 122, 255, 0.08);
+  --reader-sidebar-active: rgba(0, 122, 255, 0.12);
   height: 100%;
   width: 100%;
   display: flex;
   flex-direction: row;
+  background: var(--reader-app-bg);
 
   .home-sidebar {
     width: 260px;
     min-width: 260px;
     height: 100%;
     box-sizing: border-box;
-    background-color: #F7F7F7;
+    background: var(--reader-app-bg);
+    border-right: 1px solid var(--reader-line);
     position: relative;
     padding-top: 0;
     padding-top: constant(safe-area-inset-top) !important;
     padding-top: env(safe-area-inset-top) !important;
 
     .home-sidebar__inner {
-      padding: 48px 36px 66px 36px;
+      padding: 0 0 66px;
       height: 100%;
       overflow-y: auto;
       box-sizing: border-box;
+    }
+
+    .reader-sidebar__brand {
+      min-height: 75px;
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      padding: 0 22px;
+      box-sizing: border-box;
+    }
+
+    .reader-sidebar__brand-logo {
+      width: 32px;
+      height: 32px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 32px;
+      border-radius: 11px;
+      color: #fff;
+      background: var(--reader-blue);
+      box-shadow: 0 8px 18px rgba(0, 122, 255, 0.22);
+    }
+
+    .reader-sidebar__brand-name {
+      min-width: 0;
+      overflow: hidden;
+      color: var(--reader-sidebar-text);
+      font-size: 19px;
+      line-height: 1;
+      font-weight: 700;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .reader-sidebar__nav {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 22px 18px 0;
+    }
+
+    .reader-sidebar__item {
+      min-height: 40px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      padding: 0 14px;
+      border: 0;
+      border-radius: 13px;
+      appearance: none;
+      background: transparent;
+      color: var(--reader-sidebar-item);
+      font: inherit;
+      font-size: 14px;
+      font-weight: 500;
+      text-align: left;
+      cursor: pointer;
+      transition: color 0.16s ease, background 0.16s ease;
+    }
+
+    .reader-sidebar__item svg {
+      flex: 0 0 auto;
+      color: var(--reader-sidebar-muted);
+    }
+
+    .reader-sidebar__item:hover {
+      color: var(--reader-blue);
+      background: var(--reader-sidebar-hover);
+    }
+
+    .reader-sidebar__item.is-active {
+      color: var(--reader-blue);
+      background: var(--reader-sidebar-active);
+    }
+
+    .reader-sidebar__item.is-active svg {
+      color: var(--reader-blue);
+    }
+
+    .reader-sidebar__item--separated {
+      margin-top: 22px;
+      position: relative;
+    }
+
+    .reader-sidebar__item--separated::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: -14px;
+      height: 1px;
+      background: var(--reader-line);
     }
   }
 
@@ -150,7 +297,7 @@ onBeforeUnmount(() => {
     height: 100%;
     max-height: 100%;
     width: 100%;
-    background-color: #fff;
+    background: var(--reader-app-bg);
     display: flex;
     flex-direction: column;
     box-sizing: border-box;
@@ -183,15 +330,17 @@ onBeforeUnmount(() => {
 }
 
 .night {
-  :deep(.home-sidebar) {
-    background-color: #121212;
-    border-right: 1px solid #555;
-  }
+  --reader-app-bg: #222;
+  --reader-app-text: #bbb;
+  --reader-line: rgba(255, 255, 255, 0.12);
+  --reader-sidebar-text: #e5e7eb;
+  --reader-sidebar-item: #d1d5db;
+  --reader-sidebar-muted: #8e8e93;
+  --reader-sidebar-hover: rgba(10, 132, 255, 0.14);
+  --reader-sidebar-active: rgba(10, 132, 255, 0.2);
+
   :deep(.home-header) {
     color: #bbb;
-  }
-  :deep(.home-content) {
-    background-color: #222;
   }
 }
 
@@ -205,7 +354,7 @@ onBeforeUnmount(() => {
 
     :deep(.home-sidebar) {
       .home-sidebar__inner {
-        padding: 20px 36px 66px 36px;
+        padding: 0 0 66px;
       }
     }
     :deep(.home-content) {

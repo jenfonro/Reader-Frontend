@@ -56,7 +56,7 @@ const normalizedProgress = computed(() =>
   justify-content: center;
   padding: 32px;
   box-sizing: border-box;
-  background: #fff;
+  background: var(--reader-app-bg);
   opacity: 1;
   transition: opacity 0.55s ease, visibility 0.55s ease;
 }
@@ -87,7 +87,7 @@ const normalizedProgress = computed(() =>
   align-items: center;
   gap: 10px;
   margin-top: 28px;
-  color: rgba(44, 62, 80, 0.72);
+  color: var(--reader-app-text);
   font-size: 14px;
   line-height: 24px;
 }
@@ -95,8 +95,8 @@ const normalizedProgress = computed(() =>
 .startup-overlay__spinner {
   width: 24px;
   height: 24px;
-  border: 2px solid rgba(44, 62, 80, 0.14);
-  border-top-color: rgba(44, 62, 80, 0.72);
+  border: 2px solid color-mix(in srgb, var(--reader-app-text) 14%, transparent);
+  border-top-color: color-mix(in srgb, var(--reader-app-text) 72%, transparent);
   border-radius: 50%;
   animation: startup-spin 0.85s linear infinite;
 }
@@ -107,20 +107,20 @@ const normalizedProgress = computed(() =>
   margin-top: 22px;
   overflow: hidden;
   border-radius: 999px;
-  background: rgba(44, 62, 80, 0.12);
+  background: color-mix(in srgb, var(--reader-app-text) 12%, transparent);
 }
 
 .startup-overlay__progress-bar {
   height: 100%;
   border-radius: inherit;
-  background: #2c3e50;
+  background: var(--reader-app-text);
   transition: width 0.28s ease;
 }
 
 .startup-overlay__status {
   min-height: 20px;
   margin-top: 14px;
-  color: rgba(44, 62, 80, 0.62);
+  color: var(--reader-app-muted);
   font-size: 14px;
   line-height: 20px;
   text-align: center;

@@ -23,6 +23,11 @@
   </head>
   <style>
     :root {
+      --reader-app-bg: #f7f8fb;
+      --reader-app-text: #2c3e50;
+      --reader-app-muted: rgba(44, 62, 80, 0.62);
+      --reader-app-line: rgba(60, 60, 67, 0.16);
+      --reader-app-accent: #007aff;
       --sat: constant(safe-area-inset-top);
       --sat: env(safe-area-inset-top);
       --sar: constant(safe-area-inset-right);
@@ -40,6 +45,8 @@
       height: 100%;
       margin: 0;
       padding: 0;
+      background: var(--reader-app-bg);
+      color: var(--reader-app-text);
     }
   </style>
   <body>
