@@ -23,7 +23,8 @@
     </template>
 
     <section class="reader-search-results" aria-label="搜索结果">
-      <p v-if="searching && !results.length" class="reader-search-status">正在搜索...</p>
+      <p v-if="searchError" class="reader-search-status is-error">{{ searchError }}</p>
+      <p v-else-if="searching && !results.length" class="reader-search-status">正在搜索...</p>
       <p v-else-if="searched && !results.length" class="reader-search-status">没有搜索结果</p>
 
       <div v-if="results.length" class="reader-search-results__list">
@@ -83,83 +84,173 @@ import { onBeforeUnmount, ref } from "vue";
 import noImageUrl from "../assets/imgs/noImage.png";
 import Icon from "../components/Icon.vue";
 import PageLayout from "../components/PageLayout.vue";
+import { readSearchableSources, searchBooksBySources } from "../search/bookSourceSearch.js";
+import { summarizeSearchErrors } from "../search/searchErrors.js";
 
 const emit = defineEmits(["enter-reader"]);
 const defaultCoverUrl = noImageUrl;
-const previewResults = [
-  {
-    key: "preview-jianlai",
-    name: "剑来",
-    author: "烽火戏诸侯",
-    intro: "大千世界，无奇不有。少年陈平安从骊珠洞天走出，一路远游，一路问剑。",
-    latestChapter: "第一千二百三十章",
-    tags: ["仙侠", "连载中", "预览书源"],
-    highlightTag: "连载中",
-    sourceCount: 6,
-    coverUrl: "",
-    hasCover: false
-  },
-  {
-    key: "preview-guimi",
-    name: "诡秘之主",
-    author: "爱潜水的乌贼",
-    intro: "蒸汽与机械的浪潮中，谁能触及非凡？历史和黑暗迷雾里又隐藏着什么？",
-    latestChapter: "第一千四百三十二章",
-    tags: ["玄幻", "完结", "高匹配"],
-    highlightTag: "高匹配",
-    sourceCount: 4,
-    coverUrl: "",
-    hasCover: false
-  },
-  {
-    key: "preview-dafeng",
-    name: "大奉打更人",
-    author: "卖报小郎君",
-    intro: "这个世界，有儒；有道；有佛；有妖；有术士。主角从京城打更人开始破局。",
-    latestChapter: "第两百一十章",
-    tags: ["仙侠", "完结", "榜单"],
-    highlightTag: "榜单",
-    sourceCount: 2,
-    coverUrl: "",
-    hasCover: false
-  }
-];
 
 const keyword = ref("");
 const results = ref([]);
 const searched = ref(false);
 const searching = ref(false);
-let searchTimer = 0;
+const searchError = ref("");
+let activeSearchKeyword = "";
+let searchController = null;
+let resultGroups = new Map();
+let sourceErrorCount = 0;
+let sourceErrors = [];
+let resultSequence = 0;
 
-const submitSearch = () => {
+const normalizeGroupText = value =>
+  String(value || "")
+    .trim()
+    .replace(/\s+/g, "")
+    .toLowerCase();
+
+const buildGroupKey = book => `${normalizeGroupText(book.name)}:${normalizeGroupText(book.author)}`;
+
+const buildTags = book =>
+  [book.kind, book.wordCount, book.originName]
+    .map(value => String(value || "").trim())
+    .filter(Boolean)
+    .filter((value, index, array) => array.indexOf(value) === index)
+    .slice(0, 5);
+
+const normalizeSearchBook = book => {
+  const tags = buildTags(book);
+  return {
+    key: buildGroupKey(book) || book.key || `search-result-${resultSequence}`,
+    name: String(book.name || "").trim(),
+    author: String(book.author || "").trim(),
+    intro: String(book.intro || "").trim(),
+    latestChapter: String(book.latestChapterTitle || "").trim(),
+    tags,
+    highlightTag: book.originName || tags[0] || "",
+    sourceCount: 1,
+    sources: [book],
+    coverUrl: String(book.coverUrl || "").trim(),
+    hasCover: Boolean(book.coverUrl),
+    score: 0,
+    sequence: resultSequence++
+  };
+};
+
+const getRelevanceScore = (book, searchKeyword) => {
+  const normalizedKeyword = normalizeGroupText(searchKeyword);
+  const normalizedName = normalizeGroupText(book.name);
+  const normalizedAuthor = normalizeGroupText(book.author);
+  if (!normalizedKeyword) return 0;
+  if (normalizedName === normalizedKeyword) return 100;
+  if (normalizedName.startsWith(normalizedKeyword)) return 80;
+  if (normalizedName.includes(normalizedKeyword)) return 60;
+  if (normalizedAuthor.includes(normalizedKeyword)) return 30;
+  return 0;
+};
+
+const sortSearchResults = values =>
+  values.sort((left, right) =>
+    right.score - left.score ||
+    right.sourceCount - left.sourceCount ||
+    left.sequence - right.sequence
+  );
+
+const mergeSearchResult = (current, next) => {
+  current.sourceCount += 1;
+  current.sources.push(next.sources[0]);
+  if (!current.coverUrl && next.coverUrl) {
+    current.coverUrl = next.coverUrl;
+    current.hasCover = true;
+  }
+  if (!current.intro && next.intro) current.intro = next.intro;
+  if (!current.latestChapter && next.latestChapter) current.latestChapter = next.latestChapter;
+  current.tags = [...new Set([...current.tags, ...next.tags])].slice(0, 5);
+  if (!current.highlightTag && next.highlightTag) current.highlightTag = next.highlightTag;
+};
+
+const appendSearchBooks = books => {
+  books.forEach(book => {
+    const normalized = normalizeSearchBook(book);
+    if (!normalized.name) return;
+    normalized.score = getRelevanceScore(normalized, activeSearchKeyword);
+    const current = resultGroups.get(normalized.key);
+    if (current) {
+      mergeSearchResult(current, normalized);
+    } else {
+      resultGroups.set(normalized.key, normalized);
+    }
+  });
+  results.value = sortSearchResults([...resultGroups.values()]);
+};
+
+const cancelSearch = () => {
+  if (!searchController) return;
+  searchController.abort();
+  searchController = null;
+};
+
+const resetSearchState = () => {
+  results.value = [];
+  resultGroups = new Map();
+  resultSequence = 0;
+  sourceErrorCount = 0;
+  sourceErrors = [];
+  searchError.value = "";
+};
+
+const handleSearchEvent = event => {
+  if (event.type === "source") {
+    appendSearchBooks(event.books || []);
+    return;
+  }
+  if (event.type === "source-error") {
+    sourceErrorCount += 1;
+    sourceErrors.push(event.error);
+  }
+};
+
+const submitSearch = async () => {
   const value = keyword.value.trim();
   keyword.value = value;
   if (!value) {
     clearSearch();
     return;
   }
+  if (value === activeSearchKeyword && (searching.value || searched.value)) return;
 
+  cancelSearch();
+  resetSearchState();
+  activeSearchKeyword = value;
   searched.value = true;
   searching.value = true;
-  clearSearchTimer();
-  searchTimer = window.setTimeout(() => {
-    const normalizedKeyword = value.toLowerCase();
-    const matchedResults = previewResults.filter(result =>
-      [result.name, result.author, result.intro, ...result.tags]
-        .join(" ")
-        .toLowerCase()
-        .includes(normalizedKeyword)
-    );
-    results.value = matchedResults.length ? matchedResults : [];
-    searching.value = false;
-    searchTimer = 0;
-  }, 160);
-};
 
-const clearSearchTimer = () => {
-  if (!searchTimer) return;
-  window.clearTimeout(searchTimer);
-  searchTimer = 0;
+  const sources = readSearchableSources();
+  if (!sources.length) {
+    searchError.value = "暂无可用书源";
+    searching.value = false;
+    return;
+  }
+
+  const controller = new AbortController();
+  searchController = controller;
+
+  try {
+    await searchBooksBySources({
+      keyword: value,
+      signal: controller.signal,
+      onEvent: handleSearchEvent
+    });
+  } catch (error) {
+    if (error?.name !== "AbortError") searchError.value = "搜索失败，请稍后再试";
+  } finally {
+    if (searchController === controller) {
+      searchController = null;
+      searching.value = false;
+      if (!results.value.length && sourceErrorCount > 0 && !searchError.value) {
+        searchError.value = summarizeSearchErrors(sourceErrors);
+      }
+    }
+  }
 };
 
 const handleCoverError = result => {
@@ -169,11 +260,12 @@ const handleCoverError = result => {
 
 const clearSearch = () => {
   keyword.value = "";
-  clearSearchTimer();
-  results.value = [];
+  activeSearchKeyword = "";
+  cancelSearch();
+  resetSearchState();
   searched.value = false;
   searching.value = false;
 };
 
-onBeforeUnmount(clearSearchTimer);
+onBeforeUnmount(cancelSearch);
 </script>
