@@ -52,12 +52,13 @@ export const previewBook = {
   author: "预览作者",
   bookUrl: "preview://book",
   type: 0,
+  tags: ["预览", "玄幻", "连载中"],
   catalog: previewCatalog,
   index: 0,
   origin: "preview",
   originName: "预览书源",
   latestChapterTitle: "第三章 预览章节",
-  intro: "预览阅读器界面使用的占位书籍。"
+  intro: "这是阅读器内部打开的简介内容预览。后续接入真实详情数据后，会直接使用书籍名称、作者、标签、最新章节与简介文本进行展示。"
 };
 
 export const previewShelfBooks = [

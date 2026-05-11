@@ -141,11 +141,17 @@
               <Search />
             </el-icon>
           </div>
-          <div class="reader-side-action" :style="popupAbsoluteBtnStyle">
+          <button
+            type="button"
+            class="reader-side-action"
+            :style="popupAbsoluteBtnStyle"
+            aria-label="书籍简介"
+            @click.stop="openBookIntro"
+          >
             <el-icon :size="18">
               <InfoFilled />
             </el-icon>
-          </div>
+          </button>
           <div class="reader-side-action" :style="popupAbsoluteBtnStyle">
             <el-icon :size="18">
               <Top />
@@ -337,6 +343,13 @@
         </div>
       </div>
     </div>
+    <ReaderIntroPanel
+      v-if="bookIntroVisible"
+      :book="readingBook"
+      @close="bookIntroVisible = false"
+      @add-bookshelf="addBookToShelf"
+    />
+
     <div
       ref="contentRef"
       class="reader-page"
@@ -420,6 +433,7 @@ import ReadSettings from "../components/ReadSettings.vue";
 import BookSource from "../components/BookSource.vue";
 import BookShelf from "../components/BookShelf.vue";
 import Content from "../components/Content.vue";
+import ReaderIntroPanel from "../components/reader/ReaderIntroPanel.vue";
 import { getMiniInterface, getWindowSize } from "../utils/interface";
 import {
   previewBook,
@@ -444,6 +458,7 @@ const catalogPopoverVisible = ref(false);
 const readSettingsVisible = ref(false);
 const popBookSourceVisible = ref(false);
 const popBookShelfVisible = ref(false);
+const bookIntroVisible = ref(false);
 const showToolBar = ref(true);
 const show = ref(true);
 const contentStyle = ref({});
@@ -643,6 +658,16 @@ const changeBookSource = () => {
   popBookSourceVisible.value = false;
 };
 
+const openBookIntro = () => {
+  bookIntroVisible.value = true;
+  showToolBar.value = true;
+};
+
+const addBookToShelf = () => {
+  bookIntroVisible.value = false;
+  ElMessage.success("已加入书架预览");
+};
+
 const getContent = () => {
   catalogPopoverVisible.value = false;
 };
@@ -661,6 +686,7 @@ const eventHandler = point => {
   if (
     popBookSourceVisible.value ||
     popBookShelfVisible.value ||
+    bookIntroVisible.value ||
     catalogPopoverVisible.value ||
     readSettingsVisible.value
   ) {
@@ -703,6 +729,7 @@ onBeforeUnmount(() => {
 :deep(.popper-component) {
   margin-left: 10px;
 }
+
 
 .reader-view {
   padding: 0;
@@ -817,14 +844,17 @@ onBeforeUnmount(() => {
       .reader-side-action {
         width: 36px;
         height: 36px;
-        border-radius: 100%;
         display: flex;
         align-items: center;
         justify-content: center;
+        margin-top: 20px;
+        padding: 0;
+        border: 0;
+        border-radius: 100%;
+        color: inherit;
         cursor: pointer;
         text-align: center;
         pointer-events: all;
-        margin-top: 20px;
       }
     }
 
@@ -839,14 +869,17 @@ onBeforeUnmount(() => {
       .reader-side-action {
         width: 36px;
         height: 36px;
-        border-radius: 100%;
         display: flex;
         align-items: center;
         justify-content: center;
+        margin-top: 20px;
+        padding: 0;
+        border: 0;
+        border-radius: 100%;
+        color: inherit;
         cursor: pointer;
         text-align: center;
         pointer-events: all;
-        margin-top: 20px;
 
 
         .reader-theme-icon--moon {
