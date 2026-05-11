@@ -21,20 +21,12 @@
         @saved="handleSourceSaved"
       />
     </AppShell>
-    <StartupOverlay
-      v-if="startupVisible"
-      :status="startupStatus"
-      :progress="startupProgress"
-      :leaving="startupLeaving"
-    />
   </div>
 </template>
 
 <script setup>
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref } from "vue";
 import AppShell from "./components/AppShell.vue";
-import StartupOverlay from "./components/StartupOverlay.vue";
-import { runStartupCache } from "./startup/startupCache";
 
 const PAGE_HOME = "home";
 const PAGE_READER = "reader";
@@ -120,11 +112,6 @@ const currentPage = ref(getHistoryPage());
 const homeActiveKey = ref(
   currentPage.value.name === PAGE_HOME ? currentPage.value.activeKey : HOME_ACTIVE_DEFAULT
 );
-const startupVisible = ref(true);
-const startupLeaving = ref(false);
-const startupStatus = ref("正在检测新版本...");
-const startupProgress = ref(0);
-
 const isReaderPage = computed(() => currentPage.value.name === PAGE_READER);
 
 const showShellMobileNav = computed(() =>
@@ -286,39 +273,10 @@ const handlePopState = event => {
   syncCurrentPage(getHistoryPage(event?.state));
 };
 
-const finishStartup = () => {
-  startupLeaving.value = true;
-  window.setTimeout(() => {
-    startupVisible.value = false;
-  }, 560);
-};
-
-const reloadApplication = () => {
-  window.location.reload();
-};
-
-const startApplication = async () => {
-  const updated = await runStartupCache({
-    onStatus: status => {
-      startupStatus.value = status;
-    },
-    onProgress: progress => {
-      startupProgress.value = progress;
-    }
-  });
-
-  if (updated) {
-    reloadApplication();
-    return;
-  }
-
-  finishStartup();
-};
 
 onMounted(() => {
   writeHistoryPage(currentPage.value, "replace");
   window.addEventListener("popstate", handlePopState);
-  startApplication();
 });
 
 onBeforeUnmount(() => {

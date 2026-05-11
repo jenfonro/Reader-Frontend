@@ -2,6 +2,7 @@ const VERSION_URL = "/app-version.json";
 const SERVICE_WORKER_URL = "/service-worker.js";
 const CACHE_PREFIX = "reader-frontend-cache-";
 const VERSION_STORAGE_KEY = "reader-frontend-version";
+const VERSION_INFO_STORAGE_KEY = "reader-frontend-version-info";
 const CACHE_UPDATE_HEADER = "X-Reader-Cache-Update";
 
 const STARTUP_STATUS = {
@@ -37,10 +38,44 @@ const normalizeAssetPath = asset => {
   return asset.startsWith("/") ? asset : `/${asset}`;
 };
 
-const getCachedVersion = () => window.localStorage.getItem(VERSION_STORAGE_KEY) || "";
+const normalizeAssetList = assets =>
+  Array.isArray(assets) ? assets.map(normalizeAssetPath).filter(Boolean) : [];
 
-const setCachedVersion = version => {
-  window.localStorage.setItem(VERSION_STORAGE_KEY, version);
+const normalizeVersionInfo = value => ({
+  version: value?.version ? String(value.version) : "",
+  assets: normalizeAssetList(value?.assets),
+  app: {
+    entry: normalizeAssetPath(value?.app?.entry),
+    styles: normalizeAssetList(value?.app?.styles)
+  }
+});
+
+const canUseLocalStorage = () =>
+  typeof window !== "undefined" && Boolean(window.localStorage);
+
+const getCachedVersion = () => {
+  if (!canUseLocalStorage()) return "";
+  return window.localStorage.getItem(VERSION_STORAGE_KEY) || "";
+};
+
+const getCachedVersionInfo = () => {
+  if (!canUseLocalStorage()) return normalizeVersionInfo(null);
+
+  try {
+    const rawValue = window.localStorage.getItem(VERSION_INFO_STORAGE_KEY);
+    return normalizeVersionInfo(rawValue ? JSON.parse(rawValue) : null);
+  } catch (error) {
+    return normalizeVersionInfo(null);
+  }
+};
+
+const setCachedVersionInfo = versionInfo => {
+  const normalizedVersionInfo = normalizeVersionInfo(versionInfo);
+  if (!canUseLocalStorage() || !normalizedVersionInfo.version) return normalizedVersionInfo;
+
+  window.localStorage.setItem(VERSION_STORAGE_KEY, normalizedVersionInfo.version);
+  window.localStorage.setItem(VERSION_INFO_STORAGE_KEY, JSON.stringify(normalizedVersionInfo));
+  return normalizedVersionInfo;
 };
 
 const registerServiceWorker = async () => {
@@ -67,17 +102,12 @@ const fetchVersionInfo = async () => {
     throw new Error(`Version request failed: ${response.status}`);
   }
 
-  const versionInfo = await response.json();
-  if (!versionInfo || !versionInfo.version) {
+  const versionInfo = normalizeVersionInfo(await response.json());
+  if (!versionInfo.version) {
     throw new Error("Invalid version info");
   }
 
-  return {
-    version: String(versionInfo.version),
-    assets: Array.isArray(versionInfo.assets)
-      ? versionInfo.assets.map(normalizeAssetPath).filter(Boolean)
-      : []
-  };
+  return versionInfo;
 };
 
 const removeOldCaches = async currentCacheName => {
@@ -124,7 +154,7 @@ const getStartupAssets = versionInfo =>
 
 const downloadAssets = async (versionInfo, onProgress = noop) => {
   if (!("caches" in window)) {
-    setCachedVersion(versionInfo.version);
+    setCachedVersionInfo(versionInfo);
     return;
   }
 
@@ -138,7 +168,7 @@ const downloadAssets = async (versionInfo, onProgress = noop) => {
   }
 
   await removeOldCaches(cacheName);
-  setCachedVersion(versionInfo.version);
+  setCachedVersionInfo(versionInfo);
   notifyServiceWorker(versionInfo.version);
 };
 
@@ -156,9 +186,10 @@ const updateFromServer = async options => {
   await delay(160);
 
   if (cachedVersion === versionInfo.version) {
+    setCachedVersionInfo(versionInfo);
     reporter.setProgress(100);
     await delay(220);
-    return false;
+    return versionInfo;
   }
 
   reporter.setStatus(STARTUP_STATUS.updating);
@@ -168,7 +199,8 @@ const updateFromServer = async options => {
   });
   reporter.setProgress(100);
   await delay(260);
-  return Boolean(cachedVersion);
+
+  return versionInfo;
 };
 
 export const runStartupCache = async ({ onStatus, onProgress }) => {
@@ -176,16 +208,14 @@ export const runStartupCache = async ({ onStatus, onProgress }) => {
   const setProgress = progress => onProgress(clampProgress(progress));
 
   setStatus(STARTUP_STATUS.checking);
-
   setProgress(8);
 
   try {
-    const updated = await updateFromServer({ onStatus, onProgress });
-    return updated;
+    return await updateFromServer({ onStatus, onProgress });
   } catch (error) {
     setStatus(STARTUP_STATUS.failed);
     setProgress(100);
     await delay(800);
-    return false;
+    return getCachedVersionInfo();
   }
 };

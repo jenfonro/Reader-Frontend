@@ -5,10 +5,14 @@ import vue from "@vitejs/plugin-vue";
 
 const appVersion = process.env.APP_VERSION || String(Date.now());
 
-const createVersionInfo = assets => ({
+const createVersionInfo = (assets, app = {}) => ({
   version: appVersion,
   builtAt: new Date(Number(appVersion) || Date.now()).toISOString(),
-  assets
+  assets,
+  app: {
+    entry: app.entry || "",
+    styles: Array.isArray(app.styles) ? app.styles : []
+  }
 });
 
 const listPublicAssets = (dir = "public", root = dir) => {
@@ -37,19 +41,45 @@ const appVersionPlugin = () => ({
   configureServer(server) {
     server.middlewares.use("/app-version.json", (request, response) => {
       response.setHeader("Content-Type", "application/json; charset=utf-8");
-      response.end(JSON.stringify(createVersionInfo(["/", "/index.html", "/src/main.js"])));
+      response.end(
+        JSON.stringify(
+          createVersionInfo(["/", "/index.html", "/src/bootstrap.js", "/src/main.js"], {
+            entry: "/src/main.js"
+          })
+        )
+      );
     });
   },
   generateBundle(_, bundle) {
-    const bundleAssets = Object.keys(bundle)
-      .filter(fileName => !fileName.endsWith(".map"))
+    const bundleItems = Object.values(bundle);
+    const bundleAssets = bundleItems
+      .map(item => item.fileName)
+      .filter(fileName => fileName && !fileName.endsWith(".map"))
       .map(fileName => `/${fileName}`);
+    const mainChunk = bundleItems.find(item => {
+      if (item.type !== "chunk") return false;
+      if (item.name === "main") return true;
+      if (item.facadeModuleId) {
+        return item.facadeModuleId.split(sep).join("/").endsWith("/src/main.js");
+      }
+      return item.fileName.startsWith("assets/main-") && item.fileName.endsWith(".js");
+    });
+    const appStyles = bundleItems
+      .filter(item => item.type === "asset" && item.fileName.endsWith(".css"))
+      .map(item => `/${item.fileName}`);
     const assets = [...new Set([...listPublicAssets(), ...bundleAssets])];
 
     this.emitFile({
       type: "asset",
       fileName: "app-version.json",
-      source: `${JSON.stringify(createVersionInfo(assets), null, 2)}\n`
+      source: `${JSON.stringify(
+        createVersionInfo(assets, {
+          entry: mainChunk ? `/${mainChunk.fileName}` : "",
+          styles: appStyles
+        }),
+        null,
+        2
+      )}\n`
     });
   }
 });
@@ -71,6 +101,17 @@ export default defineConfig({
   build: {
     chunkSizeWarningLimit: 1500,
     rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes("vite/preload-helper")) {
+            return "vite-preload-helper";
+          }
+          if (id.includes("plugin-vue:export-helper")) {
+            return "vue-helper";
+          }
+          return undefined;
+        }
+      },
       onwarn(warning, warn) {
         if (
           warning.message?.includes("contains an annotation that Rollup cannot interpret") &&
