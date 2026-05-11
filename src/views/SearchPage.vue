@@ -85,6 +85,7 @@ import noImageUrl from "../assets/imgs/noImage.png";
 import Icon from "../components/Icon.vue";
 import PageLayout from "../components/PageLayout.vue";
 import { readSearchableSources, searchBooksBySources } from "../search/bookSourceSearch.js";
+import { createSearchResultAggregator } from "../search/searchResultAggregator.js";
 import { summarizeSearchErrors } from "../search/searchErrors.js";
 
 const emit = defineEmits(["enter-reader"]);
@@ -97,90 +98,12 @@ const searching = ref(false);
 const searchError = ref("");
 let activeSearchKeyword = "";
 let searchController = null;
-let resultGroups = new Map();
+let resultAggregator = createSearchResultAggregator("");
 let sourceErrorCount = 0;
 let sourceErrors = [];
-let resultSequence = 0;
-
-const normalizeGroupText = value =>
-  String(value || "")
-    .trim()
-    .replace(/\s+/g, "")
-    .toLowerCase();
-
-const buildGroupKey = book => `${normalizeGroupText(book.name)}:${normalizeGroupText(book.author)}`;
-
-const buildTags = book =>
-  [book.kind, book.wordCount, book.originName]
-    .map(value => String(value || "").trim())
-    .filter(Boolean)
-    .filter((value, index, array) => array.indexOf(value) === index)
-    .slice(0, 5);
-
-const normalizeSearchBook = book => {
-  const tags = buildTags(book);
-  return {
-    key: buildGroupKey(book) || book.key || `search-result-${resultSequence}`,
-    name: String(book.name || "").trim(),
-    author: String(book.author || "").trim(),
-    intro: String(book.intro || "").trim(),
-    latestChapter: String(book.latestChapterTitle || "").trim(),
-    tags,
-    highlightTag: book.originName || tags[0] || "",
-    sourceCount: 1,
-    sources: [book],
-    coverUrl: String(book.coverUrl || "").trim(),
-    hasCover: Boolean(book.coverUrl),
-    score: 0,
-    sequence: resultSequence++
-  };
-};
-
-const getRelevanceScore = (book, searchKeyword) => {
-  const normalizedKeyword = normalizeGroupText(searchKeyword);
-  const normalizedName = normalizeGroupText(book.name);
-  const normalizedAuthor = normalizeGroupText(book.author);
-  if (!normalizedKeyword) return 0;
-  if (normalizedName === normalizedKeyword) return 100;
-  if (normalizedName.startsWith(normalizedKeyword)) return 80;
-  if (normalizedName.includes(normalizedKeyword)) return 60;
-  if (normalizedAuthor.includes(normalizedKeyword)) return 30;
-  return 0;
-};
-
-const sortSearchResults = values =>
-  values.sort((left, right) =>
-    right.score - left.score ||
-    right.sourceCount - left.sourceCount ||
-    left.sequence - right.sequence
-  );
-
-const mergeSearchResult = (current, next) => {
-  current.sourceCount += 1;
-  current.sources.push(next.sources[0]);
-  if (!current.coverUrl && next.coverUrl) {
-    current.coverUrl = next.coverUrl;
-    current.hasCover = true;
-  }
-  if (!current.intro && next.intro) current.intro = next.intro;
-  if (!current.latestChapter && next.latestChapter) current.latestChapter = next.latestChapter;
-  current.tags = [...new Set([...current.tags, ...next.tags])].slice(0, 5);
-  if (!current.highlightTag && next.highlightTag) current.highlightTag = next.highlightTag;
-};
 
 const appendSearchBooks = books => {
-  books.forEach(book => {
-    const normalized = normalizeSearchBook(book);
-    if (!normalized.name) return;
-    normalized.score = getRelevanceScore(normalized, activeSearchKeyword);
-    const current = resultGroups.get(normalized.key);
-    if (current) {
-      mergeSearchResult(current, normalized);
-    } else {
-      resultGroups.set(normalized.key, normalized);
-    }
-  });
-  results.value = sortSearchResults([...resultGroups.values()]);
+  results.value = resultAggregator.addBooks(books);
 };
 
 const cancelSearch = () => {
@@ -189,10 +112,9 @@ const cancelSearch = () => {
   searchController = null;
 };
 
-const resetSearchState = () => {
+const resetSearchState = (nextKeyword = "") => {
   results.value = [];
-  resultGroups = new Map();
-  resultSequence = 0;
+  resultAggregator = createSearchResultAggregator(nextKeyword);
   sourceErrorCount = 0;
   sourceErrors = [];
   searchError.value = "";
@@ -219,8 +141,8 @@ const submitSearch = async () => {
   if (value === activeSearchKeyword && (searching.value || searched.value)) return;
 
   cancelSearch();
-  resetSearchState();
   activeSearchKeyword = value;
+  resetSearchState(value);
   searched.value = true;
   searching.value = true;
 
