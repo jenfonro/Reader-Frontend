@@ -4,7 +4,9 @@
     class="reader-manage-dialog-layer"
     :class="{ 'reader-manage-dialog-layer--page': page }"
     role="presentation"
-    @pointerdown.self="handleBackdrop"
+    @pointerdown="stopEvent"
+    @pointerup="stopEvent"
+    @click="handleBackdropClick"
   >
     <section
       class="reader-manage-dialog"
@@ -36,8 +38,13 @@ const props = defineProps({
 
 const emit = defineEmits(["close"]);
 
-const handleBackdrop = () => {
-  if (!props.closeOnBackdrop) return;
+const stopEvent = event => {
+  event.stopPropagation();
+};
+
+const handleBackdropClick = event => {
+  event.stopPropagation();
+  if (event.target !== event.currentTarget || !props.closeOnBackdrop) return;
   emit("close");
 };
 </script>
