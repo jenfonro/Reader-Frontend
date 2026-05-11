@@ -258,6 +258,7 @@ onBeforeUnmount(() => {
 
 .night {
   --reader-app-bg: #222;
+  --reader-app-bg-rgb: 34, 34, 34;
   --reader-app-text: #bbb;
   --reader-line: rgba(255, 255, 255, 0.12);
   --reader-sidebar-text: #e5e7eb;

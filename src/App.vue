@@ -38,6 +38,7 @@ import { runStartupCache } from "./startup/startupCache";
 
 const PAGE_HOME = "home";
 const PAGE_READER = "reader";
+const PAGE_SEARCH = "search";
 const PAGE_SYSTEM_SETTINGS = "settings-system";
 const PAGE_INTERFACE_SETTINGS = "settings-interface";
 const PAGE_BOOK_SOURCES = "settings-sources";
@@ -47,6 +48,7 @@ const HOME_ACTIVE_DEFAULT = "home";
 
 const IndexView = defineAsyncComponent(() => import("./views/Index.vue"));
 const ReaderView = defineAsyncComponent(() => import("./views/Reader.vue"));
+const SearchPageView = defineAsyncComponent(() => import("./views/SearchPage.vue"));
 const SystemSettingsView = defineAsyncComponent(() => import("./views/SystemSettings.vue"));
 const InterfaceSettingsView = defineAsyncComponent(() => import("./views/InterfaceSettings.vue"));
 const BookSourcePageView = defineAsyncComponent(() => import("./views/BookSourcePage.vue"));
@@ -61,6 +63,9 @@ const createHomePage = (activeKey = HOME_ACTIVE_DEFAULT) => ({
 const normalizePage = value => {
   if (value?.name === PAGE_READER) {
     return { name: PAGE_READER };
+  }
+  if (value?.name === PAGE_SEARCH) {
+    return { name: PAGE_SEARCH };
   }
   if (value?.name === PAGE_SYSTEM_SETTINGS) {
     return { name: PAGE_SYSTEM_SETTINGS };
@@ -112,14 +117,20 @@ const startupProgress = ref(0);
 
 const isReaderPage = computed(() => currentPage.value.name === PAGE_READER);
 
-const showShellMobileNav = computed(() => currentPage.value.name === PAGE_HOME);
-
-const shellActiveKey = computed(() =>
-  currentPage.value.name === PAGE_HOME ? homeActiveKey.value : "settings"
+const showShellMobileNav = computed(() =>
+  currentPage.value.name === PAGE_HOME || currentPage.value.name === PAGE_SEARCH
 );
+
+const shellActiveKey = computed(() => {
+  if (currentPage.value.name === PAGE_HOME) return homeActiveKey.value;
+  if (currentPage.value.name === PAGE_SEARCH) return "search";
+  return "settings";
+});
 
 const currentView = computed(() => {
   switch (currentPage.value.name) {
+    case PAGE_SEARCH:
+      return SearchPageView;
     case PAGE_SYSTEM_SETTINGS:
       return SystemSettingsView;
     case PAGE_INTERFACE_SETTINGS:
@@ -198,6 +209,13 @@ const openReader = () => {
 
 const handleShellNavigate = key => {
   const activeKey = key || HOME_ACTIVE_DEFAULT;
+
+  if (activeKey === PAGE_SEARCH) {
+    if (currentPage.value.name === PAGE_SEARCH) return;
+    pushPage({ name: PAGE_SEARCH });
+    return;
+  }
+
   if (currentPage.value.name === PAGE_HOME) {
     homeActiveKey.value = activeKey;
     replaceCurrentPage(createHomePage(activeKey));
