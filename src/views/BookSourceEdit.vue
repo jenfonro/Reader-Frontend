@@ -115,7 +115,7 @@ const actionMessage = ref("");
 const moreMenuOpen = ref(false);
 const savingSource = ref(false);
 const pageActions = [
-  { key: "source-editor-save", label: "保存", icon: "save", variant: "primary" },
+  { key: "source-editor-save", label: "保存", icon: "save" },
   { key: "source-editor-debug", label: "Debug", icon: "debug" },
   { key: "source-editor-more", label: "更多", icon: "more-vertical" }
 ];

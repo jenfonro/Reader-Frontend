@@ -43,5 +43,13 @@ export const settingsItems = [
   }
 ];
 
-export const findSettingsItem = key =>
-  settingsItems.find(item => item.key === key) || null;
+const settingsItemMap = new Map(settingsItems.map(item => [item.key, item]));
+
+export const settingsGroups = [
+  ["settings-system", "settings-api"],
+  ["settings-sources", "settings-replace", "settings-dictionary"],
+  ["settings-interface"],
+  ["settings-backup"]
+].map(group => group.map(key => settingsItemMap.get(key)).filter(Boolean));
+
+export const findSettingsItem = key => settingsItemMap.get(key) || null;

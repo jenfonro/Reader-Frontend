@@ -24,15 +24,8 @@
 </template>
 
 <script setup>
-import { computed } from "vue";
 import Icon from "../Icon.vue";
-import { settingsItems } from "../../data/settings";
+import { settingsGroups } from "../../data/settings";
 
 const emit = defineEmits(["select"]);
-
-const settingsGroups = computed(() =>
-  [settingsItems.slice(0, 3), settingsItems.slice(3, 6), settingsItems.slice(6)].filter(
-    group => group.length
-  )
-);
 </script>

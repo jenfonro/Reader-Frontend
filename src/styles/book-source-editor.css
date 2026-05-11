@@ -108,6 +108,7 @@
   min-height: 46px;
   display: flex;
   align-items: stretch;
+  justify-content: safe center;
   gap: 6px;
   padding: 5px 12px 0;
   overflow-x: auto;

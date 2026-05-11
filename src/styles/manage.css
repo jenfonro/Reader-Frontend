@@ -115,10 +115,10 @@
   flex: 1 1 auto;
   overflow-y: auto;
   padding-bottom: calc(var(--reader-manage-floating-footer-height) + 16px);
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: var(--reader-radius-card, 22px);
+  background: var(--reader-card-solid, #ffffff);
+  box-shadow: var(--reader-shadow-card, 0 10px 30px rgba(0, 0, 0, 0.035));
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
 }
@@ -129,6 +129,14 @@
   border-radius: var(--reader-radius-card, 22px);
   background: var(--reader-card-solid, #ffffff);
   box-shadow: var(--reader-shadow-card, 0 10px 30px rgba(0, 0, 0, 0.035));
+}
+
+.reader-manage--source .reader-manage-list-card {
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .reader-manage__footer {
