@@ -1,8 +1,12 @@
 const CACHE_PREFIX = "reader-frontend-cache-";
+const CACHE_UPDATE_HEADER = "x-reader-cache-update";
 let activeCacheName = "";
 
 const isSameOriginGet = request =>
   request.method === "GET" && new URL(request.url).origin === self.location.origin;
+
+const isCacheUpdateRequest = request =>
+  request.headers.get(CACHE_UPDATE_HEADER) === "1";
 
 const getLatestCacheName = async () => {
   if (activeCacheName) {
@@ -96,11 +100,12 @@ self.addEventListener("fetch", event => {
   }
 
   const requestUrl = new URL(event.request.url);
-  if (
-    requestUrl.pathname === "/app-version.json" ||
-    event.request.mode === "navigate" ||
-    event.request.cache === "reload"
-  ) {
+  if (isCacheUpdateRequest(event.request)) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
+  if (requestUrl.pathname === "/app-version.json" || event.request.cache === "reload") {
     event.respondWith(networkFirst(event.request));
     return;
   }

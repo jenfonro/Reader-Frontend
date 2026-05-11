@@ -1,3 +1,5 @@
+import { existsSync, readdirSync, statSync } from "node:fs";
+import { join, relative, sep } from "node:path";
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 
@@ -8,6 +10,27 @@ const createVersionInfo = assets => ({
   builtAt: new Date(Number(appVersion) || Date.now()).toISOString(),
   assets
 });
+
+const listPublicAssets = (dir = "public", root = dir) => {
+  if (!existsSync(dir)) {
+    return [];
+  }
+
+  return readdirSync(dir).flatMap(fileName => {
+    const filePath = join(dir, fileName);
+    const fileStat = statSync(filePath);
+
+    if (fileStat.isDirectory()) {
+      return listPublicAssets(filePath, root);
+    }
+
+    if (!fileStat.isFile()) {
+      return [];
+    }
+
+    return [`/${relative(root, filePath).split(sep).join("/")}`];
+  });
+};
 
 const appVersionPlugin = () => ({
   name: "reader-app-version",
@@ -21,7 +44,7 @@ const appVersionPlugin = () => ({
     const bundleAssets = Object.keys(bundle)
       .filter(fileName => !fileName.endsWith(".map"))
       .map(fileName => `/${fileName}`);
-    const assets = ["/service-worker.js", ...bundleAssets];
+    const assets = [...new Set([...listPublicAssets(), ...bundleAssets])];
 
     this.emitFile({
       type: "asset",

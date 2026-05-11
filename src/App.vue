@@ -30,7 +30,7 @@ const IndexView = defineAsyncComponent(() => import("./views/Index.vue"));
 const ReaderView = defineAsyncComponent(() => import("./views/Reader.vue"));
 const startupVisible = ref(true);
 const startupLeaving = ref(false);
-const startupStatus = ref("正在连接服务器");
+const startupStatus = ref("正在检测新版本...");
 const startupProgress = ref(0);
 
 const currentView = computed(() =>
