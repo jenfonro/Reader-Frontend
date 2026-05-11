@@ -18,7 +18,9 @@
         @open-page="openPage"
         @back="goBack"
         @edit="openSourceEditor"
+        @edit-replace="openReplaceEditor"
         @saved="handleSourceSaved"
+        @saved-replace="handleReplaceSaved"
       />
     </AppShell>
   </div>
@@ -36,7 +38,9 @@ const PAGE_API_SETTINGS = "settings-api";
 const PAGE_EDGEONE_SETTINGS = "settings-edgeone";
 const PAGE_INTERFACE_SETTINGS = "settings-interface";
 const PAGE_BOOK_SOURCES = "settings-sources";
+const PAGE_REPLACE_RULES = "settings-replace";
 const PAGE_SOURCE_EDITOR = "source-editor";
+const PAGE_REPLACE_EDITOR = "replace-editor";
 const PAGE_SETTINGS_DETAIL = "settings-detail";
 const HOME_ACTIVE_DEFAULT = "home";
 
@@ -49,6 +53,8 @@ const EdgeOneSettingsView = defineAsyncComponent(() => import("./views/EdgeOneSe
 const InterfaceSettingsView = defineAsyncComponent(() => import("./views/InterfaceSettings.vue"));
 const BookSourcePageView = defineAsyncComponent(() => import("./views/BookSourcePage.vue"));
 const BookSourceEditView = defineAsyncComponent(() => import("./views/BookSourceEdit.vue"));
+const ReplaceRulePageView = defineAsyncComponent(() => import("./views/ReplaceRulePage.vue"));
+const ReplaceRuleEditView = defineAsyncComponent(() => import("./views/ReplaceRuleEdit.vue"));
 const SettingsDetailView = defineAsyncComponent(() => import("./views/SettingsDetail.vue"));
 
 const createHomePage = (activeKey = HOME_ACTIVE_DEFAULT) => ({
@@ -78,11 +84,21 @@ const normalizePage = value => {
   if (value?.name === PAGE_BOOK_SOURCES) {
     return { name: PAGE_BOOK_SOURCES };
   }
+  if (value?.name === PAGE_REPLACE_RULES) {
+    return { name: PAGE_REPLACE_RULES };
+  }
   if (value?.name === PAGE_SOURCE_EDITOR) {
     return {
       name: PAGE_SOURCE_EDITOR,
       sourceKey: typeof value.sourceKey === "string" ? value.sourceKey : "",
       sourceName: typeof value.sourceName === "string" ? value.sourceName : ""
+    };
+  }
+  if (value?.name === PAGE_REPLACE_EDITOR) {
+    return {
+      name: PAGE_REPLACE_EDITOR,
+      ruleKey: typeof value.ruleKey === "string" ? value.ruleKey : "",
+      ruleName: typeof value.ruleName === "string" ? value.ruleName : ""
     };
   }
   if (value?.name === PAGE_SETTINGS_DETAIL) {
@@ -138,8 +154,12 @@ const currentView = computed(() => {
       return InterfaceSettingsView;
     case PAGE_BOOK_SOURCES:
       return BookSourcePageView;
+    case PAGE_REPLACE_RULES:
+      return ReplaceRulePageView;
     case PAGE_SOURCE_EDITOR:
       return BookSourceEditView;
+    case PAGE_REPLACE_EDITOR:
+      return ReplaceRuleEditView;
     case PAGE_SETTINGS_DETAIL:
       return SettingsDetailView;
     default:
@@ -157,6 +177,12 @@ const currentViewProps = computed(() => {
       sourceName: currentPage.value.sourceName || ""
     };
   }
+  if (currentPage.value.name === PAGE_REPLACE_EDITOR) {
+    return {
+      ruleKey: currentPage.value.ruleKey || "",
+      ruleName: currentPage.value.ruleName || ""
+    };
+  }
   if (currentPage.value.name === PAGE_SETTINGS_DETAIL) {
     return { settingKey: currentPage.value.settingKey || "" };
   }
@@ -169,6 +195,13 @@ const currentPageKey = computed(() => {
       PAGE_SOURCE_EDITOR,
       currentPage.value.sourceKey || "",
       currentPage.value.sourceName || ""
+    ].join(":");
+  }
+  if (currentPage.value.name === PAGE_REPLACE_EDITOR) {
+    return [
+      PAGE_REPLACE_EDITOR,
+      currentPage.value.ruleKey || "",
+      currentPage.value.ruleName || ""
     ].join(":");
   }
   if (currentPage.value.name === PAGE_SETTINGS_DETAIL) {
@@ -247,6 +280,10 @@ const openPage = page => {
     pushPage({ name: PAGE_BOOK_SOURCES });
     return;
   }
+  if (pageName === PAGE_REPLACE_RULES) {
+    pushPage({ name: PAGE_REPLACE_RULES });
+    return;
+  }
   if (pageName) {
     pushPage({ name: PAGE_SETTINGS_DETAIL, settingKey: pageName });
   }
@@ -260,12 +297,29 @@ const openSourceEditor = source => {
   });
 };
 
+const openReplaceEditor = rule => {
+  pushPage({
+    name: PAGE_REPLACE_EDITOR,
+    ruleKey: rule?.key || "",
+    ruleName: rule?.name || "新建替换"
+  });
+};
+
 const handleSourceSaved = result => {
   if (currentPage.value.name !== PAGE_SOURCE_EDITOR || !result?.key) return;
   replaceCurrentPage({
     ...currentPage.value,
     sourceKey: result.key,
     sourceName: result.source?.bookSourceName || currentPage.value.sourceName
+  });
+};
+
+const handleReplaceSaved = result => {
+  if (currentPage.value.name !== PAGE_REPLACE_EDITOR || !result?.key) return;
+  replaceCurrentPage({
+    ...currentPage.value,
+    ruleKey: result.key,
+    ruleName: result.rule?.name || currentPage.value.ruleName
   });
 };
 

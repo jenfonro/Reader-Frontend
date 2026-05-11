@@ -10,8 +10,8 @@ export const bookSourceSortItems = [
 
 export const bookSourceMoreActions = [
   { label: "新建书源", icon: "＋", action: "create" },
-  { label: "本地导入", icon: "↪", action: "local-import" },
-  { label: "网络导入", icon: "↪", action: "network-import" }
+  { label: "本地导入", iconName: "import", action: "local-import" },
+  { label: "网络导入", iconName: "import", action: "network-import" }
 ];
 
 export const splitBookSourceGroups = value =>

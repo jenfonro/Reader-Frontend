@@ -1,15 +1,6 @@
 <template>
   <button
     type="button"
-    class="reader-manage-icon-button reader-source-sort-btn"
-    :class="{ 'is-active': activeMenu === 'sort' }"
-    aria-label="排序"
-    @click.stop="emit('toggle-menu', 'sort')"
-  >
-    AŽ
-  </button>
-  <button
-    type="button"
     class="reader-manage-icon-button"
     :class="{ 'is-active': activeMenu === 'group' }"
     aria-label="分组"
@@ -27,37 +18,28 @@
     <span class="reader-source-more-icon" aria-hidden="true"></span>
   </button>
 
-  <section v-if="activeMenu === 'sort'" class="reader-manage-menu reader-source-menu--sort">
-    <label class="reader-manage-menu__item">
-      <span>反序</span>
-      <input
-        :checked="reverseSort"
-        type="checkbox"
-        @change="emit('update:reverseSort', $event.target.checked)"
-      />
-    </label>
-    <label v-for="item in sortItems" :key="item.value" class="reader-manage-menu__item">
-      <span>{{ item.label }}</span>
-      <input
-        :checked="sortMode === item.value"
-        type="radio"
-        name="sourceSort"
-        :value="item.value"
-        @change="emit('update:sortMode', item.value)"
-      />
-    </label>
-  </section>
-
-  <section v-if="activeMenu === 'group'" class="reader-manage-menu reader-source-menu--group">
+  <section v-if="activeMenu === 'group'" class="reader-manage-menu reader-replace-menu--group">
     <button type="button" class="reader-manage-menu__button" @click="emit('open-group-dialog')">
       分组管理
     </button>
-    <button v-for="item in groupFilters" :key="item" type="button" class="reader-manage-menu__button">
+    <button type="button" class="reader-manage-menu__button" @click="emit('select-group', '')">
+      全部分组
+    </button>
+    <button type="button" class="reader-manage-menu__button" @click="emit('select-group', '__NO_GROUP__')">
+      无分组
+    </button>
+    <button
+      v-for="item in groups"
+      :key="item"
+      type="button"
+      class="reader-manage-menu__button"
+      @click="emit('select-group', item)"
+    >
       {{ item }}
     </button>
   </section>
 
-  <section v-if="activeMenu === 'more'" class="reader-manage-menu reader-source-menu--more">
+  <section v-if="activeMenu === 'more'" class="reader-manage-menu reader-replace-menu--more">
     <button
       v-for="item in moreActions"
       :key="item.label"
@@ -79,18 +61,14 @@ import Icon from "../Icon.vue";
 
 defineProps({
   activeMenu: { type: String, default: "" },
-  reverseSort: { type: Boolean, default: false },
-  sortMode: { type: String, default: "manual" },
-  sortItems: { type: Array, default: () => [] },
-  groupFilters: { type: Array, default: () => [] },
+  groups: { type: Array, default: () => [] },
   moreActions: { type: Array, default: () => [] }
 });
 
 const emit = defineEmits([
   "toggle-menu",
-  "update:reverseSort",
-  "update:sortMode",
   "open-group-dialog",
+  "select-group",
   "more-action"
 ]);
 </script>

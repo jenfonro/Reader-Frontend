@@ -55,6 +55,10 @@ export const normalizeBookSourceForList = (source = {}, index = 0) => {
     group,
     enabled,
     enabledExplore: source.enabledExplore !== false,
+    hasExplore: Boolean(
+      toBookSourceText(source.exploreUrl).trim()
+      || toBookSourceText(source.ruleExplore?.url).trim()
+    ),
     customOrder: Number(source.customOrder || 0),
     updatedAt: Number.isFinite(updatedAt) ? updatedAt : 0,
     responseTime: Number.isFinite(responseTime) ? responseTime : 0,
@@ -85,6 +89,19 @@ export const setBookSourceEnabled = (key, enabled) => {
   return normalizeBookSourceForList(sources[index], index);
 };
 
+export const setBookSourceExploreEnabled = (key, enabled) => {
+  const sources = readBookSources();
+  const index = sources.findIndex((source, sourceIndex) => getSourceKey(source, sourceIndex) === key);
+  if (index < 0) return null;
+
+  sources[index] = {
+    ...sources[index],
+    enabledExplore: Boolean(enabled)
+  };
+  writeBookSources(sources);
+  return normalizeBookSourceForList(sources[index], index);
+};
+
 export const deleteBookSourcesByKeys = keys => {
   const selectedKeys = new Set(keys);
   const sources = readBookSources();
@@ -93,6 +110,44 @@ export const deleteBookSourcesByKeys = keys => {
   );
   writeBookSources(nextSources);
   return sources.length - nextSources.length;
+};
+
+export const moveBookSourceToTop = key => {
+  const sources = readBookSources();
+  const index = sources.findIndex((source, sourceIndex) => getSourceKey(source, sourceIndex) === key);
+  if (index < 0) return null;
+
+  const [source] = sources.splice(index, 1);
+  const minOrder = sources.reduce(
+    (min, item) => Math.min(min, Number(item.customOrder || 0)),
+    Number(source.customOrder || 0)
+  );
+  const movedSource = {
+    ...source,
+    customOrder: minOrder - 1
+  };
+  sources.unshift(movedSource);
+  writeBookSources(sources);
+  return normalizeBookSourceForList(movedSource, 0);
+};
+
+export const moveBookSourceToBottom = key => {
+  const sources = readBookSources();
+  const index = sources.findIndex((source, sourceIndex) => getSourceKey(source, sourceIndex) === key);
+  if (index < 0) return null;
+
+  const [source] = sources.splice(index, 1);
+  const maxOrder = sources.reduce(
+    (max, item) => Math.max(max, Number(item.customOrder || 0)),
+    Number(source.customOrder || 0)
+  );
+  const movedSource = {
+    ...source,
+    customOrder: maxOrder + 1
+  };
+  sources.push(movedSource);
+  writeBookSources(sources);
+  return normalizeBookSourceForList(movedSource, sources.length - 1);
 };
 
 export const saveBookSource = (source, previousKey = "") => {

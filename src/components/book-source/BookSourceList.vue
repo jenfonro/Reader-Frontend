@@ -31,6 +31,7 @@
           type="button"
           class="reader-manage-row-icon-button reader-source-row__more"
           aria-label="书源更多操作"
+          @click.stop="emit('toggle-row-menu', source)"
         >
           <span aria-hidden="true"></span>
           <i
@@ -42,6 +43,12 @@
             aria-hidden="true"
           ></i>
         </button>
+        <BookSourceRowMenu
+          v-if="activeRowMenuKey === source.key"
+          :source="source"
+          @close="emit('toggle-row-menu', source)"
+          @action="emit('row-menu-action', source, $event)"
+        />
       </article>
     </template>
   </div>
@@ -50,15 +57,23 @@
 <script setup>
 import { computed } from "vue";
 import Icon from "../Icon.vue";
+import BookSourceRowMenu from "./BookSourceRowMenu.vue";
 
 const props = defineProps({
+  activeRowMenuKey: { type: String, default: "" },
   loading: { type: Boolean, default: false },
   sources: { type: Array, default: () => [] },
   total: { type: Number, default: 0 },
   selectedSources: { type: Array, default: () => [] }
 });
 
-const emit = defineEmits(["update:selectedSources", "enabled-change", "edit"]);
+const emit = defineEmits([
+  "update:selectedSources",
+  "enabled-change",
+  "edit",
+  "toggle-row-menu",
+  "row-menu-action"
+]);
 
 const selectedModel = computed({
   get: () => props.selectedSources,

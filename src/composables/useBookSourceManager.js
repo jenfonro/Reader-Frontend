@@ -8,7 +8,10 @@ import {
 } from "../data/bookSourceUi";
 import {
   deleteBookSourcesByKeys,
+  moveBookSourceToBottom,
+  moveBookSourceToTop,
   readBookSourceList,
+  setBookSourceExploreEnabled,
   setBookSourceEnabled
 } from "../data/bookSources";
 import { useBookSourceImport } from "./useBookSourceImport";
@@ -17,6 +20,7 @@ import { useBookSourceSelection } from "./useBookSourceSelection";
 export const useBookSourceManager = ({ rootEl, localImportInput } = {}) => {
   const keyword = ref("");
   const activeMenu = ref("");
+  const activeRowMenuKey = ref("");
   const reverseSort = ref(false);
   const sortMode = ref("manual");
   const groupDialogOpen = ref(false);
@@ -64,10 +68,17 @@ export const useBookSourceManager = ({ rootEl, localImportInput } = {}) => {
 
   const closeMenu = () => {
     activeMenu.value = "";
+    activeRowMenuKey.value = "";
   };
 
   const toggleMenu = name => {
+    activeRowMenuKey.value = "";
     activeMenu.value = activeMenu.value === name ? "" : name;
+  };
+
+  const toggleRowMenu = source => {
+    activeMenu.value = "";
+    activeRowMenuKey.value = activeRowMenuKey.value === source?.key ? "" : source?.key || "";
   };
 
   const handleEnabledChange = (source, enabled) => {
@@ -81,6 +92,12 @@ export const useBookSourceManager = ({ rootEl, localImportInput } = {}) => {
     closeMenu();
     deleteDialogMessage.value = "";
     deleteDialogOpen.value = true;
+  };
+
+  const openSingleDeleteDialog = source => {
+    if (!source?.key) return;
+    selection.selectedSources.value = [source.key];
+    openDeleteDialog();
   };
 
   const closeDeleteDialog = () => {
@@ -127,6 +144,29 @@ export const useBookSourceManager = ({ rootEl, localImportInput } = {}) => {
     return item.action;
   };
 
+  const handleRowMenuAction = (source, action) => {
+    closeMenu();
+    if (!source?.key) return;
+    if (action === "top") {
+      moveBookSourceToTop(source.key);
+      loadSources();
+      return;
+    }
+    if (action === "bottom") {
+      moveBookSourceToBottom(source.key);
+      loadSources();
+      return;
+    }
+    if (action === "toggle-explore") {
+      setBookSourceExploreEnabled(source.key, !source.enabledExplore);
+      loadSources();
+      return;
+    }
+    if (action === "delete") {
+      openSingleDeleteDialog(source);
+    }
+  };
+
   const handleDocumentPointerDown = event => {
     const target = event?.target || null;
     const rootElement = rootEl?.value?.getRootElement ? rootEl.value.getRootElement() : null;
@@ -135,6 +175,7 @@ export const useBookSourceManager = ({ rootEl, localImportInput } = {}) => {
       return;
     }
     if (target.closest(".reader-manage-menu") || target.closest(".reader-manage-icon-button")) return;
+    if (target.closest(".reader-manage-row-icon-button")) return;
     closeMenu();
   };
 
@@ -149,6 +190,7 @@ export const useBookSourceManager = ({ rootEl, localImportInput } = {}) => {
 
   return {
     activeMenu,
+    activeRowMenuKey,
     closeDeleteDialog,
     closeGroupDialog,
     closeMenu,
@@ -161,6 +203,7 @@ export const useBookSourceManager = ({ rootEl, localImportInput } = {}) => {
     groupFilters,
     handleEnabledChange,
     handleMoreAction,
+    handleRowMenuAction,
     keyword,
     loading,
     managedGroups: groupNames,
@@ -172,6 +215,7 @@ export const useBookSourceManager = ({ rootEl, localImportInput } = {}) => {
     sortMode,
     sourceTotal,
     toggleMenu,
+    toggleRowMenu,
     ...selection,
     ...sourceImport
   };

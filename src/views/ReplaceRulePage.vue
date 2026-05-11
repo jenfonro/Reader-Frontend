@@ -5,48 +5,45 @@
     footer-class="reader-source-page__footer"
   >
     <template #header>
-      <PageTopbar title="书源管理" back-visible @back="emit('back')" />
+      <PageTopbar title="替换净化" back-visible @back="emit('back')" />
     </template>
 
-    <ManagePage ref="rootEl" variant="source" body-label="书源列表">
+    <ManagePage ref="rootEl" variant="source" body-label="替换规则列表">
       <template #toolbar-main>
-        <BookSourceSearch v-model="keyword" />
+        <ReplaceRuleSearch v-model="keyword" />
       </template>
 
       <template #toolbar-actions>
-        <BookSourceToolbarActions
+        <ReplaceRuleToolbarActions
           :active-menu="activeMenu"
-          v-model:reverse-sort="reverseSort"
-          v-model:sort-mode="sortMode"
-          :sort-items="sortItems"
-          :group-filters="groupFilters"
+          :groups="ruleGroups"
           :more-actions="moreActions"
           @toggle-menu="toggleMenu"
           @open-group-dialog="openGroupDialog"
+          @select-group="selectGroup"
           @more-action="handleToolbarAction"
         />
       </template>
 
-      <BookSourceList
-        v-model:selected-sources="selectedSources"
+      <ReplaceRuleList
+        v-model:selected-rules="selectedRules"
         :active-row-menu-key="activeRowMenuKey"
         :loading="loading"
-        :sources="filteredSources"
-        :total="sourceTotal"
+        :rules="filteredRules"
+        :total="ruleTotal"
         @enabled-change="handleEnabledChange"
-        @edit="openSourceEditor"
+        @edit="openRuleEditor"
         @toggle-row-menu="toggleRowMenu"
         @row-menu-action="handleRowMenuAction"
       />
-
     </ManagePage>
 
     <template #footer>
       <div class="reader-source-page__footer-bar">
-        <BookSourceFooter
+        <ReplaceRuleFooter
           v-model:all-checked="allChecked"
-          :selected-count="selectedSourceCount"
-          :total="sourceTotal"
+          :selected-count="selectedRuleCount"
+          :total="ruleTotal"
           @invert="invertSelection"
           @delete="openDeleteDialog"
         />
@@ -61,32 +58,39 @@
         accept=".json,.txt,application/json,text/plain"
         @change="handleLocalImportFile"
       />
+      <input
+        ref="qrImportInput"
+        class="reader-source-file-input"
+        type="file"
+        accept="image/*"
+        @change="handleQrImportFile"
+      />
       <ManageConfirmDialog
         :open="deleteDialogOpen"
-        title="删除书源"
-        title-id="readerDeleteSourceTitle"
-        :text="`确认删除选中的 ${selectedSourceCount} 个书源吗？`"
+        title="删除替换规则"
+        title-id="readerDeleteReplaceRuleTitle"
+        :text="`确认删除选中的 ${selectedRuleCount} 个替换规则吗？`"
         :message="deleteDialogMessage"
         confirm-text="删除"
         confirm-variant="danger"
         :submitting="deleteSubmitting"
         submitting-text="删除中..."
         @close="closeDeleteDialog"
-        @confirm="confirmDeleteSources"
+        @confirm="confirmDeleteRules"
       />
-      <BookSourceGroupDialog
+      <ReplaceRuleGroupDialog
         :open="groupDialogOpen"
-        :groups="managedGroups"
+        :groups="ruleGroups"
         @close="closeGroupDialog"
       />
       <ManageInputDialog
         :open="networkDialogOpen"
         :model-value="networkImportUrl"
         title="网络导入"
-        title-id="readerSourceNetworkImportTitle"
-        label="书源地址"
+        title-id="readerReplaceNetworkImportTitle"
+        label="替换规则地址"
         type="url"
-        placeholder="请输入网络书源地址"
+        placeholder="请输入网络替换规则地址"
         :message="networkDialogMessage"
         :submitting="previewingImport"
         submitting-text="解析中..."
@@ -94,7 +98,7 @@
         @close="closeNetworkDialog"
         @submit="submitNetworkImport"
       />
-      <BookSourceImportDialog
+      <ReplaceRuleImportDialog
         v-model:selected-keys="selectedImportKeys"
         v-model:all-checked="allImportChecked"
         :open="importDialogOpen"
@@ -111,23 +115,24 @@
 
 <script setup>
 import { ref } from "vue";
-import BookSourceFooter from "../components/book-source/BookSourceFooter.vue";
-import BookSourceGroupDialog from "../components/book-source/BookSourceGroupDialog.vue";
-import BookSourceImportDialog from "../components/book-source/BookSourceImportDialog.vue";
-import BookSourceList from "../components/book-source/BookSourceList.vue";
-import BookSourceSearch from "../components/book-source/BookSourceSearch.vue";
-import BookSourceToolbarActions from "../components/book-source/BookSourceToolbarActions.vue";
 import ManageConfirmDialog from "../components/ManageConfirmDialog.vue";
 import ManageInputDialog from "../components/ManageInputDialog.vue";
 import ManagePage from "../components/ManagePage.vue";
 import PageLayout from "../components/PageLayout.vue";
 import PageTopbar from "../components/PageTopbar.vue";
-import { useBookSourceManager } from "../composables/useBookSourceManager";
+import ReplaceRuleFooter from "../components/replacement/ReplaceRuleFooter.vue";
+import ReplaceRuleGroupDialog from "../components/replacement/ReplaceRuleGroupDialog.vue";
+import ReplaceRuleImportDialog from "../components/replacement/ReplaceRuleImportDialog.vue";
+import ReplaceRuleList from "../components/replacement/ReplaceRuleList.vue";
+import ReplaceRuleSearch from "../components/replacement/ReplaceRuleSearch.vue";
+import ReplaceRuleToolbarActions from "../components/replacement/ReplaceRuleToolbarActions.vue";
+import { useReplaceRuleManager } from "../composables/useReplaceRuleManager";
 
-const emit = defineEmits(["back", "edit"]);
+const emit = defineEmits(["back", "edit-replace"]);
 const rootEl = ref(null);
 const localImportInput = ref(null);
-const manager = useBookSourceManager({ rootEl, localImportInput });
+const qrImportInput = ref(null);
+const manager = useReplaceRuleManager({ rootEl, localImportInput, qrImportInput });
 
 const {
   activeMenu,
@@ -139,17 +144,17 @@ const {
   closeImportDialog,
   closeMenu,
   closeNetworkDialog,
-  confirmDeleteSources,
+  confirmDeleteRules,
   confirmImport,
   deleteDialogMessage,
   deleteDialogOpen,
   deleteSubmitting,
-  filteredSources,
+  filteredRules,
   groupDialogOpen,
-  groupFilters,
   handleEnabledChange,
   handleLocalImportFile,
   handleMoreAction,
+  handleQrImportFile,
   handleRowMenuAction,
   importDialogMessage,
   importDialogOpen,
@@ -158,7 +163,6 @@ const {
   invertSelection,
   keyword,
   loading,
-  managedGroups,
   moreActions,
   networkDialogMessage,
   networkDialogOpen,
@@ -166,27 +170,29 @@ const {
   openDeleteDialog,
   openGroupDialog,
   previewingImport,
-  reverseSort,
+  ruleGroups,
+  ruleTotal,
+  selectGroup,
   selectedImportCount,
   selectedImportKeys,
-  selectedSourceCount,
-  selectedSources,
-  sortItems,
-  sortMode,
-  sourceTotal,
+  selectedRuleCount,
+  selectedRules,
   submitNetworkImport,
   toggleMenu,
   toggleRowMenu
 } = manager;
 
-const openSourceEditor = (source = null) => {
+const openRuleEditor = (rule = null) => {
   closeMenu();
-  emit("edit", source ? { key: source.key, name: source.name } : { key: "", name: "新建书源" });
+  emit(
+    "edit-replace",
+    rule ? { key: rule.key, name: rule.name } : { key: "", name: "新建替换" }
+  );
 };
 
 const handleToolbarAction = item => {
   if (handleMoreAction(item) === "create") {
-    openSourceEditor();
+    openRuleEditor();
   }
 };
 </script>
