@@ -6,14 +6,7 @@
       day: !isNight
     }"
   >
-    <div
-      class="home-sidebar"
-      :class="sidebarClass"
-      :style="sidebarStyle"
-      @touchstart="handleSidebarTouchStart"
-      @touchmove="handleSidebarTouchMove"
-      @touchend="handleSidebarTouchEnd"
-    >
+    <div class="home-sidebar">
       <div class="home-sidebar__inner">
         <div class="reader-sidebar__brand" :aria-label="siteName">
           <span class="reader-sidebar__brand-logo">
@@ -40,31 +33,24 @@
         </nav>
       </div>
     </div>
-    <div
-      class="home-content"
-      @click="showSidebar = false"
-    >
+    <div class="home-content">
       <div class="home-header">
-        <el-icon
-          v-if="useCollapsedSidebar"
-          class="home-header__menu"
-          @click.stop="showSidebar = true"
-        >
-          <MenuIcon />
-        </el-icon>
         <span class="home-header__reader-link" @click="goReader">进入阅读页</span>
       </div>
     </div>
+
+    <MobileNav
+      :items="mobileNavItems"
+      :active-key="activeKey"
+      @navigate="handleNavClick"
+    />
   </div>
 </template>
 
 <script setup>
-import { onBeforeUnmount, onMounted, ref, watch } from "vue";
-import { Menu as MenuIcon } from "@element-plus/icons-vue";
-import { ElIcon } from "element-plus/es/components/icon/index.mjs";
-import "element-plus/es/components/icon/style/css.mjs";
+import { ref } from "vue";
 import Icon from "../components/Icon.vue";
-import { getMiniInterface } from "../utils/interface";
+import MobileNav from "../components/MobileNav.vue";
 
 defineOptions({
   name: "Index"
@@ -84,22 +70,15 @@ const navItems = [
   { key: "bookshelf", label: "我的书架", icon: "bookshelf" },
   { key: "settings", label: "设置", icon: "settings", separatedBefore: true }
 ];
+const mobileNavItems = [
+  { key: "home", label: "首页", icon: "home" },
+  { key: "library", label: "发现", icon: "library" },
+  { key: "search", label: "搜索", icon: "search" },
+  { key: "bookshelf", label: "书架", icon: "bookshelf" },
+  { key: "settings", label: "设置", icon: "settings" }
+];
 const activeKey = ref("home");
-const showSidebar = ref(false);
-const sidebarClass = ref("");
-const sidebarStyle = ref({});
-const sidebarTouchStart = ref(null);
-const useCollapsedSidebar = ref(getMiniInterface());
 const isNight = ref(false);
-
-const syncSidebarClass = () => {
-  sidebarClass.value =
-    useCollapsedSidebar.value && !showSidebar.value ? "home-sidebar--hidden" : "";
-};
-
-const syncResponsiveState = () => {
-  useCollapsedSidebar.value = getMiniInterface();
-};
 
 const goReader = () => {
   emit("enter-reader");
@@ -107,60 +86,7 @@ const goReader = () => {
 
 const handleNavClick = key => {
   activeKey.value = key;
-  showSidebar.value = false;
 };
-
-const handleSidebarTouchStart = event => {
-  sidebarTouchStart.value = event.touches && event.touches[0];
-};
-
-const handleSidebarTouchMove = event => {
-  if (!useCollapsedSidebar.value || !sidebarTouchStart.value || !event.touches[0]) {
-    return;
-  }
-  const moveX = event.touches[0].clientX - sidebarTouchStart.value.clientX;
-  if (moveX < 0) {
-    sidebarStyle.value = { marginLeft: `${Math.max(-260, moveX)}px` };
-  }
-};
-
-const handleSidebarTouchEnd = () => {
-  sidebarStyle.value = {};
-  sidebarTouchStart.value = null;
-};
-
-watch(useCollapsedSidebar, value => {
-  if (!value) {
-    sidebarClass.value = "";
-  } else if (!showSidebar.value) {
-    sidebarClass.value = "home-sidebar--hidden";
-  }
-});
-
-watch(showSidebar, value => {
-  if (!useCollapsedSidebar.value) {
-    return;
-  }
-  if (!value) {
-    sidebarClass.value = "home-sidebar--leaving";
-    window.setTimeout(() => {
-      if (!showSidebar.value) {
-        sidebarClass.value = "home-sidebar--hidden";
-      }
-    }, 300);
-  } else {
-    sidebarClass.value = "home-sidebar--entering";
-  }
-});
-
-onMounted(() => {
-  syncSidebarClass();
-  window.addEventListener("resize", syncResponsiveState);
-});
-
-onBeforeUnmount(() => {
-  window.removeEventListener("resize", syncResponsiveState);
-});
 </script>
 
 <style lang="stylus" scoped>
@@ -313,10 +239,6 @@ onBeforeUnmount(() => {
       min-width: 320px;
       box-sizing: border-box;
 
-      .home-header__menu {
-        cursor: pointer;
-      }
-
       .home-header__reader-link {
         font-size: 14px;
         line-height: 28px;
@@ -352,12 +274,11 @@ onBeforeUnmount(() => {
   .home-view {
     overflow-x: hidden;
 
-    :deep(.home-sidebar) {
-      .home-sidebar__inner {
-        padding: 0 0 66px;
-      }
+    .home-sidebar {
+      display: none;
     }
-    :deep(.home-content) {
+
+    .home-content {
       padding: 0;
       padding-top: constant(safe-area-inset-top) !important;
       padding-top: env(safe-area-inset-top) !important;
@@ -367,17 +288,5 @@ onBeforeUnmount(() => {
       }
     }
   }
-}
-</style><style>
-.home-sidebar--hidden {
-  margin-left: -260px;
-}
-.home-sidebar--entering {
-  margin-left: 0px;
-  transition: margin-left 0.3s;
-}
-.home-sidebar--leaving {
-  margin-left: -260px;
-  transition: margin-left 0.3s;
 }
 </style>
