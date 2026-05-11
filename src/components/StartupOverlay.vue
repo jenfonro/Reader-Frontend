@@ -56,7 +56,7 @@ const normalizedProgress = computed(() =>
   justify-content: center;
   padding: 32px;
   box-sizing: border-box;
-  background: #f7f2e8;
+  background: #fff;
   opacity: 1;
   transition: opacity 0.55s ease, visibility 0.55s ease;
 }
@@ -77,7 +77,7 @@ const normalizedProgress = computed(() =>
   width: 76px;
   height: 76px;
   object-fit: contain;
-  filter: drop-shadow(0 14px 24px rgba(56, 40, 20, 0.14));
+  filter: drop-shadow(0 14px 24px rgba(44, 62, 80, 0.12));
   user-select: none;
   -webkit-user-drag: none;
 }
@@ -87,7 +87,7 @@ const normalizedProgress = computed(() =>
   align-items: center;
   gap: 10px;
   margin-top: 28px;
-  color: rgba(64, 48, 32, 0.72);
+  color: rgba(44, 62, 80, 0.72);
   font-size: 14px;
   line-height: 24px;
 }
@@ -95,8 +95,8 @@ const normalizedProgress = computed(() =>
 .startup-overlay__spinner {
   width: 24px;
   height: 24px;
-  border: 2px solid rgba(124, 92, 54, 0.18);
-  border-top-color: rgba(124, 92, 54, 0.72);
+  border: 2px solid rgba(44, 62, 80, 0.14);
+  border-top-color: rgba(44, 62, 80, 0.72);
   border-radius: 50%;
   animation: startup-spin 0.85s linear infinite;
 }
@@ -107,20 +107,20 @@ const normalizedProgress = computed(() =>
   margin-top: 22px;
   overflow: hidden;
   border-radius: 999px;
-  background: rgba(124, 92, 54, 0.14);
+  background: rgba(44, 62, 80, 0.12);
 }
 
 .startup-overlay__progress-bar {
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #a97644, #d6a76d);
+  background: #2c3e50;
   transition: width 0.28s ease;
 }
 
 .startup-overlay__status {
   min-height: 20px;
   margin-top: 14px;
-  color: rgba(64, 48, 32, 0.68);
+  color: rgba(44, 62, 80, 0.62);
   font-size: 14px;
   line-height: 20px;
   text-align: center;
