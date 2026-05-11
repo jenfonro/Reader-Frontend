@@ -1,10 +1,26 @@
 <template>
   <div id="app">
-    <component
-      :is="currentView"
-      @enter-reader="showReader"
-      @close-reader="showHome"
+    <ReaderView
+      v-if="isReaderPage"
+      @close-reader="goBack"
     />
+    <AppShell
+      v-else
+      :active-key="shellActiveKey"
+      :show-mobile-nav="showShellMobileNav"
+      @navigate="handleShellNavigate"
+    >
+      <component
+        :is="currentView"
+        :key="currentPageKey"
+        v-bind="currentViewProps"
+        @enter-reader="openReader"
+        @open-page="openPage"
+        @back="goBack"
+        @edit="openSourceEditor"
+        @saved="handleSourceSaved"
+      />
+    </AppShell>
     <StartupOverlay
       v-if="startupVisible"
       :status="startupStatus"
@@ -16,52 +32,218 @@
 
 <script setup>
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref } from "vue";
+import AppShell from "./components/AppShell.vue";
 import StartupOverlay from "./components/StartupOverlay.vue";
 import { runStartupCache } from "./startup/startupCache";
 
-defineOptions({
-  name: "App"
-});
+const PAGE_HOME = "home";
+const PAGE_READER = "reader";
+const PAGE_SYSTEM_SETTINGS = "settings-system";
+const PAGE_INTERFACE_SETTINGS = "settings-interface";
+const PAGE_BOOK_SOURCES = "settings-sources";
+const PAGE_SOURCE_EDITOR = "source-editor";
+const PAGE_SETTINGS_DETAIL = "settings-detail";
+const HOME_ACTIVE_DEFAULT = "home";
 
-const getReaderState = () => Boolean(window.history.state?.readerOpen);
-
-const showReaderPage = ref(typeof window !== "undefined" ? getReaderState() : false);
 const IndexView = defineAsyncComponent(() => import("./views/Index.vue"));
 const ReaderView = defineAsyncComponent(() => import("./views/Reader.vue"));
+const SystemSettingsView = defineAsyncComponent(() => import("./views/SystemSettings.vue"));
+const InterfaceSettingsView = defineAsyncComponent(() => import("./views/InterfaceSettings.vue"));
+const BookSourcePageView = defineAsyncComponent(() => import("./views/BookSourcePage.vue"));
+const BookSourceEditView = defineAsyncComponent(() => import("./views/BookSourceEdit.vue"));
+const SettingsDetailView = defineAsyncComponent(() => import("./views/SettingsDetail.vue"));
+
+const createHomePage = (activeKey = HOME_ACTIVE_DEFAULT) => ({
+  name: PAGE_HOME,
+  activeKey: activeKey || HOME_ACTIVE_DEFAULT
+});
+
+const normalizePage = value => {
+  if (value?.name === PAGE_READER) {
+    return { name: PAGE_READER };
+  }
+  if (value?.name === PAGE_SYSTEM_SETTINGS) {
+    return { name: PAGE_SYSTEM_SETTINGS };
+  }
+  if (value?.name === PAGE_INTERFACE_SETTINGS) {
+    return { name: PAGE_INTERFACE_SETTINGS };
+  }
+  if (value?.name === PAGE_BOOK_SOURCES) {
+    return { name: PAGE_BOOK_SOURCES };
+  }
+  if (value?.name === PAGE_SOURCE_EDITOR) {
+    return {
+      name: PAGE_SOURCE_EDITOR,
+      sourceKey: typeof value.sourceKey === "string" ? value.sourceKey : "",
+      sourceName: typeof value.sourceName === "string" ? value.sourceName : ""
+    };
+  }
+  if (value?.name === PAGE_SETTINGS_DETAIL) {
+    return {
+      name: PAGE_SETTINGS_DETAIL,
+      settingKey: typeof value.settingKey === "string" ? value.settingKey : ""
+    };
+  }
+  return createHomePage(value?.activeKey);
+};
+
+const getHistoryPage = stateValue => {
+  if (typeof window === "undefined") return createHomePage();
+  const state = stateValue === undefined ? window.history.state : stateValue;
+  if (state?.appPage) return normalizePage(state.appPage);
+  return normalizePage(state);
+};
+
+const writeHistoryPage = (page, mode = "replace") => {
+  const normalizedPage = normalizePage(page);
+  const method = mode === "push" ? "pushState" : "replaceState";
+  window.history[method]({ appPage: normalizedPage }, "", window.location.href);
+  return normalizedPage;
+};
+
+const currentPage = ref(getHistoryPage());
+const homeActiveKey = ref(
+  currentPage.value.name === PAGE_HOME ? currentPage.value.activeKey : HOME_ACTIVE_DEFAULT
+);
 const startupVisible = ref(true);
 const startupLeaving = ref(false);
 const startupStatus = ref("正在检测新版本...");
 const startupProgress = ref(0);
 
-const currentView = computed(() =>
-  showReaderPage.value ? ReaderView : IndexView
+const isReaderPage = computed(() => currentPage.value.name === PAGE_READER);
+
+const showShellMobileNav = computed(() => currentPage.value.name === PAGE_HOME);
+
+const shellActiveKey = computed(() =>
+  currentPage.value.name === PAGE_HOME ? homeActiveKey.value : "settings"
 );
 
-const showReader = () => {
-  if (showReaderPage.value) {
-    return;
+const currentView = computed(() => {
+  switch (currentPage.value.name) {
+    case PAGE_SYSTEM_SETTINGS:
+      return SystemSettingsView;
+    case PAGE_INTERFACE_SETTINGS:
+      return InterfaceSettingsView;
+    case PAGE_BOOK_SOURCES:
+      return BookSourcePageView;
+    case PAGE_SOURCE_EDITOR:
+      return BookSourceEditView;
+    case PAGE_SETTINGS_DETAIL:
+      return SettingsDetailView;
+    default:
+      return IndexView;
   }
+});
 
-  showReaderPage.value = true;
+const currentViewProps = computed(() => {
+  if (currentPage.value.name === PAGE_HOME) {
+    return { activeKey: currentPage.value.activeKey || homeActiveKey.value };
+  }
+  if (currentPage.value.name === PAGE_SOURCE_EDITOR) {
+    return {
+      sourceKey: currentPage.value.sourceKey || "",
+      sourceName: currentPage.value.sourceName || ""
+    };
+  }
+  if (currentPage.value.name === PAGE_SETTINGS_DETAIL) {
+    return { settingKey: currentPage.value.settingKey || "" };
+  }
+  return {};
+});
 
-  window.history.pushState({ readerOpen: true }, "", window.location.href);
+const currentPageKey = computed(() => {
+  if (currentPage.value.name === PAGE_SOURCE_EDITOR) {
+    return [
+      PAGE_SOURCE_EDITOR,
+      currentPage.value.sourceKey || "",
+      currentPage.value.sourceName || ""
+    ].join(":");
+  }
+  if (currentPage.value.name === PAGE_SETTINGS_DETAIL) {
+    return `${PAGE_SETTINGS_DETAIL}:${currentPage.value.settingKey || ""}`;
+  }
+  return currentPage.value.name;
+});
+
+const syncCurrentPage = page => {
+  currentPage.value = normalizePage(page);
+  if (currentPage.value.name === PAGE_HOME) {
+    homeActiveKey.value = currentPage.value.activeKey || HOME_ACTIVE_DEFAULT;
+  }
 };
 
-const showHome = () => {
-  if (!showReaderPage.value) {
-    return;
-  }
+const replaceCurrentPage = page => {
+  syncCurrentPage(writeHistoryPage(page, "replace"));
+};
 
-  if (window.history.state?.readerOpen) {
+const pushPage = page => {
+  if (currentPage.value.name === PAGE_HOME) {
+    writeHistoryPage(createHomePage(homeActiveKey.value), "replace");
+  }
+  syncCurrentPage(writeHistoryPage(page, "push"));
+};
+
+const goBack = () => {
+  if (window.history.length > 1) {
     window.history.back();
     return;
   }
+  replaceCurrentPage(createHomePage(homeActiveKey.value));
+};
 
-  showReaderPage.value = false;
+const openReader = () => {
+  if (currentPage.value.name === PAGE_READER) return;
+  pushPage({ name: PAGE_READER });
+};
+
+const handleShellNavigate = key => {
+  const activeKey = key || HOME_ACTIVE_DEFAULT;
+  if (currentPage.value.name === PAGE_HOME) {
+    homeActiveKey.value = activeKey;
+    replaceCurrentPage(createHomePage(activeKey));
+    return;
+  }
+  pushPage(createHomePage(activeKey));
+};
+
+const openPage = page => {
+  const pageName = typeof page === "string" ? page : page?.name;
+  if (pageName === PAGE_SYSTEM_SETTINGS) {
+    pushPage({ name: PAGE_SYSTEM_SETTINGS });
+    return;
+  }
+  if (pageName === PAGE_INTERFACE_SETTINGS) {
+    pushPage({ name: PAGE_INTERFACE_SETTINGS });
+    return;
+  }
+  if (pageName === PAGE_BOOK_SOURCES) {
+    pushPage({ name: PAGE_BOOK_SOURCES });
+    return;
+  }
+  if (pageName) {
+    pushPage({ name: PAGE_SETTINGS_DETAIL, settingKey: pageName });
+  }
+};
+
+const openSourceEditor = source => {
+  pushPage({
+    name: PAGE_SOURCE_EDITOR,
+    sourceKey: source?.key || "",
+    sourceName: source?.name || "新建书源"
+  });
+};
+
+const handleSourceSaved = result => {
+  if (currentPage.value.name !== PAGE_SOURCE_EDITOR || !result?.key) return;
+  replaceCurrentPage({
+    ...currentPage.value,
+    sourceKey: result.key,
+    sourceName: result.source?.bookSourceName || currentPage.value.sourceName
+  });
 };
 
 const handlePopState = event => {
-  showReaderPage.value = Boolean(event.state?.readerOpen);
+  syncCurrentPage(getHistoryPage(event?.state));
 };
 
 const finishStartup = () => {
@@ -84,14 +266,7 @@ const startApplication = async () => {
 };
 
 onMounted(() => {
-  if (window.history.state === null) {
-    window.history.replaceState(
-      { readerOpen: showReaderPage.value },
-      "",
-      window.location.href
-    );
-  }
-
+  writeHistoryPage(currentPage.value, "replace");
   window.addEventListener("popstate", handlePopState);
   startApplication();
 });

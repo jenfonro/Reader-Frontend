@@ -8,17 +8,70 @@
 .reader-page {
   --reader-page-topbar-row-height: 52px;
   --reader-page-topbar-space: calc(var(--reader-page-topbar-row-height) + env(safe-area-inset-top));
+  --reader-page-footer-space: 0px;
   position: relative;
   width: 100%;
   height: 100%;
   min-height: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
-.reader-settings-home {
+.reader-page-header {
+  position: absolute;
+  z-index: 10;
+  inset: 0 0 auto;
+  height: var(--reader-page-topbar-space);
+  min-height: 0;
+  box-sizing: border-box;
+}
+
+.reader-page-body {
+  position: absolute;
+  inset:
+    var(--reader-page-topbar-space)
+    0
+    var(--reader-page-footer-space)
+    0;
+  min-height: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.reader-page-footer {
+  position: absolute;
+  z-index: 12;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  min-height: 0;
+  box-sizing: border-box;
+}
+
+.reader-home-page__body,
+.reader-settings-menu-body,
+.reader-settings-page__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--reader-page-body-gap, 10px);
+  overflow-y: auto;
+  padding: var(--reader-page-body-gap, 10px) var(--reader-page-content-x, 24px) 0;
+  overscroll-behavior: contain;
+}
+
+.reader-settings-menu-body {
   gap: 18px;
+}
+
+.reader-source-page__body,
+.reader-source-editor-page__body {
+  padding: var(--reader-page-body-gap, 10px) var(--reader-page-content-x, 24px) 0;
+}
+
+.reader-page-body > .reader-manage,
+.reader-page-body > .reader-source-editor {
+  min-height: 0;
+  height: 100%;
 }
 
 .reader-settings-list-card,

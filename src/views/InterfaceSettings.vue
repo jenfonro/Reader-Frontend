@@ -1,6 +1,11 @@
 <template>
-  <div class="reader-content reader-page reader-interface-settings">
-    <PageTopbar title="界面设置" back-visible @back="emit('back')" />
+  <PageLayout
+    root-class="reader-interface-settings"
+    body-class="reader-settings-page__body"
+  >
+    <template #header>
+      <PageTopbar title="界面设置" back-visible @back="emit('back')" />
+    </template>
 
     <section class="reader-settings-form-card">
       <button
@@ -15,11 +20,12 @@
         </span>
       </button>
     </section>
-  </div>
+  </PageLayout>
 </template>
 
 <script setup>
 import { onBeforeUnmount, ref } from "vue";
+import PageLayout from "../components/PageLayout.vue";
 import PageTopbar from "../components/PageTopbar.vue";
 import { getUiPreferences, setUiPreference, subscribeUiPreferences } from "../data/uiPreferences";
 

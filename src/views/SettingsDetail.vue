@@ -1,6 +1,11 @@
 <template>
-  <div class="reader-content reader-page reader-settings-detail">
-    <PageTopbar :title="setting.label" back-visible @back="emit('back')" />
+  <PageLayout
+    root-class="reader-settings-detail"
+    body-class="reader-settings-page__body"
+  >
+    <template #header>
+      <PageTopbar :title="setting.label" back-visible @back="emit('back')" />
+    </template>
 
     <section class="reader-settings-detail-card">
       <span class="reader-settings-detail-card__icon">
@@ -10,12 +15,13 @@
       <p>{{ setting.description }}</p>
       <div class="reader-settings-placeholder-text">{{ setting.label }}页面</div>
     </section>
-  </div>
+  </PageLayout>
 </template>
 
 <script setup>
 import { computed } from "vue";
 import Icon from "../components/Icon.vue";
+import PageLayout from "../components/PageLayout.vue";
 import PageTopbar from "../components/PageTopbar.vue";
 import { findSettingsItem, settingsItems } from "../data/settings";
 

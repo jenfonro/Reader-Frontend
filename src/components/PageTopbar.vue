@@ -61,9 +61,9 @@ const normalizedActions = computed(() =>
   position: relative;
   z-index: 10;
   width: 100%;
+  height: 100%;
   min-width: 0;
   min-height: var(--reader-page-topbar-space, calc(52px + env(safe-area-inset-top)));
-  flex: 0 0 auto;
   padding-top: env(safe-area-inset-top);
   color: var(--reader-app-text);
   box-sizing: border-box;
@@ -99,11 +99,11 @@ const normalizedActions = computed(() =>
 }
 
 .reader-page-topbar__side--left {
-  left: 0;
+  left: var(--reader-page-content-x, 24px);
 }
 
 .reader-page-topbar__side--right {
-  right: 0;
+  right: var(--reader-page-content-x, 24px);
 }
 
 .reader-page-topbar__button {

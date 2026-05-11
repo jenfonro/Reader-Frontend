@@ -1,6 +1,11 @@
 <template>
-  <div class="reader-content reader-page reader-system-settings">
-    <PageTopbar title="系统设置" back-visible @back="emit('back')" />
+  <PageLayout
+    root-class="reader-system-settings"
+    body-class="reader-settings-page__body"
+  >
+    <template #header>
+      <PageTopbar title="系统设置" back-visible @back="emit('back')" />
+    </template>
 
     <section class="reader-settings-form-card">
       <button
@@ -28,49 +33,40 @@
       </p>
     </section>
 
-    <ManageDialog
-      :open="siteNameDialogOpen"
-      title="站点名称"
-      title-id="readerSiteNameDialogTitle"
-      @close="closeSiteNameDialog"
-    >
-      <form class="reader-manage-form" @submit.prevent="submitSiteName">
-        <label>
-          <span>站点名称</span>
-          <input v-model.trim="siteNameDraft" type="text" autocomplete="off" placeholder="请输入站点名称" />
-        </label>
-        <p v-if="dialogMessage" class="reader-manage-form__error">{{ dialogMessage }}</p>
-        <div class="reader-manage-dialog__actions">
-          <button type="button" @click="closeSiteNameDialog">取消</button>
-          <button type="submit" class="is-primary">确定</button>
-        </div>
-      </form>
-    </ManageDialog>
+    <template #overlay>
+      <ManageInputDialog
+        v-model="siteNameDraft"
+        :open="siteNameDialogOpen"
+        title="站点名称"
+        title-id="readerSiteNameDialogTitle"
+        label="站点名称"
+        placeholder="请输入站点名称"
+        :message="dialogMessage"
+        @close="closeSiteNameDialog"
+        @submit="submitSiteName"
+      />
 
-    <ManageDialog
-      :open="searchConcurrencyDialogOpen"
-      title="搜索并发数"
-      title-id="readerSearchConcurrencyDialogTitle"
-      @close="closeSearchConcurrencyDialog"
-    >
-      <form class="reader-manage-form" @submit.prevent="submitSearchConcurrency">
-        <label>
-          <span>搜索并发数</span>
-          <input v-model.number="searchConcurrencyDraft" type="number" min="1" inputmode="numeric" />
-        </label>
-        <p v-if="dialogMessage" class="reader-manage-form__error">{{ dialogMessage }}</p>
-        <div class="reader-manage-dialog__actions">
-          <button type="button" @click="closeSearchConcurrencyDialog">取消</button>
-          <button type="submit" class="is-primary">确定</button>
-        </div>
-      </form>
-    </ManageDialog>
-  </div>
+      <ManageInputDialog
+        v-model="searchConcurrencyDraft"
+        :open="searchConcurrencyDialogOpen"
+        title="搜索并发数"
+        title-id="readerSearchConcurrencyDialogTitle"
+        label="搜索并发数"
+        type="number"
+        min="1"
+        inputmode="numeric"
+        :message="dialogMessage"
+        @close="closeSearchConcurrencyDialog"
+        @submit="submitSearchConcurrency"
+      />
+    </template>
+  </PageLayout>
 </template>
 
 <script setup>
 import { ref } from "vue";
-import ManageDialog from "../components/ManageDialog.vue";
+import ManageInputDialog from "../components/ManageInputDialog.vue";
+import PageLayout from "../components/PageLayout.vue";
 import PageTopbar from "../components/PageTopbar.vue";
 import { getSystemSettings, setSystemSetting } from "../data/systemSettings";
 

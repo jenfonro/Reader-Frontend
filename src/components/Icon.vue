@@ -64,6 +64,35 @@
       <circle cx="12" cy="8" r="4" />
       <path d="M4 21a8 8 0 0 1 16 0" />
     </template>
+    <template v-else-if="name === 'source-group'">
+      <path d="M4 5.5h6l1.8 2H20v11a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18.5v-13Z" />
+      <path d="M8 12h8" />
+      <path d="M8 16h5" />
+    </template>
+    <template v-else-if="name === 'edit-square'">
+      <rect x="4" y="4" width="16" height="16" rx="3" />
+      <path d="M9 15h2.2L16 10.2 13.8 8 9 12.8V15Z" />
+      <path d="M13.5 8.3 15.7 10.5" />
+    </template>
+    <template v-else-if="name === 'save'">
+      <path d="M5 4h12l2 2v14H5V4Z" />
+      <path d="M8 4v6h8V4" />
+      <path d="M8 20v-6h8v6" />
+    </template>
+    <template v-else-if="name === 'debug'">
+      <path d="M8 8a4 4 0 0 1 8 0v1H8V8Z" />
+      <path d="M7 9h10v5a5 5 0 0 1-10 0V9Z" />
+      <path d="M4 13h3" />
+      <path d="M17 13h3" />
+      <path d="M5 19l2.2-2" />
+      <path d="M18.8 17 21 19" />
+      <path d="M12 9v10" />
+    </template>
+    <template v-else-if="name === 'more-vertical'">
+      <circle cx="12" cy="5" r="1.4" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="19" r="1.4" fill="currentColor" stroke="none" />
+    </template>
     <template v-else-if="name === 'settings'">
       <circle cx="12" cy="12" r="3" />
       <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2a2 2 0 1 1-4 0V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1A2 2 0 1 1 4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H2.8a2 2 0 1 1 0-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1A2 2 0 1 1 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.6v-.2a2 2 0 1 1 4 0V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1A2 2 0 1 1 19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2a2 2 0 1 1 0 4H21a1.7 1.7 0 0 0-1.6 1Z" />
