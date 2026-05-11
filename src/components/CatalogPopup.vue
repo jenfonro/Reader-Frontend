@@ -38,10 +38,10 @@
     >
       <div class="catalog-list">
         <div
-          v-for="(note, index) in catalogList"
+          v-for="note in catalogList"
           :key="note.index"
           class="catalog-list__item"
-          :class="{ selected: isSelected(index) }"
+          :class="{ selected: isSelected(note) }"
           @click="gotoChapter(note)"
         >
           <div
@@ -65,14 +65,34 @@ import "element-plus/es/components/icon/style/css.mjs";
 import "element-plus/es/components/message/style/css.mjs";
 import { ElMessage } from "element-plus/es/components/message/index.mjs";
 import { Loading } from "@element-plus/icons-vue";
-import { previewBook, previewCatalog, previewTheme } from "../previewData";
+import { previewTheme } from "../previewData";
 
 defineOptions({
   name: "CatalogPopup"
 });
 
-defineProps({
+const props = defineProps({
   visible: {
+    type: Boolean,
+    default: false
+  },
+  catalog: {
+    type: Array,
+    default: () => []
+  },
+  book: {
+    type: Object,
+    default: () => ({})
+  },
+  currentIndex: {
+    type: Number,
+    default: 0
+  },
+  isNight: {
+    type: Boolean,
+    default: false
+  },
+  loading: {
     type: Boolean,
     default: false
   }
@@ -81,32 +101,26 @@ defineProps({
 const emit = defineEmits(["get-content", "refresh"]);
 
 const catalogBodyRef = ref(null);
-const refreshLoading = ref(false);
 const asc = ref(true);
 const cachedChapterMap = ref({});
-const book = ref(previewBook);
-const catalog = ref(previewCatalog);
-const isNight = ref(false);
 
 const catalogList = computed(() =>
-  asc.value ? catalog.value : [...catalog.value].reverse()
+  asc.value ? props.catalog : [...props.catalog].reverse()
 );
+const refreshLoading = computed(() => props.loading);
 const popupTheme = computed(() => ({
   background: previewTheme.popup
 }));
 
-const isSelected = index => index === (book.value.index || 0);
+const isSelected = note => note.index === props.currentIndex;
 
 const gotoChapter = note => {
   emit("get-content", note);
 };
 
 const refreshChapter = () => {
-  refreshLoading.value = true;
-  window.setTimeout(() => {
-    refreshLoading.value = false;
-    emit("refresh");
-  }, 300);
+  if (refreshLoading.value) return;
+  emit("refresh");
 };
 
 const changeRule = () => {
@@ -146,7 +160,12 @@ const toBottom = () => {
   .reader-popup__title {
     font-size: 18px;
     font-weight: 400;
-    font-family: -apple-system, "Noto Sans", "Helvetica Neue", Helvetica, "Nimbus Sans L", Arial, "Liberation Sans", "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", "Source Han Sans SC", "Source Han Sans CN", "Microsoft YaHei", "Wenquanyi Micro Hei", "WenQuanYi Zen Hei", "ST Heiti", SimHei, "WenQuanYi Zen Hei Sharp", sans-serif;
+    font-family: -apple-system, "Noto Sans", "Helvetica Neue", Helvetica,
+      "Nimbus Sans L", Arial, "Liberation Sans", "PingFang SC",
+      "Hiragino Sans GB", "Noto Sans CJK SC", "Source Han Sans SC",
+      "Source Han Sans CN", "Microsoft YaHei", "Wenquanyi Micro Hei",
+      "WenQuanYi Zen Hei", "ST Heiti", SimHei,
+      "WenQuanYi Zen Hei Sharp", sans-serif;
     color: #ed4259;
     border-bottom: 1px solid #ed4259;
     width: fit-content;
@@ -205,7 +224,8 @@ const toBottom = () => {
         cursor: pointer;
         display: flex;
         align-items: center;
-        font: 16px / 40px PingFangSC-Regular, HelveticaNeue-Light, 'Helvetica Neue Light', 'Microsoft YaHei', sans-serif;
+        font: 16px / 40px PingFangSC-Regular, HelveticaNeue-Light,
+          'Helvetica Neue Light', 'Microsoft YaHei', sans-serif;
 
         .catalog-list__text {
           margin-right: 26px;

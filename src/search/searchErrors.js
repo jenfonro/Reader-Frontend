@@ -1,3 +1,5 @@
+import { toText } from "./legadoCommon.js";
+
 export class SearchRequestError extends Error {
   constructor({ type, message, url = "", status = 0, statusText = "", cause = null } = {}) {
     super(message || "搜索请求失败");
@@ -9,8 +11,6 @@ export class SearchRequestError extends Error {
     this.cause = cause;
   }
 }
-
-const toText = value => (value === null || value === undefined ? "" : String(value));
 
 export const isMixedContentRequest = url => {
   if (typeof window === "undefined" || window.location.protocol !== "https:") return false;

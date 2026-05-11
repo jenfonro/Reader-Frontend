@@ -30,11 +30,13 @@ export const evaluateLegadoScript = (script, context = {}, initialResult = "") =
     origin: source.bookSourceUrl || "",
     originName: source.bookSourceName || ""
   };
+  const chapter = context.chapter || {};
   const runtime = {
     variables: context.variables || new Map(),
     content: context.content,
     source,
     book,
+    chapter,
     key: context.key || "",
     page: context.page || 1,
     baseUrl: context.baseUrl || source.bookSourceUrl || "",
@@ -49,6 +51,7 @@ export const evaluateLegadoScript = (script, context = {}, initialResult = "") =
     const cache = {};
     const source = runtime.source;
     const book = runtime.book;
+    const chapter = runtime.chapter;
     const baseUrl = runtime.baseUrl;
     const key = runtime.key;
     const page = runtime.page;

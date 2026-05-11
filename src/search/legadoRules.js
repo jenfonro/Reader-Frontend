@@ -1,13 +1,13 @@
+import { normalizeBaseUrl, toText } from "./legadoCommon.js";
 import { evaluateLegadoScript } from "./legadoScript.js";
 
 const htmlAccessors = new Set(["text", "html", "all", "textNodes", "ownText"]);
 
-const toText = value => (value === null || value === undefined ? "" : String(value));
 const isObject = value => value && typeof value === "object";
 const isElement = value => typeof Element !== "undefined" && value instanceof Element;
 const isDocument = value => typeof Document !== "undefined" && value instanceof Document;
 
-const parseRuleObject = value => {
+export const parseRuleObject = value => {
   if (!value) return {};
   if (isObject(value) && !Array.isArray(value)) return value;
   if (typeof value !== "string") return {};
@@ -36,7 +36,6 @@ const parseHtml = value => {
 };
 
 const compact = values => values.filter(value => value !== null && value !== undefined && value !== "");
-const normalizeBaseUrl = value => toText(value).split("##")[0].trim();
 
 const splitByOperators = rule => {
   if (rule.includes("||")) return { parts: rule.split("||"), operator: "||" };
@@ -181,7 +180,13 @@ const readHtmlRuleValues = (content, rule) => {
   let items = [parseHtml(content)];
 
   for (const segment of segments) {
-    const isAccessor = htmlAccessors.has(segment) || (items.length && isElement(items[0]) && !segment.includes(".") && !segment.includes(" ") && !segment.includes("[") && !segment.startsWith("#"));
+    const isSimpleAttribute = items.length
+      && isElement(items[0])
+      && !segment.includes(".")
+      && !segment.includes(" ")
+      && !segment.includes("[")
+      && !segment.startsWith("#");
+    const isAccessor = htmlAccessors.has(segment) || isSimpleAttribute;
     if (isAccessor) {
       items = getAccessorValues(items, segment);
     } else {
@@ -275,9 +280,9 @@ export const getString = (rule, content, context = {}, options = {}) => {
   return value;
 };
 
-const formatBookName = value => toText(value).replace(/[《》]/g, "").trim();
-const formatAuthor = value => toText(value).replace(/^作者[:：\s]*/, "").trim();
-const htmlToText = value => parseHtml(value).body.textContent.trim();
+export const formatBookName = value => toText(value).replace(/[《》]/g, "").trim();
+export const formatAuthor = value => toText(value).replace(/^作者[:：\s]*/, "").trim();
+export const htmlToText = value => parseHtml(value).body.textContent.trim();
 
 export const analyzeSearchBooks = ({ body, source, requestUrl, keyword, page = 1, variables }) => {
   const rule = parseRuleObject(source.ruleSearch);
@@ -319,3 +324,4 @@ export const analyzeSearchBooks = ({ body, source, requestUrl, keyword, page = 1
     };
   }).filter(Boolean);
 };
+

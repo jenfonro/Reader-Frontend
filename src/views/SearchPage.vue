@@ -35,9 +35,9 @@
           role="button"
           tabindex="0"
           :aria-label="`查看${result.name}详情`"
-          @click="emit('enter-reader')"
-          @keydown.enter.prevent="emit('enter-reader')"
-          @keydown.space.prevent="emit('enter-reader')"
+          @click="emit('enter-reader', result)"
+          @keydown.enter.prevent="emit('enter-reader', result)"
+          @keydown.space.prevent="emit('enter-reader', result)"
         >
           <div
             class="reader-search-result__cover"

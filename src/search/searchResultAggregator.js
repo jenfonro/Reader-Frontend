@@ -1,6 +1,6 @@
 const UNKNOWN_AUTHOR_PATTERN = /^(未知|佚名|无|匿名|null|undefined)$/i;
 
-const toText = value => (value === null || value === undefined ? "" : String(value));
+import { toText } from "./legadoCommon.js";
 
 const normalizeText = value =>
   toText(value)
@@ -38,7 +38,7 @@ const buildTags = book =>
     .slice(0, 5);
 
 const getOriginKey = book => {
-  const origin = toText(book.origin || book.bookSourceUrl || book.originName).trim();
+  const origin = toText(book.sourceKey || book.origin || book.bookSourceUrl || book.originName).trim();
   const bookUrl = normalizeBookUrl(book.bookUrl);
   return `${origin}|${bookUrl}`;
 };
@@ -118,7 +118,7 @@ const normalizeSearchBook = (book, keyword, sequence) => {
     highlightTag: book.originName || tags[0] || "",
     sourceCount: 1,
     sources: [book],
-    origins: [toText(book.origin || book.originName).trim()].filter(Boolean),
+    origins: [toText(book.sourceKey || book.origin || book.originName).trim()].filter(Boolean),
     coverUrl,
     hasCover: Boolean(coverUrl),
     bookUrl: toText(book.bookUrl).trim(),

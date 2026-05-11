@@ -2,6 +2,7 @@
   <div id="app">
     <ReaderView
       v-if="isReaderPage"
+      :book="readerBook"
       @close-reader="goBack"
     />
     <AppShell
@@ -29,6 +30,7 @@
 <script setup>
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref } from "vue";
 import AppShell from "./components/AppShell.vue";
+import { createReaderBookFromSearchResult } from "./search/searchResultBook.js";
 
 const PAGE_HOME = "home";
 const PAGE_READER = "reader";
@@ -62,9 +64,21 @@ const createHomePage = (activeKey = HOME_ACTIVE_DEFAULT) => ({
   activeKey: activeKey || HOME_ACTIVE_DEFAULT
 });
 
+const normalizeReaderBook = book => {
+  if (!book || typeof book !== "object" || Array.isArray(book)) return null;
+  try {
+    return JSON.parse(JSON.stringify(createReaderBookFromSearchResult(book)));
+  } catch (error) {
+    return createReaderBookFromSearchResult(book);
+  }
+};
+
 const normalizePage = value => {
   if (value?.name === PAGE_READER) {
-    return { name: PAGE_READER };
+    return {
+      name: PAGE_READER,
+      book: normalizeReaderBook(value.book || value.readerBook)
+    };
   }
   if (value?.name === PAGE_SEARCH) {
     return { name: PAGE_SEARCH };
@@ -125,6 +139,7 @@ const writeHistoryPage = (page, mode = "replace") => {
 };
 
 const currentPage = ref(getHistoryPage());
+const readerBook = ref(currentPage.value.name === PAGE_READER ? currentPage.value.book : null);
 const homeActiveKey = ref(
   currentPage.value.name === PAGE_HOME ? currentPage.value.activeKey : HOME_ACTIVE_DEFAULT
 );
@@ -212,6 +227,9 @@ const currentPageKey = computed(() => {
 
 const syncCurrentPage = page => {
   currentPage.value = normalizePage(page);
+  if (currentPage.value.name === PAGE_READER) {
+    readerBook.value = currentPage.value.book || null;
+  }
   if (currentPage.value.name === PAGE_HOME) {
     homeActiveKey.value = currentPage.value.activeKey || HOME_ACTIVE_DEFAULT;
   }
@@ -236,9 +254,11 @@ const goBack = () => {
   replaceCurrentPage(createHomePage(homeActiveKey.value));
 };
 
-const openReader = () => {
+const openReader = book => {
+  const nextBook = normalizeReaderBook(book);
+  readerBook.value = nextBook;
   if (currentPage.value.name === PAGE_READER) return;
-  pushPage({ name: PAGE_READER });
+  pushPage({ name: PAGE_READER, book: nextBook });
 };
 
 const handleShellNavigate = key => {

@@ -79,6 +79,11 @@
           <CatalogPopup
             class="popup"
             :visible="catalogPopoverVisible"
+            :catalog="catalog"
+            :book="readingBook"
+            :current-index="chapterIndex"
+            :is-night="isNight"
+            :loading="catalogLoading"
             @get-content="getContent"
             @refresh="refreshCatalog"
           />
@@ -401,7 +406,7 @@
 
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { ElMessage } from "element-plus/es/components/message/index.mjs";
 import { ElIcon } from "element-plus/es/components/icon/index.mjs";
 import { ElPopover } from "element-plus/es/components/popover/index.mjs";
@@ -435,25 +440,40 @@ import BookShelf from "../components/BookShelf.vue";
 import Content from "../components/Content.vue";
 import ReaderIntroPanel from "../components/reader/ReaderIntroPanel.vue";
 import { getMiniInterface, getWindowSize } from "../utils/interface";
-import {
-  previewBook,
-  previewCatalog,
-  previewConfig,
-  previewTheme
-} from "../previewData";
+import { previewConfig, previewTheme } from "../previewData";
+import { useReaderRuntime } from "../composables/useReaderRuntime.js";
 
 defineOptions({
   name: "Reader"
 });
 
+const props = defineProps({
+  book: {
+    type: Object,
+    default: null
+  }
+});
+
 const emit = defineEmits(["close-reader"]);
-const title = ref("第一章 预览章节");
-const chapterContent = ref(
-  `这是阅读器界面预览内容。
-当前阶段只用于验证 reader-server 原版阅读页菜单、按钮和弹出层是否完整复刻。
-后续接入真实章节后会替换为真实内容。`
-);
-const error = ref(false);
+const {
+  title,
+  chapterContent,
+  error,
+  catalogLoading,
+  contentStyle,
+  currentPage,
+  totalPages,
+  progressValue,
+  readingBook,
+  catalog,
+  chapterIndex,
+  isPreviewBook,
+  abortReaderTask,
+  loadReaderBook,
+  openChapter,
+  refreshCatalog: refreshReaderCatalog
+} = useReaderRuntime();
+
 const catalogPopoverVisible = ref(false);
 const readSettingsVisible = ref(false);
 const popBookSourceVisible = ref(false);
@@ -461,12 +481,8 @@ const popBookShelfVisible = ref(false);
 const bookIntroVisible = ref(false);
 const showToolBar = ref(true);
 const show = ref(true);
-const contentStyle = ref({});
-const currentPage = ref(1);
-const totalPages = ref(1);
 const showReaderClickMap = ref(false);
 const timeStr = ref("");
-const progressValue = ref(1);
 const speechAvalable = ref(
   typeof window !== "undefined" &&
     window.speechSynthesis &&
@@ -488,11 +504,7 @@ const speechMinutes = ref(0);
 const miniInterface = ref(getMiniInterface());
 const windowSize = ref(getWindowSize());
 const config = ref({ ...previewConfig });
-const readingBook = ref({ ...previewBook });
-const catalog = ref(previewCatalog);
 const currentThemeConfig = previewTheme;
-
-const chapterIndex = computed(() => (readingBook.value.index || 0) | 0);
 const isNight = computed(() => config.value.themeType === "night");
 const bodyTheme = computed(() => ({
   background: currentThemeConfig.body
@@ -646,8 +658,9 @@ const syncInterface = () => {
   windowSize.value = getWindowSize();
 };
 
-const changeBook = () => {
+const changeBook = book => {
   popBookShelfVisible.value = false;
+  loadReaderBook(book);
 };
 
 const toShelf = () => {
@@ -668,12 +681,17 @@ const addBookToShelf = () => {
   ElMessage.success("已加入书架预览");
 };
 
-const getContent = () => {
+const getContent = note => {
   catalogPopoverVisible.value = false;
+  openChapter(note);
 };
 
 const refreshCatalog = () => {
-  ElMessage.success("目录刷新预览");
+  if (isPreviewBook.value) {
+    ElMessage.success("目录刷新预览");
+    return;
+  }
+  refreshReaderCatalog();
 };
 
 const beforeReadMethodChange = () => {};
@@ -715,12 +733,19 @@ const formatTime = () => {
   timeStr.value = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
 };
 
+watch(
+  () => props.book,
+  loadReaderBook,
+  { immediate: true }
+);
+
 onMounted(() => {
   formatTime();
   window.addEventListener("resize", syncInterface);
 });
 
 onBeforeUnmount(() => {
+  abortReaderTask();
   window.removeEventListener("resize", syncInterface);
 });
 </script>

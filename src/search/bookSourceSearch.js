@@ -1,9 +1,8 @@
-import { readBookSources } from "../data/bookSources.js";
+import { getSourceKey, readBookSources } from "../data/bookSources.js";
 import { getSystemSettings } from "../data/systemSettings.js";
 import { buildSearchRequest, fetchSearchResponse } from "./legadoUrl.js";
+import { toText } from "./legadoCommon.js";
 import { analyzeSearchBooks } from "./legadoRules.js";
-
-const toText = value => (value === null || value === undefined ? "" : String(value));
 
 const isSearchableSource = source =>
   source &&
@@ -12,7 +11,12 @@ const isSearchableSource = source =>
   toText(source.searchUrl).trim() &&
   source.ruleSearch;
 
-export const readSearchableSources = () => readBookSources().filter(isSearchableSource);
+export const readSearchableSources = () => readBookSources()
+  .map((source, index) => ({
+    ...source,
+    __sourceKey: getSourceKey(source, index)
+  }))
+  .filter(isSearchableSource);
 
 export const searchBookSource = async ({ source, keyword, page = 1, signal }) => {
   const request = buildSearchRequest({ source, keyword, page });
@@ -24,7 +28,10 @@ export const searchBookSource = async ({ source, keyword, page = 1, signal }) =>
     keyword,
     page,
     variables: request.variables
-  });
+  }).map(book => ({
+    ...book,
+    sourceKey: source.__sourceKey || book.sourceKey || ""
+  }));
 };
 
 export const searchBooksBySources = async ({

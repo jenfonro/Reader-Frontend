@@ -1,3 +1,4 @@
+import { normalizeBaseUrl, toText } from "./legadoCommon.js";
 import { evaluateLegadoScript } from "./legadoScript.js";
 import { fetchWithEdgeOneProxy } from "./edgeOneProxy.js";
 import {
@@ -19,11 +20,7 @@ const forbiddenHeaderNames = new Set([
   "user-agent"
 ]);
 
-const toText = value => (value === null || value === undefined ? "" : String(value));
-
 const encodePathSearch = value => toText(value).trim();
-const normalizeBaseUrl = value => toText(value).split("##")[0].trim();
-
 const replaceTemplates = (value, context) =>
   toText(value).replace(/\{\{([\s\S]*?)\}\}/g, (_, expression) => {
     const script = expression.trim();
@@ -94,24 +91,40 @@ const normalizeBody = (body, headers) => {
   return body;
 };
 
-export const buildSearchRequest = ({ source, keyword, page = 1 }) => {
+export const buildLegadoRequest = ({
+  source,
+  ruleUrl,
+  keyword = "",
+  page = 1,
+  baseUrl = "",
+  variables = new Map(),
+  book = {},
+  chapter = {}
+}) => {
+  const sourceBaseUrl = normalizeBaseUrl(source?.bookSourceUrl);
   const context = {
     source,
+    book,
+    chapter,
     key: keyword,
     page,
-    baseUrl: normalizeBaseUrl(source.bookSourceUrl),
-    variables: new Map()
+    baseUrl: normalizeBaseUrl(baseUrl) || sourceBaseUrl,
+    variables
   };
-  let ruleUrl = evaluateScriptBlocks(source.searchUrl || "", context);
-  ruleUrl = replaceTemplates(ruleUrl, context);
+  let requestRule = evaluateScriptBlocks(ruleUrl || "", context);
+  requestRule = replaceTemplates(requestRule, context);
   context.variables.forEach((value, key) => {
     context.variables.set(key, replaceTemplates(value, context));
   });
-  const { url: rawUrl, optionText } = splitUrlOption(ruleUrl);
+
+  const { url: rawUrl, optionText } = splitUrlOption(requestRule);
   const option = parseUrlOption(optionText);
   const method = toText(option.method || "GET").trim().toUpperCase() === "POST" ? "POST" : "GET";
   const headers = normalizeHeaders(option.headers);
-  const requestUrl = new URL(encodePathSearch(rawUrl), normalizeBaseUrl(source.bookSourceUrl) || window.location.href);
+  const requestUrl = new URL(
+    encodePathSearch(rawUrl),
+    context.baseUrl || sourceBaseUrl || window.location.href
+  );
   const request = {
     url: requestUrl.toString(),
     method,
@@ -120,6 +133,8 @@ export const buildSearchRequest = ({ source, keyword, page = 1 }) => {
     source,
     keyword,
     page,
+    book,
+    chapter,
     variables: context.variables
   };
 
@@ -131,7 +146,17 @@ export const buildSearchRequest = ({ source, keyword, page = 1 }) => {
   return request;
 };
 
-export const fetchSearchResponse = async (request, signal) => {
+export const buildSearchRequest = ({ source, keyword, page = 1 }) =>
+  buildLegadoRequest({
+    source,
+    ruleUrl: source.searchUrl || "",
+    keyword,
+    page,
+    baseUrl: normalizeBaseUrl(source.bookSourceUrl),
+    variables: new Map()
+  });
+
+export const fetchLegadoResponse = async (request, signal) => {
   let response;
   try {
     const proxyResponse = await fetchWithEdgeOneProxy(request, signal);
@@ -162,3 +187,6 @@ export const fetchSearchResponse = async (request, signal) => {
     return new TextDecoder("utf-8").decode(buffer);
   }
 };
+
+export const fetchSearchResponse = fetchLegadoResponse;
+

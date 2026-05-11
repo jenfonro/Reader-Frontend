@@ -1,6 +1,5 @@
 import { getApiSettings } from "../data/apiSettings.js";
-
-const toText = value => (value === null || value === undefined ? "" : String(value));
+import { toText } from "./legadoCommon.js";
 
 const isHttpUrl = value => /^https?:\/\//i.test(value);
 
