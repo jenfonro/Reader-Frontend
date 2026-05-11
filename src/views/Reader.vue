@@ -599,7 +599,7 @@ const menuPopperOptions = computed(() => ({
 }));
 const readingProgress = computed(() => {
   if (catalog.value && catalog.value.length) {
-    return `${parseInt(((chapterIndex.value + 1) * 100) / catalog.value.length)}%`;
+    return `${Math.trunc(((chapterIndex.value + 1) * 100) / catalog.value.length)}%`;
   }
   return "";
 });

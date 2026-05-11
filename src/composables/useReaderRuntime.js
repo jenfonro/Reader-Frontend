@@ -16,6 +16,11 @@ const createInitialBook = book => (book ? { ...book } : { ...previewBook });
 const isPreviewReadingBook = book =>
   !book?.bookUrl || book.origin === "preview" || book.bookUrl === previewBook.bookUrl;
 
+const toChapterIndex = value => {
+  const index = Number(value);
+  return Number.isFinite(index) ? Math.max(0, Math.trunc(index)) : 0;
+};
+
 export const useReaderRuntime = () => {
   const title = ref("第一章 预览章节");
   const chapterContent = ref(previewChapterContent);
@@ -30,7 +35,7 @@ export const useReaderRuntime = () => {
   const catalog = ref(previewCatalog);
   let readerController = null;
 
-  const chapterIndex = computed(() => (readingBook.value.index || 0) | 0);
+  const chapterIndex = computed(() => toChapterIndex(readingBook.value.index));
   const isPreviewBook = computed(() => isPreviewReadingBook(readingBook.value));
 
   const abortReaderTask = () => {
@@ -93,7 +98,7 @@ export const useReaderRuntime = () => {
 
       title.value = result.title || chapter.title || chapter.name || "";
       chapterContent.value = result.content || "正文为空";
-      const nextIndex = Number.isFinite(Number(chapter.index)) ? Number(chapter.index) : 0;
+      const nextIndex = toChapterIndex(chapter.index);
       readingBook.value = {
         ...readingBook.value,
         index: nextIndex,
