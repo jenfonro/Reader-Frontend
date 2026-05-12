@@ -1,9 +1,11 @@
 import logoUrl from "./assets/reader-logo.svg";
+import { normalizeStartupAssetList, normalizeStartupAssetPath } from "./startup/startupAssets";
 import { runStartupCache } from "./startup/startupCache";
 
 const overlayId = "readerStartupOverlay";
 const styleId = "readerStartupOverlayStyle";
 const loadedStyleLinks = new Set();
+const loadedScriptLinks = new Set();
 
 const fallbackLoadApplication = () => import("./main.js");
 
@@ -138,16 +140,15 @@ const removeStartupOverlay = overlay => {
   }, 560);
 };
 
-const normalizeAssetPath = asset => {
-  if (!asset || typeof asset !== "string") return "";
-  if (asset.startsWith("http://") || asset.startsWith("https://")) return asset;
-  return asset.startsWith("/") ? asset : `/${asset}`;
-};
+const getApplicationScripts = versionInfo =>
+  normalizeStartupAssetList(versionInfo?.assets)
+    .filter(asset => asset.endsWith(".js"))
+    .filter(asset => !asset.endsWith("/service-worker.js"));
 
 const loadStyles = styles =>
   Promise.all(
-    styles.map(styleHref => {
-      const href = normalizeAssetPath(styleHref);
+    normalizeStartupAssetList(styles).map(styleHref => {
+      const href = normalizeStartupAssetPath(styleHref);
       if (!href || loadedStyleLinks.has(href) || document.querySelector(`link[href="${href}"]`)) {
         return Promise.resolve();
       }
@@ -164,11 +165,32 @@ const loadStyles = styles =>
     })
   );
 
-const loadApplication = async versionInfo => {
-  const appEntry = normalizeAssetPath(versionInfo?.app?.entry);
-  const appStyles = Array.isArray(versionInfo?.app?.styles) ? versionInfo.app.styles : [];
+const preloadScripts = scripts =>
+  Promise.all(
+    scripts.map(scriptSrc => {
+      const src = normalizeStartupAssetPath(scriptSrc);
+      if (!src || loadedScriptLinks.has(src) || document.querySelector(`link[href="${src}"]`)) {
+        return Promise.resolve();
+      }
 
-  await loadStyles(appStyles);
+      loadedScriptLinks.add(src);
+      return new Promise((resolve, reject) => {
+        const link = document.createElement("link");
+        link.rel = "modulepreload";
+        link.href = src;
+        link.onload = () => resolve();
+        link.onerror = () => reject(new Error(`Script preload failed: ${src}`));
+        document.head.appendChild(link);
+      });
+    })
+  );
+
+const loadApplication = async versionInfo => {
+  const appEntry = normalizeStartupAssetPath(versionInfo?.app?.entry);
+  const appStyles = normalizeStartupAssetList(versionInfo?.app?.styles);
+  const appScripts = getApplicationScripts(versionInfo);
+
+  await Promise.all([loadStyles(appStyles), preloadScripts(appScripts)]);
 
   if (appEntry) {
     await import(/* @vite-ignore */ appEntry);

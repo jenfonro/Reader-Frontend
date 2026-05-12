@@ -34,6 +34,14 @@
 
 <script setup>
 import { computed } from "vue";
+import {
+  getReaderBookAuthor,
+  getReaderBookCoverText,
+  getReaderBookIntro,
+  getReaderBookLatestChapter,
+  getReaderBookTags,
+  getReaderBookTitle
+} from "./readerIntroData";
 
 const props = defineProps({
   book: { type: Object, default: () => ({}) }
@@ -41,16 +49,12 @@ const props = defineProps({
 
 const emit = defineEmits(["close", "add-bookshelf"]);
 
-const bookTitle = computed(() => props.book.name || props.book.title || "未知书籍");
-const bookAuthor = computed(() => props.book.author || "未知作者");
-const bookIntro = computed(() => props.book.intro || "暂无简介");
-const latestChapter = computed(() => props.book.latestChapterTitle || props.book.latestChapter || "");
-const bookTags = computed(() => {
-  if (Array.isArray(props.book.tags)) return props.book.tags.filter(Boolean);
-  const type = props.book.kind || props.book.category || props.book.typeName;
-  return type ? [type] : [];
-});
-const coverText = computed(() => bookTitle.value.slice(0, 4));
+const bookTitle = computed(() => getReaderBookTitle(props.book));
+const bookAuthor = computed(() => getReaderBookAuthor(props.book));
+const bookIntro = computed(() => getReaderBookIntro(props.book));
+const latestChapter = computed(() => getReaderBookLatestChapter(props.book));
+const bookTags = computed(() => getReaderBookTags(props.book));
+const coverText = computed(() => getReaderBookCoverText(props.book));
 </script>
 
 <style scoped>

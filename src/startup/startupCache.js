@@ -1,3 +1,5 @@
+import { normalizeStartupAssetList, normalizeStartupAssetPath } from "./startupAssets";
+
 const VERSION_URL = "/app-version.json";
 const SERVICE_WORKER_URL = "/service-worker.js";
 const CACHE_PREFIX = "reader-frontend-cache-";
@@ -8,6 +10,7 @@ const CACHE_UPDATE_HEADER = "X-Reader-Cache-Update";
 const STARTUP_STATUS = {
   checking: "正在检测新版本...",
   updating: "检测到新版本，正在更新...",
+  completing: "正在补全离线资源...",
   failed: "连接服务器失败"
 };
 
@@ -28,25 +31,12 @@ const createReporter = ({ onStatus, onProgress, visible = true }) => ({
   }
 });
 
-const normalizeAssetPath = asset => {
-  if (!asset || typeof asset !== "string") {
-    return "";
-  }
-  if (asset.startsWith("http://") || asset.startsWith("https://")) {
-    return asset;
-  }
-  return asset.startsWith("/") ? asset : `/${asset}`;
-};
-
-const normalizeAssetList = assets =>
-  Array.isArray(assets) ? assets.map(normalizeAssetPath).filter(Boolean) : [];
-
 const normalizeVersionInfo = value => ({
   version: value?.version ? String(value.version) : "",
-  assets: normalizeAssetList(value?.assets),
+  assets: normalizeStartupAssetList(value?.assets),
   app: {
-    entry: normalizeAssetPath(value?.app?.entry),
-    styles: normalizeAssetList(value?.app?.styles)
+    entry: normalizeStartupAssetPath(value?.app?.entry),
+    styles: normalizeStartupAssetList(value?.app?.styles)
   }
 });
 
@@ -78,15 +68,31 @@ const setCachedVersionInfo = versionInfo => {
   return normalizedVersionInfo;
 };
 
+const waitForServiceWorkerController = () => {
+  if (navigator.serviceWorker.controller) {
+    return Promise.resolve();
+  }
+
+  return new Promise(resolve => {
+    const complete = () => {
+      window.clearTimeout(timeoutId);
+      navigator.serviceWorker.removeEventListener("controllerchange", complete);
+      resolve();
+    };
+    const timeoutId = window.setTimeout(complete, 1500);
+
+    navigator.serviceWorker.addEventListener("controllerchange", complete);
+  });
+};
+
 const registerServiceWorker = async () => {
   if (!import.meta.env.PROD || !("serviceWorker" in navigator)) {
     return null;
   }
 
   const registration = await navigator.serviceWorker.register(SERVICE_WORKER_URL);
-  if (registration.installing) {
-    await navigator.serviceWorker.ready;
-  }
+  await navigator.serviceWorker.ready;
+  await waitForServiceWorkerController();
   return registration;
 };
 
@@ -134,6 +140,8 @@ const notifyServiceWorker = version => {
   });
 };
 
+const getCacheName = version => `${CACHE_PREFIX}${version}`;
+
 const cacheResponse = async (cache, asset) => {
   const response = await fetch(asset, {
     cache: "reload",
@@ -150,26 +158,59 @@ const cacheResponse = async (cache, asset) => {
 };
 
 const getStartupAssets = versionInfo =>
-  [...new Set(["/", "/index.html", VERSION_URL, ...versionInfo.assets])];
+  [...new Set([
+    "/",
+    "/index.html",
+    VERSION_URL,
+    versionInfo.app.entry,
+    ...versionInfo.app.styles,
+    ...versionInfo.assets
+  ].map(normalizeStartupAssetPath).filter(Boolean))];
 
-const downloadAssets = async (versionInfo, onProgress = noop) => {
+const getMissingStartupAssets = async versionInfo => {
+  if (!("caches" in window)) {
+    return getStartupAssets(versionInfo);
+  }
+
+  const cache = await caches.open(getCacheName(versionInfo.version));
+  const missingAssets = [];
+  for (const asset of getStartupAssets(versionInfo)) {
+    if (!(await cache.match(asset))) {
+      missingAssets.push(asset);
+    }
+  }
+  return missingAssets;
+};
+
+const finishCacheUpdate = async versionInfo => {
+  const cacheName = getCacheName(versionInfo.version);
+  await removeOldCaches(cacheName);
+  setCachedVersionInfo(versionInfo);
+  notifyServiceWorker(versionInfo.version);
+};
+
+const downloadAssets = async (versionInfo, onProgress = noop, targetAssets = getStartupAssets(versionInfo)) => {
   if (!("caches" in window)) {
     setCachedVersionInfo(versionInfo);
+    onProgress(100);
     return;
   }
 
-  const assets = getStartupAssets(versionInfo);
-  const cacheName = `${CACHE_PREFIX}${versionInfo.version}`;
-  const cache = await caches.open(cacheName);
+  const assets = [...new Set(targetAssets.map(normalizeStartupAssetPath).filter(Boolean))];
+  const cache = await caches.open(getCacheName(versionInfo.version));
+
+  if (!assets.length) {
+    onProgress(100);
+    await finishCacheUpdate(versionInfo);
+    return;
+  }
 
   for (const [index, asset] of assets.entries()) {
     await cacheResponse(cache, asset);
     onProgress(Math.round(((index + 1) / assets.length) * 100));
   }
 
-  await removeOldCaches(cacheName);
-  setCachedVersionInfo(versionInfo);
-  notifyServiceWorker(versionInfo.version);
+  await finishCacheUpdate(versionInfo);
 };
 
 const updateFromServer = async options => {
@@ -186,7 +227,18 @@ const updateFromServer = async options => {
   await delay(160);
 
   if (cachedVersion === versionInfo.version) {
-    setCachedVersionInfo(versionInfo);
+    const missingAssets = await getMissingStartupAssets(versionInfo);
+    if (!missingAssets.length) {
+      await finishCacheUpdate(versionInfo);
+      reporter.setProgress(100);
+      await delay(220);
+      return versionInfo;
+    }
+
+    reporter.setStatus(STARTUP_STATUS.completing);
+    await downloadAssets(versionInfo, assetProgress => {
+      reporter.setProgress(42 + assetProgress * 0.58);
+    }, missingAssets);
     reporter.setProgress(100);
     await delay(220);
     return versionInfo;

@@ -232,13 +232,17 @@
           <span v-if="miniInterface">阅读进度: </span>
           {{ readingProgress }}
         </div>
-        <div class="reader-tool" :style="miniInterface ? { order: -1 } : {}">
+        <div
+          class="reader-tool"
+          :style="miniInterface ? { order: -1 } : {}"
+          @click="goPreviousPage"
+        >
           <div class="iconfont">
             &#58920;
           </div>
           <span v-if="miniInterface">上一章</span>
         </div>
-        <div class="reader-tool">
+        <div class="reader-tool" @click="goNextPage">
           <span v-if="miniInterface">下一章</span>
           <div class="iconfont">
             &#58913;
@@ -375,7 +379,19 @@
         {{ miniInterface ? title : "" }}
       </div>
       <div class="reader-page__content" @click="handlerClick">
-        <div v-if="show" class="reader-page__content-inner">
+        <ReaderIntroPage
+          v-if="isIntroPage"
+          class="reader-page__intro"
+          :book="readingBook"
+          :loading="introLoading"
+          @add-bookshelf="addBookToShelf"
+          @start-reading="startReading"
+        />
+        <div v-else-if="loadingVisible" class="reader-page-loading" role="status" aria-live="polite">
+          <span class="reader-page-loading__spinner" aria-hidden="true"></span>
+          <span class="reader-page-loading__text">{{ loadingText }}</span>
+        </div>
+        <div v-else-if="show" class="reader-page__content-inner">
           <Content
             class="reader-text-flow"
             :title="title"
@@ -393,12 +409,6 @@
           {{ `第${currentPage}/${totalPages}页 ${readingProgress}` }}
         </span>
         <span v-if="isSlideRead">{{ timeStr }}</span>
-        <span
-          v-if="show && !isSlideRead && !error && !isScrollRead"
-          class="reader-page__next"
-        >
-          加载下一章
-        </span>
       </div>
     </div>
   </div>
@@ -438,6 +448,7 @@ import ReadSettings from "../components/ReadSettings.vue";
 import BookSource from "../components/BookSource.vue";
 import BookShelf from "../components/BookShelf.vue";
 import Content from "../components/Content.vue";
+import ReaderIntroPage from "../components/reader/ReaderIntroPage.vue";
 import ReaderIntroPanel from "../components/reader/ReaderIntroPanel.vue";
 import { getMiniInterface, getWindowSize } from "../utils/interface";
 import { previewConfig, previewTheme } from "../previewData";
@@ -459,6 +470,9 @@ const {
   title,
   chapterContent,
   error,
+  loadingVisible,
+  loadingText,
+  introLoading,
   catalogLoading,
   contentStyle,
   currentPage,
@@ -468,10 +482,16 @@ const {
   catalog,
   chapterIndex,
   isPreviewBook,
+  isIntroPage,
   abortReaderTask,
   loadReaderBook,
+  loadBookIntro,
+  startReading,
   openChapter,
-  refreshCatalog: refreshReaderCatalog
+  refreshCatalog: refreshReaderCatalog,
+  goToReaderPage,
+  goNextPage,
+  goPreviousPage
 } = useReaderRuntime();
 
 const catalogPopoverVisible = ref(false);
@@ -479,7 +499,7 @@ const readSettingsVisible = ref(false);
 const popBookSourceVisible = ref(false);
 const popBookShelfVisible = ref(false);
 const bookIntroVisible = ref(false);
-const showToolBar = ref(true);
+const showToolBar = ref(false);
 const show = ref(true);
 const showReaderClickMap = ref(false);
 const timeStr = ref("");
@@ -598,6 +618,7 @@ const menuPopperOptions = computed(() => ({
   ]
 }));
 const readingProgress = computed(() => {
+  if (isIntroPage.value) return "0%";
   if (catalog.value && catalog.value.length) {
     return `${Math.trunc(((chapterIndex.value + 1) * 100) / catalog.value.length)}%`;
   }
@@ -674,6 +695,7 @@ const changeBookSource = () => {
 const openBookIntro = () => {
   bookIntroVisible.value = true;
   showToolBar.value = true;
+  loadBookIntro();
 };
 
 const addBookToShelf = () => {
@@ -697,7 +719,7 @@ const refreshCatalog = () => {
 const beforeReadMethodChange = () => {};
 
 const showPage = value => {
-  currentPage.value = value || progressValue.value;
+  goToReaderPage(value || progressValue.value);
 };
 
 const eventHandler = point => {
@@ -718,7 +740,17 @@ const eventHandler = point => {
     !showReadBar.value
   ) {
     showToolBar.value = !showToolBar.value;
+    return;
   }
+
+  const shouldGoNext = isSlideRead.value
+    ? point.clientX > midX
+    : point.clientY > midY;
+  if (shouldGoNext) {
+    goNextPage();
+    return;
+  }
+  goPreviousPage();
 };
 
 const handlerClick = event => {
@@ -1100,6 +1132,27 @@ onBeforeUnmount(() => {
       overflow: hidden;
       font-family: 'Microsoft YaHei', PingFangSC-Regular, HelveticaNeue-Light, 'Helvetica Neue Light', sans-serif;
 
+      .reader-page-loading {
+        min-height: calc(var(--vh, 1vh) * 80);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        color: #8a8a8a;
+        font-size: 14px;
+        line-height: 20px;
+      }
+
+      .reader-page-loading__spinner {
+        width: 28px;
+        height: 28px;
+        border: 2px solid rgba(138, 138, 138, 0.18);
+        border-top-color: rgba(138, 138, 138, 0.86);
+        border-radius: 50%;
+        animation: reader-page-loading-spin 0.85s linear infinite;
+      }
+
       .reader-page__content-inner {
         min-height: calc(var(--vh, 1vh) * 80);
         padding-bottom: 25px;
@@ -1118,17 +1171,12 @@ onBeforeUnmount(() => {
       width: 100%;
       text-align: center;
       padding-bottom: 30px;
-      .reader-page__next {
-        font-size: 14px;
-        cursor: pointer;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        margin: 0 auto;
-        padding: 10px 40px;
-        width: 80%;
-        box-sizing: border-box;
-      }
+    }
+  }
+
+  @keyframes reader-page-loading-spin {
+    to {
+      transform: rotate(360deg);
     }
   }
 
@@ -1396,6 +1444,8 @@ onBeforeUnmount(() => {
       font-size: 12px;
     }
 
+    .reader-page-loading,
+    .reader-page__intro,
     .reader-page__content-inner {
       margin-top: 30px;
       margin-top: calc(30px + constant(safe-area-inset-top));
@@ -1441,6 +1491,8 @@ onBeforeUnmount(() => {
       bottom: 24px;
     }
 
+    .reader-page-loading,
+    .reader-page__intro,
     .reader-page__content-inner {
       margin: 0 16px;
       overflow: hidden;
