@@ -25,7 +25,7 @@
       <span>正在加载简介</span>
     </div>
 
-    <div class="reader-intro-page__actions">
+    <div class="reader-intro-page__actions" @click.stop>
       <button type="button" @click="emit('add-bookshelf')">加入书架</button>
       <button type="button" class="is-primary" @click="emit('start-reading')">开始阅读</button>
     </div>
@@ -72,7 +72,7 @@ const coverText = computed(() => getReaderBookCoverText(props.book));
   gap: 14px;
   padding: 18px 0 34px;
   box-sizing: border-box;
-  color: #2e261d;
+  color: var(--reader-font-color, #2e261d);
   text-align: center;
 }
 
@@ -84,7 +84,7 @@ const coverText = computed(() => getReaderBookCoverText(props.book));
   justify-content: center;
   overflow: hidden;
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.32);
+  background: var(--reader-panel-background, rgba(255, 255, 255, 0.32));
   color: rgba(46, 38, 29, 0.72);
   font-size: 22px;
   font-weight: 700;
@@ -107,7 +107,7 @@ const coverText = computed(() => getReaderBookCoverText(props.book));
 .reader-intro-page__summary h1 {
   margin: 0;
   overflow: hidden;
-  color: #2e261d;
+  color: var(--reader-font-color, #2e261d);
   font-size: clamp(24px, 6vw, 34px);
   line-height: 1.16;
   font-weight: 720;
@@ -137,7 +137,7 @@ const coverText = computed(() => getReaderBookCoverText(props.book));
   align-items: center;
   padding: 0 10px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.24);
+  background: var(--reader-panel-background, rgba(255, 255, 255, 0.24));
   color: rgba(46, 38, 29, 0.68);
   font-size: 12px;
   line-height: 1;
@@ -200,7 +200,7 @@ const coverText = computed(() => getReaderBookCoverText(props.book));
   padding: 0 18px;
   border: 0;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.32);
+  background: var(--reader-panel-background, rgba(255, 255, 255, 0.32));
   color: rgba(46, 38, 29, 0.76);
   font-size: 14px;
   line-height: 1;
@@ -208,7 +208,7 @@ const coverText = computed(() => getReaderBookCoverText(props.book));
 }
 
 .reader-intro-page__actions .is-primary {
-  background: rgba(46, 38, 29, 0.84);
+  background: var(--reader-font-color, rgba(46, 38, 29, 0.84));
   color: #fff7e7;
 }
 

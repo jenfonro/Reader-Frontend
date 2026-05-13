@@ -2,200 +2,149 @@
   <div
     class="reader-view"
     :style="bodyTheme"
+    @click="handlerClick"
     :class="{
       night: isNight,
       day: !isNight,
-      'mini-interface': miniInterface
+      'mini-interface': miniInterface,
+      'reader-view--controls-visible': showToolBar
     }"
   >
-    <div class="reader-main-toolbar" :style="leftBarTheme">
-      <div class="reader-tool-list">
-        <el-popover
-          v-model:visible="popBookShelfVisible"
-          placement="right"
-          :width="popperWidth"
-          trigger="click"
-          :show-arrow="false"
-          popper-class="popper-component"
-          :popper-options="menuPopperOptions"
+    <header class="reader-topbar" :style="topBarTheme" aria-label="阅读器顶部栏">
+      <div class="reader-topbar__inner" @click.stop>
+        <button
+          type="button"
+          class="reader-topbar__circle-button"
+          aria-label="返回"
+          @click="toShelf"
         >
-          <template #reference>
-            <div class="reader-tool">
-              <div class="iconfont">
-                &#58892;
-              </div>
-              <div class="reader-tool__label">书架</div>
-            </div>
-          </template>
-          <BookShelf
-            class="popup"
-            :visible="popBookShelfVisible"
-            @change-book="changeBook"
-            @to-shelf="toShelf"
-          />
-        </el-popover>
-        <el-popover
-          v-model:visible="popBookSourceVisible"
-          placement="right"
-          :width="popperWidth"
-          trigger="click"
-          :show-arrow="false"
-          popper-class="popper-component"
-          :popper-options="menuPopperOptions"
-        >
-          <template #reference>
-            <div class="reader-tool">
-              <div class="reader-tool__el-icon">
+          <span aria-hidden="true">‹</span>
+        </button>
+
+        <div class="reader-topbar__actions" aria-label="阅读操作">
+          <button type="button" class="reader-topbar__text-button" @click="addBookToShelf">
+            加入书架
+          </button>
+          <el-popover
+            v-model:visible="popBookSourceVisible"
+            placement="bottom-end"
+            :width="popperWidth"
+            trigger="click"
+            :show-arrow="false"
+            popper-class="popper-component"
+            :popper-options="menuPopperOptions"
+            :teleported="false"
+          >
+            <template #reference>
+              <button type="button" class="reader-topbar__text-button">
+                换源
+              </button>
+            </template>
+            <BookSource
+              class="popup"
+              :visible="popBookSourceVisible"
+              @change-book-source="changeBookSource"
+            />
+          </el-popover>
+          <el-popover
+            v-model:visible="readerMoreVisible"
+            placement="bottom-end"
+            :width="160"
+            trigger="click"
+            :show-arrow="false"
+            popper-class="reader-more-popper"
+            :popper-options="menuPopperOptions"
+            :teleported="false"
+          >
+            <template #reference>
+              <button type="button" class="reader-topbar__circle-button" aria-label="更多">
                 <el-icon :size="18">
-                  <MenuIcon />
+                  <MoreFilled />
                 </el-icon>
-              </div>
-              <div class="reader-tool__label">书源</div>
+              </button>
+            </template>
+            <div class="reader-more-menu">
+              <button type="button" class="reader-more-menu__item" @click="toggleCacheContent">
+                <el-icon :size="16">
+                  <Download />
+                </el-icon>
+                <span>下载</span>
+              </button>
             </div>
-          </template>
-          <BookSource
-            class="popup"
-            :visible="popBookSourceVisible"
-            @change-book-source="changeBookSource"
-          />
-        </el-popover>
-        <el-popover
-          v-model:visible="catalogPopoverVisible"
-          placement="right"
-          :width="popperWidth"
-          trigger="click"
-          :show-arrow="false"
-          popper-class="popper-component"
-          :popper-options="menuPopperOptions"
-        >
-          <template #reference>
-            <div class="reader-tool">
-              <div class="iconfont">
-                &#58905;
-              </div>
-              <div class="reader-tool__label">目录</div>
-            </div>
-          </template>
-          <CatalogPopup
-            class="popup"
-            :visible="catalogPopoverVisible"
-            :catalog="catalog"
-            :book="readingBook"
-            :current-index="chapterIndex"
-            :is-night="isNight"
-            :loading="catalogLoading"
-            @get-content="getContent"
-            @refresh="refreshCatalog"
-          />
-        </el-popover>
-        <el-popover
-          v-model:visible="readSettingsVisible"
-          placement="right"
-          :width="popperWidth"
-          trigger="click"
-          :show-arrow="false"
-          popper-class="popper-component"
-          :popper-options="menuPopperOptions"
-        >
-          <template #reference>
-            <div class="reader-tool">
-              <div class="iconfont">
-                &#58971;
-              </div>
-              <div class="reader-tool__label">设置</div>
-            </div>
-          </template>
-          <ReadSettings
-            class="popup"
-            :visible="readSettingsVisible"
-            @close="readSettingsVisible = false"
-            @show-reader-click-map="showReaderClickMap = true"
-            @read-method-change="beforeReadMethodChange"
-          />
-        </el-popover>
-        <div class="reader-tool" :style="miniInterface ? { order: -1 } : {}">
-          <div class="iconfont">
-            &#58920;
-          </div>
-          <div class="reader-tool__label">首页</div>
-        </div>
-        <div v-if="!miniInterface" class="reader-tool">
-          <div class="iconfont">
-            &#58914;
-          </div>
-          <div class="reader-tool__label">顶部</div>
-        </div>
-        <div v-if="!miniInterface" class="reader-tool">
-          <div class="iconfont">
-            &#58915;
-          </div>
-          <div class="reader-tool__label">底部</div>
+          </el-popover>
         </div>
       </div>
-    </div>
-    <div class="reader-bottom-panel" :style="rightBarTheme">
-      <div class="reader-side-actions">
+    </header>
+
+    <div class="reader-side-panel" :style="sidePanelTheme">
+      <div class="reader-side-actions" @click.stop>
         <div class="reader-side-actions__left">
-          <div class="reader-side-action" :style="popupAbsoluteBtnStyle">
+          <button type="button" class="reader-side-action" :style="sideActionStyle" aria-label="书签">
             <el-icon :size="18">
               <CollectionTag />
             </el-icon>
-          </div>
-          <div class="reader-side-action" :style="popupAbsoluteBtnStyle">
+          </button>
+          <button type="button" class="reader-side-action" :style="sideActionStyle" aria-label="搜索">
             <el-icon :size="18">
               <Search />
             </el-icon>
-          </div>
+          </button>
           <button
             type="button"
             class="reader-side-action"
-            :style="popupAbsoluteBtnStyle"
+            :style="sideActionStyle"
             aria-label="书籍简介"
-            @click.stop="openBookIntro"
+            @click="openBookIntro"
           >
             <el-icon :size="18">
               <InfoFilled />
             </el-icon>
           </button>
-          <div class="reader-side-action" :style="popupAbsoluteBtnStyle">
+          <button type="button" class="reader-side-action" :style="sideActionStyle" aria-label="顶部">
             <el-icon :size="18">
               <Top />
             </el-icon>
-          </div>
-          <div class="reader-side-action" :style="popupAbsoluteBtnStyle">
+          </button>
+          <button type="button" class="reader-side-action" :style="sideActionStyle" aria-label="底部">
             <el-icon :size="18">
               <Bottom />
             </el-icon>
-          </div>
+          </button>
         </div>
         <div class="reader-side-actions__right">
-          <div class="reader-side-action" :style="popupAbsoluteBtnStyle">
+          <button type="button" class="reader-side-action" :style="sideActionStyle" aria-label="刷新">
             <el-icon :size="18">
               <RefreshRight />
             </el-icon>
-          </div>
-          <div class="reader-side-action" :style="popupAbsoluteBtnStyle">
+          </button>
+          <button type="button" class="reader-side-action" :style="sideActionStyle" aria-label="界面">
             <el-icon :size="18">
               <View />
             </el-icon>
-          </div>
-          <div class="reader-side-action" :style="popupAbsoluteBtnStyle">
+          </button>
+          <button type="button" class="reader-side-action" :style="sideActionStyle" aria-label="朗读">
             <el-icon :size="18">
               <Headset />
             </el-icon>
-          </div>
-          <div class="reader-side-action" :style="popupAbsoluteBtnStyle">
+          </button>
+          <button type="button" class="reader-side-action" :style="sideActionStyle" aria-label="夜间">
             <el-icon v-if="!isNight" :size="18" class="reader-theme-icon reader-theme-icon--moon">
               <Moon />
             </el-icon>
             <el-icon v-else :size="18" class="reader-theme-icon reader-theme-icon--sun">
               <Sunny />
             </el-icon>
-          </div>
+          </button>
         </div>
       </div>
-      <div v-if="miniInterface && !isAudio" class="reader-slider-row">
-        <div class="reader-slider-row__bar">
+    </div>
+
+    <div class="reader-bottom-panel reader-controls-panel" :style="bottomBarTheme">
+      <div class="reader-control-row reader-control-row--progress" @click.stop>
+        <button type="button" class="reader-control-text" @click="goPreviousPage">
+          上一章
+        </button>
+        <div class="reader-control-progress">
           <el-slider
             v-model="currentPage"
             :min="1"
@@ -205,7 +154,9 @@
             @input="progressValue = $event"
           />
         </div>
-        <span class="reader-slider-row__label">{{ formatProgressTip() }}</span>
+        <button type="button" class="reader-control-text" @click="goNextPage">
+          下一章
+        </button>
       </div>
       <div v-if="showCacheContentZone" class="reader-cache-panel">
         <div>缓存章节</div>
@@ -227,29 +178,66 @@
           </el-icon>
         </div>
       </div>
-      <div class="reader-tool-list">
-        <div class="reader-tool reader-progress-text">
-          <span v-if="miniInterface">阅读进度: </span>
-          {{ readingProgress }}
-        </div>
-        <div
-          class="reader-tool"
-          :style="miniInterface ? { order: -1 } : {}"
-          @click="goPreviousPage"
+      <div class="reader-control-row reader-control-row--actions" @click.stop>
+        <el-popover
+          v-model:visible="catalogPopoverVisible"
+          placement="top"
+          :width="popperWidth"
+          trigger="click"
+          :show-arrow="false"
+          popper-class="popper-component"
+          :popper-options="menuPopperOptions"
+          :teleported="false"
         >
-          <div class="iconfont">
-            &#58920;
-          </div>
-          <span v-if="miniInterface">上一章</span>
-        </div>
-        <div class="reader-tool" @click="goNextPage">
-          <span v-if="miniInterface">下一章</span>
-          <div class="iconfont">
-            &#58913;
-          </div>
-        </div>
+          <template #reference>
+            <button type="button" class="reader-bottom-action">
+              <span class="iconfont">&#58905;</span>
+              <span>目录</span>
+            </button>
+          </template>
+          <CatalogPopup
+            class="popup"
+            :visible="catalogPopoverVisible"
+            :catalog="catalog"
+            :book="readingBook"
+            :current-index="chapterIndex"
+            :is-night="isNight"
+            :loading="catalogLoading"
+            @get-content="getContent"
+            @refresh="refreshCatalog"
+          />
+        </el-popover>
+        <button type="button" class="reader-bottom-action" @click="toggleNight">
+          <el-icon v-if="!isNight" :size="24" class="reader-theme-icon reader-theme-icon--moon">
+            <Moon />
+          </el-icon>
+          <el-icon v-else :size="24" class="reader-theme-icon reader-theme-icon--sun">
+            <Sunny />
+          </el-icon>
+          <span>夜间</span>
+        </button>
+        <button type="button" class="reader-bottom-action" @click="toggleReadSettings">
+          <span class="iconfont">&#58971;</span>
+          <span>设置</span>
+        </button>
       </div>
     </div>
+    <transition name="reader-settings-sheet">
+      <div
+        v-if="readSettingsVisible"
+        class="reader-settings-sheet"
+        :style="settingsSheetTheme"
+        @click.stop
+      >
+        <ReadSettings
+          class="reader-settings-sheet__content"
+          :visible="readSettingsVisible"
+          @close="readSettingsVisible = false"
+          @show-reader-click-map="showReaderClickMap = true"
+          @read-method-change="beforeReadMethodChange"
+        />
+      </div>
+    </transition>
     <div class="reader-bottom-panel" :style="readBarTheme">
       <div class="reader-speech-panel">
         <div class="reader-speech-panel__controls">
@@ -264,14 +252,14 @@
               <el-icon
                 v-if="speechSpeaking"
                
-                :style="popupAbsoluteBtnStyle"
+                :style="speechPlayStyle"
               >
                 <VideoPause />
               </el-icon>
               <el-icon
                 v-else
                
-                :style="popupAbsoluteBtnStyle"
+                :style="speechPlayStyle"
               >
                 <VideoPlay />
               </el-icon>
@@ -366,19 +354,19 @@
       :style="chapterTheme"
     >
       <div
-        v-if="showReaderClickMap"
+        v-if="showReaderClickMap && !isIntroPage"
         class="reader-click-map"
         :style="!isSlideRead ? { position: 'fixed' } : {}"
       >
         <div :style="showPrevPageStyle"><span>点击前一页</span></div>
         <div :style="showMenuZoneStyle"><span>点击显示菜单</span></div>
         <div :style="showNextPageStyle"><span>点击后一页</span></div>
-        <div class="reader-close-button" @click="showReaderClickMap = false">关闭</div>
+        <div class="reader-close-button" @click.stop="showReaderClickMap = false">关闭</div>
       </div>
       <div class="reader-page__top">
-        {{ miniInterface ? title : "" }}
+        {{ miniInterface && !isIntroPage ? title : "" }}
       </div>
-      <div class="reader-page__content" @click="handlerClick">
+      <div class="reader-page__content">
         <ReaderIntroPage
           v-if="isIntroPage"
           class="reader-page__intro"
@@ -431,9 +419,10 @@ import {
   Bottom,
   Close,
   CollectionTag,
+  Download,
   Headset,
   InfoFilled,
-  Menu as MenuIcon,
+  MoreFilled,
   Moon,
   RefreshRight,
   Search,
@@ -443,11 +432,10 @@ import {
   VideoPlay,
   View
 } from "@element-plus/icons-vue";
-import CatalogPopup from "../components/CatalogPopup.vue";
-import ReadSettings from "../components/ReadSettings.vue";
 import BookSource from "../components/BookSource.vue";
-import BookShelf from "../components/BookShelf.vue";
+import CatalogPopup from "../components/CatalogPopup.vue";
 import Content from "../components/Content.vue";
+import ReadSettings from "../components/ReadSettings.vue";
 import ReaderIntroPage from "../components/reader/ReaderIntroPage.vue";
 import ReaderIntroPanel from "../components/reader/ReaderIntroPanel.vue";
 import { getMiniInterface, getWindowSize } from "../utils/interface";
@@ -494,10 +482,10 @@ const {
   goPreviousPage
 } = useReaderRuntime();
 
+const popBookSourceVisible = ref(false);
 const catalogPopoverVisible = ref(false);
 const readSettingsVisible = ref(false);
-const popBookSourceVisible = ref(false);
-const popBookShelfVisible = ref(false);
+const readerMoreVisible = ref(false);
 const bookIntroVisible = ref(false);
 const showToolBar = ref(false);
 const show = ref(true);
@@ -527,7 +515,11 @@ const config = ref({ ...previewConfig });
 const currentThemeConfig = previewTheme;
 const isNight = computed(() => config.value.themeType === "night");
 const bodyTheme = computed(() => ({
-  background: currentThemeConfig.body
+  background: currentThemeConfig.body,
+  "--reader-body-background": currentThemeConfig.body,
+  "--reader-content-background": currentThemeConfig.content,
+  "--reader-panel-background": currentThemeConfig.content,
+  "--reader-font-color": currentThemeConfig.font
 }));
 const isCarToon = computed(() => false);
 const isAudio = computed(() => false);
@@ -577,22 +569,30 @@ const readWidthConfig = computed(() => {
   }
   return width;
 });
-const leftBarTheme = computed(() => ({
-  background: currentThemeConfig.popup,
-  marginLeft: miniInterface.value ? 0 : `${-(readWidthConfig.value / 2 + 68)}px`,
-  display: miniInterface.value && !showToolBar.value ? "none" : "block"
+const topBarTheme = computed(() => ({
+  background: "transparent",
+  color: currentThemeConfig.font
 }));
-const rightBarTheme = computed(() => ({
-  background: currentThemeConfig.popupPure,
-  marginRight: miniInterface.value ? 0 : `${-(readWidthConfig.value / 2 + 52)}px`,
-  display: miniInterface.value && !showToolBar.value ? "none" : "block"
+const sidePanelTheme = computed(() => ({
+  color: currentThemeConfig.font
+}));
+const bottomBarTheme = computed(() => ({
+  background: currentThemeConfig.content,
+  color: currentThemeConfig.font
+}));
+const settingsSheetTheme = computed(() => ({
+  background: currentThemeConfig.content,
+  color: currentThemeConfig.font
 }));
 const readBarTheme = computed(() => ({
-  background: currentThemeConfig.popupPure,
+  background: currentThemeConfig.content,
   marginRight: miniInterface.value ? 0 : `${-(readWidthConfig.value / 2)}px`,
   zIndex: 200,
   display: speechAvalable.value && showReadBar.value ? "block" : "none",
   width: miniInterface.value ? "100vw" : "500px"
+}));
+const sideActionStyle = computed(() => ({
+  background: currentThemeConfig.content
 }));
 const readWidth = computed(() => {
   if (!miniInterface.value) {
@@ -670,18 +670,13 @@ const showNextPageStyle = computed(() => {
     background: "#6b1a7324"
   };
 });
-const popupAbsoluteBtnStyle = computed(() => ({
-  background: currentThemeConfig.popupPure
+const speechPlayStyle = computed(() => ({
+  background: currentThemeConfig.content
 }));
 
 const syncInterface = () => {
   miniInterface.value = getMiniInterface();
   windowSize.value = getWindowSize();
-};
-
-const changeBook = book => {
-  popBookShelfVisible.value = false;
-  loadReaderBook(book);
 };
 
 const toShelf = () => {
@@ -690,6 +685,19 @@ const toShelf = () => {
 
 const changeBookSource = () => {
   popBookSourceVisible.value = false;
+};
+
+const toggleCacheContent = () => {
+  readerMoreVisible.value = false;
+  showCacheContentZone.value = !showCacheContentZone.value;
+};
+
+const toggleNight = () => {
+  config.value.themeType = isNight.value ? "day" : "night";
+};
+
+const toggleReadSettings = () => {
+  readSettingsVisible.value = !readSettingsVisible.value;
 };
 
 const openBookIntro = () => {
@@ -701,6 +709,10 @@ const openBookIntro = () => {
 const addBookToShelf = () => {
   bookIntroVisible.value = false;
   ElMessage.success("已加入书架预览");
+};
+
+const showPage = value => {
+  goToReaderPage(value || progressValue.value);
 };
 
 const getContent = note => {
@@ -718,18 +730,33 @@ const refreshCatalog = () => {
 
 const beforeReadMethodChange = () => {};
 
-const showPage = value => {
-  goToReaderPage(value || progressValue.value);
+const closeReaderMenus = () => {
+  popBookSourceVisible.value = false;
+  catalogPopoverVisible.value = false;
+  readSettingsVisible.value = false;
+  readerMoreVisible.value = false;
+  showCacheContentZone.value = false;
+  showToolBar.value = false;
 };
 
+const hasVisibleReaderMenu = () =>
+  showToolBar.value ||
+  popBookSourceVisible.value ||
+  catalogPopoverVisible.value ||
+  readSettingsVisible.value ||
+  readerMoreVisible.value ||
+  showCacheContentZone.value;
+
 const eventHandler = point => {
-  if (
-    popBookSourceVisible.value ||
-    popBookShelfVisible.value ||
-    bookIntroVisible.value ||
-    catalogPopoverVisible.value ||
-    readSettingsVisible.value
-  ) {
+  if (bookIntroVisible.value) {
+    return;
+  }
+  if (hasVisibleReaderMenu()) {
+    closeReaderMenus();
+    return;
+  }
+  if (isIntroPage.value) {
+    showToolBar.value = true;
     return;
   }
   const midX = windowSize.value.width / 2;
@@ -783,8 +810,14 @@ onBeforeUnmount(() => {
 </script>
 
 <style lang="stylus" scoped>
+:deep(.reader-more-popper),
 :deep(.popper-component) {
-  margin-left: 10px;
+  background: var(--reader-panel-background);
+  color: var(--reader-font-color);
+}
+
+:deep(.reader-more-popper) {
+  padding: 6px;
 }
 
 
@@ -797,57 +830,128 @@ onBeforeUnmount(() => {
     pointer-events: none;
   }
 
-  .reader-main-toolbar {
+  .reader-topbar {
     position: fixed;
     top: 0;
-    padding-top: 0;
-    padding-top: constant(safe-area-inset-top) !important;
-    padding-top: env(safe-area-inset-top) !important;
-    left: 50%;
+    left: 0;
+    right: 0;
     z-index: 2001;
+    padding-top: constant(safe-area-inset-top);
+    padding-top: env(safe-area-inset-top);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-100%);
+    transition: opacity 0.22s ease, transform 0.22s ease;
 
-    .reader-tool-list {
+    .reader-topbar__inner {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 12px;
+      padding: 10px clamp(14px, 4vw, 28px) 8px;
+    }
+
+    .reader-topbar__actions {
+      grid-column: 3;
+      justify-self: end;
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+    }
+
+    .reader-topbar__circle-button,
+    .reader-topbar__text-button {
+      border: 0;
+      color: inherit;
+      background: var(--reader-panel-background);
+      box-shadow: 0 10px 28px rgba(72, 55, 34, 0.1);
+      backdrop-filter: blur(18px);
+      cursor: pointer;
+      transition: transform 0.16s ease, background 0.16s ease, opacity 0.16s ease;
+    }
+
+    .reader-topbar__circle-button {
+      width: 38px;
+      height: 38px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      border-radius: 999px;
+    }
+
+    .reader-topbar__circle-button > span {
+      font-size: 32px;
+      line-height: 1;
+      font-weight: 300;
+      transform: translate(-1px, -2px);
+    }
+
+    .reader-topbar__text-button {
+      height: 36px;
+      padding: 0 13px;
+      border-radius: 999px;
+      font-size: 13px;
+      line-height: 1;
+      font-weight: 600;
+    }
+
+    .reader-topbar__circle-button:active,
+    .reader-topbar__text-button:active {
+      transform: scale(0.96);
+    }
+  }
+
+  .reader-side-panel {
+    position: fixed;
+    bottom: 0;
+    right: 50%;
+    z-index: 101;
+    width: min(100vw, 680px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.18s ease;
+
+    .reader-side-actions__left {
+      position: absolute;
+      bottom: 155px;
+      left: 4px;
+      right: auto;
       display: flex;
       flex-direction: column;
+    }
 
-      .reader-tool {
-        font-size: 18px;
-        width: 58px;
-        height: 48px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 4px;
-        cursor: pointer;
-        outline: none;
+    .reader-side-actions__right {
+      position: absolute;
+      bottom: 155px;
+      right: 4px;
+      left: auto;
+      display: flex;
+      flex-direction: column;
+    }
 
-        .iconfont {
-          font-family: iconfont;
-          width: 16px;
-          height: 22px;
-          font-size: 16px;
-          margin: 0;
-          line-height: 1;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
+    .reader-side-action {
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 20px;
+      padding: 0;
+      border: 0;
+      border-radius: 100%;
+      color: inherit;
+      cursor: pointer;
+      text-align: center;
+      pointer-events: all;
+    }
 
-        .reader-tool__el-icon {
-          font-size: 18px;
-          height: 22px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
+    .reader-theme-icon--moon {
+      color: #121212;
+    }
 
-        }
-
-        .reader-tool__label {
-          font-size: 12px;
-          line-height: 1;
-        }
-      }
+    .reader-theme-icon--sun {
+      color: #666;
     }
   }
 
@@ -856,6 +960,22 @@ onBeforeUnmount(() => {
     bottom: 0;
     right: 50%;
     z-index: 100;
+    border-top: 1px solid rgba(120, 104, 75, 0.18);
+    box-shadow: 0 -8px 24px rgba(72, 55, 34, 0.06);
+    padding: 10px 22px calc(14px + env(safe-area-inset-bottom));
+
+    &.reader-controls-panel {
+      left: 50%;
+      right: auto;
+      width: min(100vw, 680px);
+      margin-left: max(-340px, -50vw);
+      box-sizing: border-box;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(100%);
+      transition: opacity 0.22s ease, transform 0.22s ease;
+      overflow: visible;
+    }
 
     .reader-slider-row {
       padding: 10px 36px;
@@ -890,62 +1010,95 @@ onBeforeUnmount(() => {
       }
     }
 
-    .reader-side-actions__left {
-      position: absolute;
-      bottom: 155px;
-      left: 4px;
-      right: auto;
+    .reader-control-row {
+      display: grid;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .reader-control-row--progress {
+      grid-template-columns: auto minmax(120px, 1fr) auto;
+      margin-bottom: 12px;
+    }
+
+    .reader-control-row--actions {
+      grid-template-columns: repeat(3, 1fr);
+      justify-items: center;
+    }
+
+    .reader-control-text,
+    .reader-bottom-action {
+      border: 0;
+      color: inherit;
+      background: transparent;
+      cursor: pointer;
+      outline: none;
+    }
+
+    .reader-control-text {
+      min-width: 52px;
+      padding: 0;
+      font-size: 14px;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    .reader-control-progress {
+      min-width: 0;
+      padding: 0 4px;
+    }
+
+    .reader-bottom-action {
+      min-width: 48px;
       display: flex;
       flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      padding: 0;
+      font-size: 12px;
+      line-height: 1;
 
-      .reader-side-action {
-        width: 36px;
-        height: 36px;
-        display: flex;
+      .iconfont {
+        font-family: iconfont;
+        width: 22px;
+        height: 22px;
+        display: inline-flex;
         align-items: center;
         justify-content: center;
-        margin-top: 20px;
-        padding: 0;
-        border: 0;
-        border-radius: 100%;
-        color: inherit;
-        cursor: pointer;
-        text-align: center;
-        pointer-events: all;
+        font-size: 21px;
+        line-height: 1;
       }
     }
 
-    .reader-side-actions__right {
-      position: absolute;
-      bottom: 155px;
-      left: 4px;
-      right: auto;
-      display: flex;
-      flex-direction: column;
+    :deep(.reader-control-progress .el-slider) {
+      --el-slider-height: 10px;
+      --el-slider-button-size: 20px;
+      --el-slider-button-wrapper-size: 28px;
+      --el-slider-button-wrapper-offset: -9px;
+      --el-slider-border-radius: 999px;
+      height: 22px;
+    }
 
-      .reader-side-action {
-        width: 36px;
-        height: 36px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-top: 20px;
-        padding: 0;
-        border: 0;
-        border-radius: 100%;
-        color: inherit;
-        cursor: pointer;
-        text-align: center;
-        pointer-events: all;
+    :deep(.reader-control-progress .el-slider__runway) {
+      height: 10px;
+      border-radius: 999px;
+      background-color: rgba(120, 104, 75, 0.16);
+      box-shadow: inset 0 1px 3px rgba(72, 55, 34, 0.06);
+    }
 
+    :deep(.reader-control-progress .el-slider__bar) {
+      height: 10px;
+      border-radius: 999px;
+      background-color: rgba(120, 104, 75, 0.22);
+    }
 
-        .reader-theme-icon--moon {
-          color: #121212;
-        }
-        .reader-theme-icon--sun {
-          color: #666;
-        }
-      }
+    :deep(.reader-control-progress .el-slider__button) {
+      width: 20px;
+      height: 20px;
+      border: 0;
+      background-color: rgba(255, 250, 235, 0.88);
+      box-shadow: 0 6px 16px rgba(72, 55, 34, 0.16);
     }
 
     .reader-tool-list {
@@ -957,6 +1110,9 @@ onBeforeUnmount(() => {
         min-width: 42px;
         height: 31px;
         padding: 0 6px;
+        border: 0;
+        color: inherit;
+        background: transparent;
         display: flex;
         flex-direction: row;
         align-items: center;
@@ -1073,6 +1229,67 @@ onBeforeUnmount(() => {
       }
     }
   }
+
+  .reader-settings-sheet {
+    position: fixed;
+    left: 50%;
+    right: auto;
+    bottom: calc(64px + env(safe-area-inset-bottom));
+    z-index: 102;
+    width: min(100vw, 680px);
+    margin-left: max(-340px, -50vw);
+    box-sizing: border-box;
+    overflow: hidden;
+    border-top: 1px solid rgba(120, 104, 75, 0.18);
+    border-bottom: 1px solid rgba(120, 104, 75, 0.14);
+    box-shadow: 0 -8px 24px rgba(72, 55, 34, 0.06);
+  }
+
+  .reader-settings-sheet__content {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  :deep(.reader-settings-sheet__content.reading-settings) {
+    margin: 0;
+    padding: 16px 22px 18px;
+    max-height: min(52vh, 440px);
+  }
+
+  :deep(.reader-settings-sheet__content .reading-settings__body) {
+    max-height: min(52vh, 440px);
+  }
+
+  .reader-settings-sheet-enter-active,
+  .reader-settings-sheet-leave-active {
+    transition: opacity 0.2s ease, transform 0.2s ease;
+  }
+
+  .reader-settings-sheet-enter-from,
+  .reader-settings-sheet-leave-to {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+
+  &.reader-view--controls-visible {
+    .reader-topbar {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0);
+    }
+
+    .reader-bottom-panel.reader-controls-panel {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0);
+    }
+
+    .reader-side-panel {
+      opacity: 1;
+      pointer-events: auto;
+    }
+  }
+
 
 
   .reader-page {
@@ -1195,18 +1412,36 @@ onBeforeUnmount(() => {
   }
 }
 
+.reader-more-menu {
+  display: flex;
+  flex-direction: column;
+}
+
+.reader-more-menu__item {
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 10px;
+  color: inherit;
+  background: transparent;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.reader-more-menu__item:active {
+  background: var(--reader-content-background);
+}
+
 .day {
   :deep(.popup) {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12), 0 0 6px rgba(0, 0, 0, 0.04);
   }
 
   :deep(.reader-tool) {
-    border: 1px solid rgba(0, 0, 0, 0.1);
     color: #000;
-
-    .reader-tool__label {
-      color: rgba(0, 0, 0, 0.4);
-    }
   }
 
   :deep(.reader-slider-row__label) {
@@ -1215,14 +1450,6 @@ onBeforeUnmount(() => {
 
   :deep(.reader-cache-panel) {
     color: rgba(0, 0, 0, 0.4);
-  }
-
-  :deep(.reader-side-actions__left) {
-    color: #121212;
-  }
-
-  :deep(.reader-side-actions__right) {
-    color: #121212;
   }
 
   :deep(.reader-speech-panel) {
@@ -1246,10 +1473,6 @@ onBeforeUnmount(() => {
     color: rgba(0, 0, 0, 0.4);
   }
 
-  :deep(.el-slider__runway) {
-    background-color: #fff;
-  }
-
   :deep(.reader-speech-panel__play) {
     color: #409EFF;
   }
@@ -1261,12 +1484,7 @@ onBeforeUnmount(() => {
   }
 
   :deep(.reader-tool) {
-    border: 1px solid #444;
     color: #666;
-
-    .reader-tool__label {
-      color: #666;
-    }
   }
 
   :deep(.reader-slider-row__label) {
@@ -1274,14 +1492,6 @@ onBeforeUnmount(() => {
   }
 
   :deep(.reader-cache-panel) {
-    color: #666;
-  }
-
-  :deep(.reader-side-actions__left) {
-    color: #666;
-  }
-
-  :deep(.reader-side-actions__right) {
     color: #666;
   }
 
@@ -1299,75 +1509,25 @@ onBeforeUnmount(() => {
     color: #666;
   }
 
-  :deep(.el-slider__runway) {
-    background-color: #282828;
-  }
-  :deep(.el-slider__bar) {
-    background-color: #185798;
-  }
-  :deep(.el-slider__button) {
-    border: 2px solid #185798;
-    background-color: #282828;
-  }
   :deep(.reader-speech-panel__play) {
     color: #185798;
   }
 }
 
-.reader-view {
-  .reader-bottom-panel {
-    .reader-side-actions {
-      position: absolute;
-      bottom: 135px;
-      left: 4px;
-
-      .reader-side-actions__left {
-        position: relative;
-        left: auto;
-        bottom: auto;
-      }
-
-      .reader-side-actions__right {
-        position: relative;
-        left: auto;
-        bottom: auto;
-        margin-bottom: 20px;
-      }
-    }
-
-  }
-}
 
 .reader-view.mini-interface {
   padding: 0;
   position: relative;
   height: 100%;
 
-  .reader-main-toolbar {
+  .reader-topbar {
     left: 0;
     width: 100vw;
-    margin-left: 0 !important;
-
-    .reader-tool-list {
-      flex-direction: row;
-      justify-content: space-around;
-      .reader-tool {
-        border: none;
-      }
-    }
   }
 
-  .reader-bottom-panel {
+  .reader-side-panel {
     right: 0;
     width: 100vw;
-    margin-right: 0 !important;
-
-    .reader-cache-panel {
-      position: relative;
-      width: auto;
-      right: 0;
-      background: inherit;
-    }
 
     .reader-side-actions {
       position: static;
@@ -1388,36 +1548,30 @@ onBeforeUnmount(() => {
       right: 20px;
       bottom: 135px;
     }
+  }
 
-    .reader-tool-list {
-      flex-direction: row;
-      justify-content: space-around;
-      padding: 0 15px;
-      height: 45px;
+  .reader-settings-sheet {
+    left: 0;
+    right: auto;
+    width: 100vw;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
 
-      .reader-tool {
-        border: none;
-        width: auto;
-        padding: 0;
-        height: 45px;
-        line-height: 1;
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        justify-content: center;
-        gap: 4px;
+  .reader-bottom-panel {
+    left: 0;
+    right: auto;
+    width: 100vw;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
 
-        .iconfont {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        span {
-          line-height: 1;
-        }
-      }
+    .reader-cache-panel {
+      position: relative;
+      width: auto;
+      right: 0;
+      background: inherit;
     }
+
   }
 
   .reader-page {

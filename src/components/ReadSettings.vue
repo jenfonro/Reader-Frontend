@@ -1,107 +1,28 @@
 <template>
   <div
     class="reading-settings"
-    :style="popupTheme"
     :class="{ night: isNight, day: !isNight }"
   >
-    <div class="reading-settings__header">
-      设置
-      <div class="reading-settings__reset" @click="resetConfig">重置为默认配置</div>
-    </div>
     <div class="reading-settings__body">
       <ul>
-        <li>
-          <span class="setting-field__label">特殊模式</span>
-          <div class="setting-choice-list">
-            <span
-              class="setting-choice"
-              v-for="(type, index) in pageTypes"
-              :key="index"
-              :class="{ selected: config.pageType === type }"
-              @click="setPageType(type)"
-              >{{ type === "Kindle" ? "简洁" : "正常" }}</span
-            >
-            <span class="setting-tip"
-              >❗️开启简洁模式会关闭动画以及首页的部分功能</span
-            >
-          </div>
-        </li>
-        <el-divider></el-divider>
-        <li>
-          <span class="setting-field__label">配置方案</span>
-          <div class="setting-choice-list">
-            <span
-              class="setting-choice"
-              v-for="(customConfig, index) in customConfigList"
-              :key="index"
-              :class="{
-                selected:
-                  config.customConfig === customConfig.name
-              }"
-              @click="setCustomConfig(customConfig)"
-            >
-              <span>{{ customConfig.name }}</span>
-              <el-icon
-                v-if="
-                  index > 1 &&
-                    config.customConfig !== customConfig.name
-                "
-                class="setting-choice__delete"
-                @click.stop="deleteCustomConfig(index, customConfig.name)"
+        <li class="reading-settings__color-row">
+          <span class="setting-field__label">颜色</span>
+          <div class="setting-color-row">
+            <div class="setting-theme-scroll">
+              <span
+                class="theme-choice"
+                v-for="(themeColor, index) in themeColors"
+                :key="index"
+                :style="themeColor"
+                @click="setConfig('theme', index)"
+                :class="{ selected: config.theme === index }"
+                ><em v-if="index !== 6" class="iconfont">&#58980;</em
+                ><em v-else class="moon-icon">{{ moonIcon }}</em></span
               >
-                <Close />
-              </el-icon>
-            </span>
+            </div>
             <span
-              class="setting-choice"
-              :key="'addNewCustomConfig'"
-              @click="addNewCustomConfig"
-              >新增方案</span
-            >
-            <span
-              class="setting-choice"
-              :key="'autoTheme'"
-              ref="themes"
-              @click="setAutoTheme"
-              :class="{ selected: config.autoTheme }"
-              >自动切换</span
-            >
-          </div>
-        </li>
-        <li>
-          <span class="setting-field__label">方案类型</span>
-          <div class="setting-choice-list">
-            <span
-              class="setting-choice"
-              v-for="(configDefaultType, index) in configDefaultTypeList"
-              :key="index"
-              :class="{
-                selected:
-                  currentCustomConfig.configDefaultType === configDefaultType
-              }"
-              @click="setConfigDefaultType(configDefaultType)"
-              >{{ configDefaultType }}</span
-            >
-          </div>
-        </li>
-        <li>
-          <span class="setting-field__label">阅读主题</span>
-          <div class="setting-choice-list">
-            <span
-              class="theme-choice"
-              v-for="(themeColor, index) in themeColors"
-              :key="index"
-              :style="themeColor"
-              ref="themes"
-              @click="setConfig('theme', index)"
-              :class="{ selected: config.theme === index }"
-              ><em v-if="index !== 6" class="iconfont">&#58980;</em
-              ><em v-else class="moon-icon">{{ moonIcon }}</em></span
-            >
-            <span
-              class="setting-choice"
+              class="setting-choice setting-choice--fixed"
               :key="'custom'"
-              ref="themes"
               @click="setConfig('theme', 'custom')"
               :class="{ selected: config.theme === 'custom' }"
               >自定义</span
@@ -179,50 +100,7 @@
           </div>
         </li>
         <li>
-          <span class="setting-field__label">正文字体</span>
-          <div class="setting-choice-list">
-            <span
-              class="setting-choice"
-              v-for="(font, index) in fonts"
-              :key="index"
-              :class="{ selected: config.font === index }"
-              @click="setConfig('font', index)"
-              >{{ font }}
-              <el-icon
-                :class="{
-                  'setting-choice__upload': true,
-                  active:
-                    config.customFontsMap &&
-                    config.customFontsMap[customFonts[index]]
-                }"
-                @click.stop="uploadFontFile(customFonts[index], font)"
-              >
-                <Upload />
-              </el-icon>
-            </span>
-            <input
-              ref="fontFileRef"
-              type="file"
-              @change="onFontFileChange"
-              style="display:none"
-            />
-          </div>
-        </li>
-        <li>
-          <span class="setting-field__label">简繁转换</span>
-          <div class="setting-choice-list">
-            <span
-              class="setting-choice"
-              v-for="(chineseFont, index) in chineseFonts"
-              :key="index"
-              :class="{ selected: config.chineseFont === chineseFont }"
-              @click="setConfig('chineseFont', chineseFont)"
-              >{{ chineseFont }}</span
-            >
-          </div>
-        </li>
-        <li>
-          <span class="setting-field__label">字体大小</span>
+          <span class="setting-field__label">字体</span>
           <div class="setting-stepper">
             <span class="less" @click="decConfig('fontSize')"
               ><em class="iconfont">&#58966;</em></span
@@ -240,20 +118,16 @@
           </div>
         </li>
         <li>
-          <span class="setting-field__label">字体粗细</span>
-          <div class="setting-stepper">
-            <span class="less" @click="decConfig('fontWeight')"
-              ><el-icon><Minus /></el-icon></span
-            ><b></b>
-            <span class="setting-stepper__value">
-              <el-input
-                class="setting-input"
-                v-model="config.fontWeight"
-                size="small"
-              ></el-input></span
-            ><b></b>
-            <span class="less" @click="incConfig('fontWeight')"
-              ><el-icon><Plus /></el-icon></span>
+          <span class="setting-field__label">简繁转换</span>
+          <div class="setting-choice-list">
+            <span
+              class="setting-choice"
+              v-for="(chineseFont, index) in chineseFonts"
+              :key="index"
+              :class="{ selected: config.chineseFont === chineseFont }"
+              @click="setConfig('chineseFont', chineseFont)"
+              >{{ chineseFont }}</span
+            >
           </div>
         </li>
         <li>
@@ -320,7 +194,7 @@
           </div>
         </li>
         <li>
-          <span class="setting-field__label">翻页方式</span>
+          <span class="setting-field__label">翻页模式</span>
           <div class="setting-choice-list">
             <span
               class="setting-choice"
@@ -328,14 +202,7 @@
               :key="index"
               :class="{ selected: config.readMethod === method }"
               @click="setReadMethod(method)"
-              v-show="
-                (!miniInterface && method !== '左右滑动') ||
-                  miniInterface
-              "
               >{{ method }}</span
-            >
-            <span class="setting-tip"
-              >❗️上下滚动2会自动隐藏看过的章节，但是可能会抖动</span
             >
           </div>
         </li>
@@ -404,19 +271,6 @@
           </div>
         </li>
         <li>
-          <span class="setting-field__label">全屏点击</span>
-          <div class="setting-choice-list">
-            <span
-              class="setting-choice"
-              v-for="(method, index) in clickMethods"
-              :key="index"
-              :class="{ selected: config.clickMethod === method }"
-              @click="setConfig('clickMethod', method)"
-              >{{ method }}</span
-            >
-          </div>
-        </li>
-        <li>
           <span class="setting-field__label">选择文字</span>
           <div class="setting-choice-list">
             <span
@@ -451,9 +305,9 @@ import "element-plus/es/components/divider/style/css.mjs";
 import "element-plus/es/components/icon/style/css.mjs";
 import "element-plus/es/components/input/style/css.mjs";
 import "element-plus/es/components/message/style/css.mjs";
-import { Close, Minus, Plus, Upload } from "@element-plus/icons-vue";
+import { Close, Minus, Plus } from "@element-plus/icons-vue";
 import { getMiniInterface } from "../utils/interface";
-import { previewConfig, previewCustomConfigs, previewTheme } from "../previewData";
+import { previewConfig } from "../previewData";
 
 defineOptions({
   name: "ReadSettings"
@@ -494,20 +348,14 @@ const builtinBG = [
   { src: "bg/宁静夜色.jpg" },
   { src: "bg/边彩画布.jpg" }
 ];
-const fonts = ["系统", "黑体", "楷体", "宋体", "仿宋"];
-const customFonts = ["", "", "", "", ""];
-const readMethods = ["上下滑动", "左右滑动", "上下滚动", "上下滚动2"];
-const clickMethods = ["下一页", "自动", "不翻页"];
+const readMethods = ["上下", "覆盖", "平移", "无动画"];
 const selectionActions = ["操作弹窗", "忽略"];
 const pageModes = ["自适应", "手机模式"];
-const pageTypes = ["正常", "Kindle"];
 const themeTypes = ["day", "night"];
-const configDefaultTypeList = ["白天默认", "黑夜默认"];
 const autoReadingMethods = ["像素滚动", "段落滚动"];
 const chineseFonts = ["简体", "繁体"];
 const configRules = {
   fontSize: { min: 8, delta: 1 },
-  fontWeight: { min: 100, max: 900, delta: 100 },
   animateMSTime: { min: 0, max: 500, delta: 50 },
   autoReadingPixel: { min: 1, delta: 5 },
   autoReadingLineTime: { min: 10, delta: 50 },
@@ -521,32 +369,17 @@ const configRules = {
 };
 
 const bgFileRef = ref(null);
-const fontFileRef = ref(null);
-const customConfigList = ref(previewCustomConfigs.map(item => ({ ...item })));
 const config = reactive({ ...previewConfig });
 const isNight = ref(false);
 const miniInterface = ref(getMiniInterface());
 
 const moonIcon = computed(() => (config.themeType === "night" ? "" : ""));
-const popupTheme = computed(() => ({
-  background: previewTheme.popup
-}));
-const currentCustomConfig = computed(
-  () =>
-    customConfigList.value.find(item => item.name === config.customConfig) ||
-    customConfigList.value[0]
-);
-
 const syncInterface = () => {
   miniInterface.value = getMiniInterface();
 };
 
 const setConfig = (name, value) => {
   config[name] = value;
-};
-
-const setPageType = type => {
-  setConfig("pageType", type);
 };
 
 const setPageMode = pageMode => {
@@ -557,10 +390,6 @@ const setPageMode = pageMode => {
 const setReadMethod = readMethod => {
   setConfig("readMethod", readMethod);
   emit("read-method-change");
-};
-
-const setAutoTheme = () => {
-  setConfig("autoTheme", !config.autoTheme);
 };
 
 const incConfig = name => {
@@ -600,22 +429,6 @@ const deleteCustomBGImg = src => {
   );
 };
 
-const uploadFontFile = () => {
-  fontFileRef.value?.click();
-};
-
-const onFontFileChange = event => {
-  event.target.value = null;
-  ElMessage.success("上传字体预览");
-};
-
-const resetConfig = () => {
-  Object.keys(config).forEach(key => {
-    delete config[key];
-  });
-  Object.assign(config, previewConfig);
-};
-
 const showReaderClickMap = () => {
   emit("close");
   emit("show-reader-click-map");
@@ -625,36 +438,16 @@ const showRuleEditor = () => {
   ElMessage.success("过滤规则管理预览");
 };
 
-const addNewCustomConfig = () => {
-  ElMessage.success("添加配置方案预览");
-};
-
-const setCustomConfig = customConfig => {
-  Object.assign(config, customConfig, {
-    customConfig: customConfig.name
-  });
-};
-
-const deleteCustomConfig = index => {
-  if (index > 1) {
-    customConfigList.value.splice(index, 1);
-  }
-};
-
-const setConfigDefaultType = configDefaultType => {
-  currentCustomConfig.value.configDefaultType = configDefaultType;
-};
-
 onMounted(() => {
-  window.addEventListener("setting-stepper", syncInterface);
+  window.addEventListener("resize", syncInterface);
 });
 
 onBeforeUnmount(() => {
-  window.removeEventListener("setting-stepper", syncInterface);
+  window.removeEventListener("resize", syncInterface);
 });
 </script>
 
-<style setting-stepper__value="stylus" scoped>
+<style lang="stylus" scoped>
 :deep(.iconfont) {
   font-family: iconfont;
   font-style: normal;
@@ -671,26 +464,10 @@ onBeforeUnmount(() => {
   margin-bottom: -13px;
   text-align: left;
   padding: 24px;
+  background: var(--reader-panel-background, #ede7da);
+  color: var(--reader-font-color, inherit);
   padding-top: calc(24px + constant(safe-area-inset-top));
   padding-top: calc(24px + env(safe-area-inset-top));
-
-  .reading-settings__header {
-    font-size: 18px;
-    line-height: 1.2;
-    margin-bottom: 28px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    font-family: -apple-system, "Noto Sans", "Helvetica Neue", Helvetica, "Nimbus Sans L", Arial, "Liberation Sans", "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", "Source Han Sans SC", "Source Han Sans CN", "Microsoft YaHei", "Wenquanyi Micro Hei", "WenQuanYi Zen Hei", "ST Heiti", SimHei, "WenQuanYi Zen Hei Sharp", sans-serif;
-    font-weight: 400;
-
-    .reading-settings__reset {
-      font-size: 14px;
-      color: #ed4259;
-      cursor: pointer;
-      margin-left: auto;
-    }
-  }
 
   .reading-settings__body {
     max-height: 45vh;
@@ -730,6 +507,33 @@ onBeforeUnmount(() => {
           span {
             margin-bottom: 0;
           }
+        }
+
+        .setting-color-row {
+          flex: 1;
+          min-width: 0;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .setting-theme-scroll {
+          flex: 1;
+          min-width: 0;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          overflow-x: auto;
+          overflow-y: hidden;
+          scrollbar-width: none;
+        }
+
+        .setting-theme-scroll::-webkit-scrollbar {
+          display: none;
+        }
+
+        .setting-choice--fixed {
+          flex: 0 0 78px;
         }
 
         .setting-choice {
@@ -836,7 +640,8 @@ onBeforeUnmount(() => {
         .theme-choice {
           width: 34px;
           height: 34px;
-          margin-right: 16px;
+          flex: 0 0 34px;
+          margin-right: 0;
           border-radius: 100%;
           display: inline-flex;
           align-items: center;
@@ -929,12 +734,12 @@ onBeforeUnmount(() => {
 
   .setting-choice {
     border: 1px solid #666;
-    background: rgba(45, 45, 45, 0.5);
+    background: var(--reader-content-background, rgba(45, 45, 45, 0.5));
   }
 
   :deep(.setting-stepper) {
     border: 1px solid #666;
-    background: rgba(45, 45, 45, 0.5);
+    background: var(--reader-content-background, rgba(45, 45, 45, 0.5));
 
     b {
       border-right: 1px solid #666;
@@ -957,13 +762,13 @@ onBeforeUnmount(() => {
   }
 
   .setting-choice {
-    background: rgba(255, 255, 255, 0.5);
+    background: var(--reader-content-background, rgba(255, 255, 255, 0.5));
     border: 1px solid rgba(0, 0, 0, 0.1);
   }
 
   :deep(.setting-stepper) {
     border: 1px solid #e5e5e5;
-    background: rgba(255, 255, 255, 0.5);
+    background: var(--reader-content-background, rgba(255, 255, 255, 0.5));
 
     b {
       border-right: 1px solid #e5e5e5;
@@ -982,7 +787,9 @@ onBeforeUnmount(() => {
     }
   }
 }
-</style><style setting-stepper__value="stylus">
+</style>
+
+<style lang="stylus">
 .setting-input {
   .el-input__inner {
     background: transparent;

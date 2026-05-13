@@ -1,5 +1,5 @@
 <template>
-  <div class="reader-popup" :style="popupTheme">
+  <div class="reader-popup">
     <div class="reader-popup__header">
       <div class="reader-popup__title">来源({{ bookSource.length }})</div>
       <div class="reader-popup__actions" :class="{ loading: loadingMore }">
@@ -64,7 +64,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from "vue";
+import { ref } from "vue";
 import { ElIcon } from "element-plus/es/components/icon/index.mjs";
 import { ElOption, ElSelect } from "element-plus/es/components/select/index.mjs";
 import "element-plus/es/components/icon/style/css.mjs";
@@ -73,8 +73,7 @@ import { Loading } from "@element-plus/icons-vue";
 import {
   previewBook,
   previewBookSourceGroups,
-  previewBookSources,
-  previewTheme
+  previewBookSources
 } from "../previewData";
 
 defineOptions({
@@ -96,10 +95,6 @@ const bookSourceGroupList = ref(previewBookSourceGroups);
 const loading = ref(false);
 const loadingMore = ref(false);
 const isNight = ref(false);
-
-const popupTheme = computed(() => ({
-  background: previewTheme.popup
-}));
 
 const isSelected = searchBook => searchBook.bookUrl === previewBook.bookUrl;
 
@@ -127,6 +122,8 @@ const changeBookSource = searchBook => {
   margin: -16px;
   margin-bottom: -13px;
   padding: 24px;
+  background: var(--reader-panel-background, #ede7da);
+  color: var(--reader-font-color, inherit);
   padding-top: calc(24px + constant(safe-area-inset-top));
   padding-top: calc(24px + env(safe-area-inset-top));
 

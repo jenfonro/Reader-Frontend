@@ -1,5 +1,5 @@
 <template>
-  <div class="reader-intro-layer" role="presentation" @click="emit('close')">
+  <div class="reader-intro-layer" role="presentation" @click.stop="emit('close')">
     <section class="reader-intro-panel" role="dialog" aria-modal="true" aria-label="书籍简介" @click.stop>
       <button type="button" class="reader-intro-panel__close" aria-label="关闭简介" @click="emit('close')">
         <span aria-hidden="true">×</span>
@@ -66,8 +66,7 @@ const coverText = computed(() => getReaderBookCoverText(props.book));
   align-items: center;
   justify-content: center;
   padding: calc(18px + env(safe-area-inset-top)) 18px calc(18px + env(safe-area-inset-bottom));
-  background: rgba(46, 38, 29, 0.16);
-  backdrop-filter: blur(6px);
+  background: transparent;
   box-sizing: border-box;
 }
 
@@ -82,8 +81,8 @@ const coverText = computed(() => getReaderBookCoverText(props.book));
   overflow-y: auto;
   padding: 28px 22px 24px;
   border-radius: 28px;
-  background: rgba(237, 231, 218, 0.94);
-  color: #2e261d;
+  background: var(--reader-panel-background, #ede7da);
+  color: var(--reader-font-color, #2e261d);
   box-shadow: 0 24px 70px rgba(72, 55, 34, 0.24);
   box-sizing: border-box;
 }
@@ -100,7 +99,7 @@ const coverText = computed(() => getReaderBookCoverText(props.book));
   padding: 0;
   border: 0;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.38);
+  background: var(--reader-content-background, rgba(255, 255, 255, 0.38));
   color: rgba(46, 38, 29, 0.68);
   font-size: 22px;
   line-height: 1;
@@ -114,7 +113,7 @@ const coverText = computed(() => getReaderBookCoverText(props.book));
   justify-content: center;
   overflow: hidden;
   border-radius: 20px;
-  background: rgba(255, 255, 255, 0.32);
+  background: var(--reader-content-background, rgba(255, 255, 255, 0.32));
   color: rgba(46, 38, 29, 0.72);
   font-size: 22px;
   font-weight: 700;
@@ -169,7 +168,7 @@ const coverText = computed(() => getReaderBookCoverText(props.book));
   align-items: center;
   padding: 0 10px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.24);
+  background: var(--reader-content-background, rgba(255, 255, 255, 0.24));
   color: rgba(46, 38, 29, 0.68);
   font-size: 12px;
   line-height: 1;
@@ -208,7 +207,7 @@ const coverText = computed(() => getReaderBookCoverText(props.book));
   padding: 0 22px;
   border: 0;
   border-radius: 999px;
-  background: rgba(46, 38, 29, 0.84);
+  background: var(--reader-font-color, rgba(46, 38, 29, 0.84));
   color: #fff7e7;
   font-size: 14px;
   line-height: 1;

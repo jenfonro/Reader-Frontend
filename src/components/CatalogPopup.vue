@@ -1,5 +1,5 @@
 <template>
-  <div class="reader-popup" :style="popupTheme">
+  <div class="reader-popup">
     <div class="reader-popup__header">
       <div class="reader-popup__title">
         目录
@@ -65,7 +65,6 @@ import "element-plus/es/components/icon/style/css.mjs";
 import "element-plus/es/components/message/style/css.mjs";
 import { ElMessage } from "element-plus/es/components/message/index.mjs";
 import { Loading } from "@element-plus/icons-vue";
-import { previewTheme } from "../previewData";
 
 defineOptions({
   name: "CatalogPopup"
@@ -108,10 +107,6 @@ const catalogList = computed(() =>
   asc.value ? props.catalog : [...props.catalog].reverse()
 );
 const refreshLoading = computed(() => props.loading);
-const popupTheme = computed(() => ({
-  background: previewTheme.popup
-}));
-
 const isSelected = note => note.index === props.currentIndex;
 
 const gotoChapter = note => {
@@ -145,6 +140,8 @@ const toBottom = () => {
   margin: -16px;
   margin-bottom: -13px;
   padding: 24px;
+  background: var(--reader-panel-background, #ede7da);
+  color: var(--reader-font-color, inherit);
   padding-top: calc(24px + constant(safe-area-inset-top));
   padding-top: calc(24px + env(safe-area-inset-top));
 
