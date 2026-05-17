@@ -68,7 +68,6 @@ const emit = defineEmits(["navigate"]);
 const siteName = ref(getSystemSettings().siteName);
 const navItems = [
   { key: "home", label: "首页", icon: "home" },
-  { key: "search", label: "搜索", icon: "search" },
   { key: "library", label: "书库", icon: "library" },
   { key: "ranking", label: "排行榜", icon: "ranking" },
   { key: "complete", label: "完本小说", icon: "complete" },
@@ -81,7 +80,6 @@ const navItems = [
 const mobileNavItems = [
   { key: "home", label: "首页", icon: "home" },
   { key: "library", label: "发现", icon: "library" },
-  { key: "search", label: "搜索", icon: "search" },
   { key: "bookshelf", label: "书架", icon: "bookshelf" },
   { key: "settings", label: "设置", icon: "settings" }
 ];

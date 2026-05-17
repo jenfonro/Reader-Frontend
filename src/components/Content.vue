@@ -18,7 +18,7 @@
 
 <script setup>
 import { computed } from "vue";
-import { previewConfig, previewTheme } from "../previewData";
+import { getReaderTheme, previewConfig } from "../previewData";
 
 defineOptions({
   name: "Content"
@@ -41,31 +41,41 @@ const props = defineProps({
     type: Boolean,
     default: true
   },
-  isScrollRead: {
-    type: Boolean,
-    default: false
-  },
-  showChapterList: {
-    type: Array,
-    default: () => []
-  },
-  currentShowChapter: {
+  readerConfig: {
     type: Object,
     default: null
   }
 });
 
+const resolvedConfig = computed(() => ({
+  ...previewConfig,
+  ...(props.readerConfig || {})
+}));
+
+const fontSize = computed(() => {
+  const parsedSize = Number(resolvedConfig.value.fontSize);
+  return Number.isFinite(parsedSize) ? parsedSize : previewConfig.fontSize;
+});
+
+const getPixelConfig = name => {
+  const parsedValue = Number(resolvedConfig.value[name]);
+  const fallbackValue = Number(previewConfig[name]) || 0;
+  return Math.max(0, Number.isFinite(parsedValue) ? parsedValue : fallbackValue);
+};
+
 const containerStyle = computed(() => ({
-  fontSize: `${previewConfig.fontSize}px`,
-  fontWeight: previewConfig.fontWeight || undefined,
-  color: previewConfig.fontColor,
-  background: previewTheme.content
+  fontWeight: resolvedConfig.value.fontWeight || undefined,
+  color: resolvedConfig.value.fontColor,
+  background: getReaderTheme(resolvedConfig.value.theme).content,
+  padding: `${getPixelConfig("pageTopMargin")}px ${getPixelConfig("pageHorizontalMargin")}px ${getPixelConfig("pageBottomMargin")}px`,
+  boxSizing: "border-box"
 }));
 
 const pStyle = computed(() => ({
-  lineHeight: previewConfig.lineHeight,
-  marginTop: `${previewConfig.paragraphSpace}em`,
-  marginBottom: `${previewConfig.paragraphSpace}em`
+  fontSize: `${fontSize.value}px`,
+  lineHeight: resolvedConfig.value.lineHeight,
+  marginTop: `${resolvedConfig.value.paragraphSpace}em`,
+  marginBottom: `${resolvedConfig.value.paragraphSpace}em`
 }));
 
 const paragraphs = computed(() => {

@@ -1,5 +1,5 @@
 <template>
-  <nav class="reader-mobile-nav" aria-label="底部导航">
+  <nav class="reader-mobile-nav" :style="navStyle" aria-label="底部导航">
     <button
       v-for="item in items"
       :key="item.key"
@@ -14,14 +14,18 @@
 </template>
 
 <script setup>
+import { computed } from "vue";
 import Icon from "./Icon.vue";
 
-defineProps({
+const props = defineProps({
   items: { type: Array, required: true },
   activeKey: { type: String, required: true }
 });
 
 const emit = defineEmits(["navigate"]);
+const navStyle = computed(() => ({
+  "--reader-mobile-nav-count": Math.max(props.items.length, 1)
+}));
 </script>
 
 <style scoped>
@@ -39,7 +43,7 @@ const emit = defineEmits(["navigate"]);
     width: min(430px, calc(100% - 28px));
     min-height: 68px;
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(var(--reader-mobile-nav-count, 4), minmax(0, 1fr));
     gap: 0;
     padding: 5px;
     border: 1px solid rgba(255, 255, 255, 0.78);

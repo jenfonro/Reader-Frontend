@@ -18,6 +18,30 @@ const previewChapterContent = `这是阅读器界面预览内容。
 
 const createInitialBook = book => (book ? { ...book } : { ...previewBook });
 
+const createIntroContinuation = () => ({
+  title: "",
+  content: "",
+  chapter: null,
+  loading: false,
+  loaded: false,
+  error: false
+});
+
+const getChapterKey = chapter =>
+  String(chapter?.chapterUrl || chapter?.url || (chapter?.index ?? chapter?.title ?? chapter?.name ?? ""));
+
+const createChapterStreamItem = (chapter, result = {}) => {
+  const index = toChapterIndex(chapter?.index);
+  const title = result.title || chapter?.title || chapter?.name || "";
+  return {
+    key: getChapterKey(chapter) || `chapter-${index}`,
+    index,
+    title,
+    content: result.content || "正文为空",
+    chapter
+  };
+};
+
 const isPreviewReadingBook = book =>
   !book?.bookUrl || book.origin === "preview" || book.bookUrl === previewBook.bookUrl;
 
@@ -51,22 +75,23 @@ export const useReaderRuntime = () => {
   const catalogLoading = ref(false);
   const currentSource = ref(null);
   const contentStyle = ref({});
-  const currentPage = ref(1);
-  const totalPages = ref(1);
-  const progressValue = ref(1);
   const readingBook = ref({ ...previewBook });
   const catalog = ref(previewCatalog);
+  const introContinuation = ref(createIntroContinuation());
+  const chapterStream = ref([]);
   const readerPageMode = ref(READER_PAGE_MODE.chapter);
   const introPageEnabled = ref(false);
   const bookInfoLoaded = ref(false);
+  const chapterContentCache = new Map();
   let readerController = null;
   let bookInfoController = null;
+  const chapterStreamControllers = new Set();
+  const chapterStreamLoadingTasks = new Map();
 
   const chapterIndex = computed(() => toChapterIndex(readingBook.value.index));
   const isPreviewBook = computed(() => isPreviewReadingBook(readingBook.value));
   const isIntroPage = computed(() => readerPageMode.value === READER_PAGE_MODE.intro);
-
-  const getChapterPage = index => index + 1 + (introPageEnabled.value ? 1 : 0);
+  const hasIntroPage = computed(() => introPageEnabled.value);
 
   const abortBookInfoTask = () => {
     introLoading.value = false;
@@ -75,9 +100,22 @@ export const useReaderRuntime = () => {
     bookInfoController = null;
   };
 
+  const abortChapterStreamTask = () => {
+    chapterStreamControllers.forEach(controller => controller.abort());
+    chapterStreamControllers.clear();
+    chapterStreamLoadingTasks.clear();
+  };
+
   const abortReaderTask = () => {
     loadingVisible.value = false;
     catalogLoading.value = false;
+    if (introContinuation.value.loading) {
+      introContinuation.value = {
+        ...introContinuation.value,
+        loading: false
+      };
+    }
+    abortChapterStreamTask();
     abortBookInfoTask();
     if (!readerController) return;
     readerController.abort();
@@ -96,14 +134,13 @@ export const useReaderRuntime = () => {
     introLoading.value = false;
     catalogLoading.value = false;
     introPageEnabled.value = false;
+    introContinuation.value = createIntroContinuation();
     bookInfoLoaded.value = true;
     readerPageMode.value = READER_PAGE_MODE.chapter;
     title.value = previewCatalog[0]?.title || "第一章 预览章节";
     chapterContent.value = previewChapterContent;
     catalog.value = previewCatalog;
-    totalPages.value = Math.max(previewCatalog.length, 1);
-    currentPage.value = 1;
-    progressValue.value = 1;
+    setChapterStreamCurrent(previewCatalog[0], { title: title.value, content: previewChapterContent });
   };
 
   const setIntroPage = () => {
@@ -112,8 +149,77 @@ export const useReaderRuntime = () => {
     readerPageMode.value = READER_PAGE_MODE.intro;
     title.value = readingBook.value.name || readingBook.value.title || "";
     chapterContent.value = "";
-    currentPage.value = 1;
-    progressValue.value = 1;
+  };
+
+  const setChapterStreamCurrent = (chapter, result = {}) => {
+    chapterStream.value = [createChapterStreamItem(chapter, result)];
+  };
+
+  const applyChapterContent = (chapter, result = {}) => {
+    const nextTitle = result.title || chapter.title || chapter.name || "";
+    const nextContent = result.content || "正文为空";
+    title.value = nextTitle;
+    chapterContent.value = nextContent;
+    chapterContentCache.set(getChapterKey(chapter), { title: nextTitle, content: nextContent });
+    setChapterStreamCurrent(chapter, { ...result, title: nextTitle, content: nextContent });
+    const nextIndex = toChapterIndex(chapter.index);
+    readingBook.value = {
+      ...readingBook.value,
+      index: nextIndex,
+      durChapterIndex: nextIndex,
+      durChapterTitle: nextTitle
+    };
+  };
+
+  const syncReadingProgress = item => {
+    if (!item) return;
+    const nextIndex = toChapterIndex(item.index);
+    const nextTitle = item.title || item.chapter?.title || item.chapter?.name || "";
+    if (
+      toChapterIndex(readingBook.value.index) === nextIndex &&
+      readingBook.value.durChapterTitle === nextTitle
+    ) {
+      return;
+    }
+
+    readingBook.value = {
+      ...readingBook.value,
+      index: nextIndex,
+      durChapterIndex: nextIndex,
+      durChapterTitle: nextTitle
+    };
+  };
+
+  const activateChapterStreamItem = item => {
+    if (!item?.chapter) return false;
+
+    readerPageMode.value = READER_PAGE_MODE.chapter;
+    error.value = false;
+    loadingVisible.value = false;
+    title.value = item.title || item.chapter.title || item.chapter.name || "";
+    chapterContent.value = item.content || "正文为空";
+    chapterContentCache.set(getChapterKey(item.chapter), {
+      title: title.value,
+      content: chapterContent.value
+    });
+
+    if (!chapterStream.value.some(chapterItem => chapterItem.key === item.key)) {
+      chapterStream.value = [...chapterStream.value, item];
+    }
+
+    syncReadingProgress(item);
+    loadAdjacentChaptersIntoStream();
+    return true;
+  };
+
+  const promoteIntroContinuation = () => {
+    const continuation = introContinuation.value;
+    if (!continuation.loaded || !continuation.chapter || !continuation.content) return false;
+    readerPageMode.value = READER_PAGE_MODE.chapter;
+    error.value = false;
+    loadingVisible.value = false;
+    applyChapterContent(continuation.chapter, continuation);
+    return true;
   };
 
   const setReaderError = message => {
@@ -126,7 +232,6 @@ export const useReaderRuntime = () => {
 
   const applyCatalogToBook = chapters => {
     catalog.value = chapters;
-    totalPages.value = Math.max(chapters.length + (introPageEnabled.value ? 1 : 0), 1);
     const latestChapter = chapters[chapters.length - 1]?.title || readingBook.value.latestChapterTitle || "";
     readingBook.value = {
       ...readingBook.value,
@@ -188,17 +293,8 @@ export const useReaderRuntime = () => {
       });
       if (signal?.aborted) return;
 
-      title.value = result.title || chapter.title || chapter.name || "";
-      chapterContent.value = result.content || "正文为空";
-      const nextIndex = toChapterIndex(chapter.index);
-      readingBook.value = {
-        ...readingBook.value,
-        index: nextIndex,
-        durChapterIndex: nextIndex,
-        durChapterTitle: title.value
-      };
-      currentPage.value = getChapterPage(nextIndex);
-      progressValue.value = currentPage.value;
+      applyChapterContent(chapter, result);
+      loadAdjacentChaptersIntoStream();
     } catch (loadError) {
       if (loadError?.name !== "AbortError") setReaderError("章节正文加载失败，请稍后再试");
     } finally {
@@ -206,7 +302,7 @@ export const useReaderRuntime = () => {
     }
   };
 
-  const loadCatalog = async ({ signal, loadFirstChapter = false } = {}) => {
+  const loadCatalog = async ({ signal, loadFirstChapter = false, silent = false } = {}) => {
     if (!currentSource.value) return;
     catalogLoading.value = true;
 
@@ -219,18 +315,154 @@ export const useReaderRuntime = () => {
       if (signal?.aborted) return;
 
       applyCatalogToBook(chapters);
-      if (!loadFirstChapter) return;
+      if (!loadFirstChapter) return chapters;
       if (chapters.length) {
         await loadChapter(chapters[0], signal);
-        return;
+        return chapters;
       }
       title.value = readingBook.value.name || "目录为空";
       chapterContent.value = "未获取到章节目录";
     } catch (loadError) {
-      if (loadError?.name !== "AbortError") setReaderError("目录加载失败，请稍后再试");
+      if (loadError?.name !== "AbortError" && !silent) setReaderError("目录加载失败，请稍后再试");
+      return [];
     } finally {
       if (!signal?.aborted) catalogLoading.value = false;
     }
+  };
+
+  const loadChapterContentForStream = async (chapter, signal) => {
+    const key = getChapterKey(chapter);
+    if (chapterContentCache.has(key)) return chapterContentCache.get(key);
+
+    const result = await loadChapterContent({
+      source: currentSource.value,
+      book: readingBook.value,
+      chapter,
+      signal
+    });
+    const content = {
+      title: result.title || chapter.title || chapter.name || "",
+      content: result.content || "正文为空"
+    };
+    chapterContentCache.set(key, content);
+    return content;
+  };
+
+  const hasChapterInStream = chapter => {
+    const key = getChapterKey(chapter);
+    return chapterStream.value.some(item => item.key === key);
+  };
+
+  const loadChapterIntoStream = async (chapter, direction) => {
+    if (!currentSource.value || !chapter) return false;
+
+    const key = getChapterKey(chapter);
+    if (hasChapterInStream(chapter)) return false;
+    if (chapterStreamLoadingTasks.has(key)) return chapterStreamLoadingTasks.get(key);
+
+    const controller = new AbortController();
+    chapterStreamControllers.add(controller);
+
+    const task = (async () => {
+      try {
+        const result = await loadChapterContentForStream(chapter, controller.signal);
+        if (controller.signal.aborted || hasChapterInStream(chapter)) return false;
+
+        const item = createChapterStreamItem(chapter, result);
+        chapterStream.value = direction === "previous"
+          ? [item, ...chapterStream.value]
+          : [...chapterStream.value, item];
+        return item;
+      } catch (loadError) {
+        return false;
+      } finally {
+        chapterStreamControllers.delete(controller);
+        chapterStreamLoadingTasks.delete(key);
+      }
+    })();
+
+    chapterStreamLoadingTasks.set(key, task);
+    return task;
+  };
+
+  const getStreamBoundaryIndex = direction => {
+    if (!chapterStream.value.length) return chapterIndex.value;
+    const indexes = chapterStream.value.map(item => item.index);
+    return direction === "previous" ? Math.min(...indexes) : Math.max(...indexes);
+  };
+
+  async function loadNextChapterIntoStream() {
+    if (isIntroPage.value) return false;
+    const nextChapter = catalog.value[getStreamBoundaryIndex("next") + 1];
+    return loadChapterIntoStream(nextChapter, "next");
+  }
+
+  async function loadPreviousChapterIntoStream() {
+    if (isIntroPage.value) return false;
+    const previousChapter = catalog.value[getStreamBoundaryIndex("previous") - 1];
+    return loadChapterIntoStream(previousChapter, "previous");
+  }
+
+  const loadAdjacentChaptersIntoStream = () => {
+    loadPreviousChapterIntoStream();
+    loadNextChapterIntoStream();
+  };
+
+  const loadIntroContinuation = async ({ signal } = {}) => {
+    if (!currentSource.value || isPreviewReadingBook(readingBook.value)) return introContinuation.value;
+    if (introContinuation.value.loading || introContinuation.value.loaded) return introContinuation.value;
+
+    introContinuation.value = {
+      ...createIntroContinuation(),
+      loading: true
+    };
+
+    try {
+      const chapters = catalog.value.length
+        ? catalog.value
+        : await loadCatalog({ signal, silent: true });
+      if (signal?.aborted) return introContinuation.value;
+
+      const firstChapter = chapters?.[0] || catalog.value[0];
+      if (!firstChapter) {
+        introContinuation.value = {
+          ...createIntroContinuation(),
+          loaded: true
+        };
+        return introContinuation.value;
+      }
+
+      const result = await loadChapterContent({
+        source: currentSource.value,
+        book: readingBook.value,
+        chapter: firstChapter,
+        signal
+      });
+      if (signal?.aborted) return introContinuation.value;
+
+      introContinuation.value = {
+        title: result.title || firstChapter.title || firstChapter.name || "",
+        content: result.content || "正文为空",
+        chapter: firstChapter,
+        loading: false,
+        loaded: true,
+        error: false
+      };
+      chapterContentCache.set(getChapterKey(firstChapter), {
+        title: introContinuation.value.title,
+        content: introContinuation.value.content
+      });
+    } catch (loadError) {
+      if (loadError?.name !== "AbortError") {
+        introContinuation.value = {
+          ...createIntroContinuation(),
+          loading: false,
+          error: true
+        };
+      }
+    }
+
+    return introContinuation.value;
   };
 
   const loadReaderBook = book => {
@@ -240,10 +472,10 @@ export const useReaderRuntime = () => {
     readingBook.value = initialBook;
     currentSource.value = findSourceForBook(initialBook);
     bookInfoLoaded.value = false;
+    introContinuation.value = createIntroContinuation();
+    chapterStream.value = [];
+    chapterContentCache.clear();
     catalog.value = [];
-    totalPages.value = 1;
-    currentPage.value = 1;
-    progressValue.value = 1;
 
     if (isPreviewReadingBook(initialBook)) {
       setPreviewContent();
@@ -264,9 +496,10 @@ export const useReaderRuntime = () => {
     if (!currentSource.value) return;
 
     const controller = startReaderTask();
-    loadBookIntro({ signal: controller.signal }).finally(() => {
-      if (readerController === controller) readerController = null;
-    });
+    loadBookIntro({ signal: controller.signal })
+      .finally(() => {
+        if (readerController === controller) readerController = null;
+      });
   };
 
   const startReading = () => {
@@ -277,6 +510,11 @@ export const useReaderRuntime = () => {
 
     if (!currentSource.value) {
       setReaderError("暂无可用书源，无法开始阅读");
+      return;
+    }
+
+    if (promoteIntroContinuation()) {
+      loadAdjacentChaptersIntoStream();
       return;
     }
 
@@ -318,42 +556,6 @@ export const useReaderRuntime = () => {
       });
   };
 
-  const goToReaderPage = page => {
-    const nextPage = Math.max(1, toChapterIndex(page));
-    if (introPageEnabled.value && nextPage <= 1) {
-      showIntroPage();
-      return;
-    }
-
-    const chapterOffset = introPageEnabled.value ? 2 : 1;
-    const targetChapter = catalog.value[nextPage - chapterOffset];
-    if (targetChapter) {
-      openChapter(targetChapter);
-      return;
-    }
-
-    if (isIntroPage.value) startReading();
-  };
-
-  const goNextPage = () => {
-    if (isIntroPage.value) {
-      startReading();
-      return;
-    }
-    const nextChapter = catalog.value[chapterIndex.value + 1];
-    if (nextChapter) openChapter(nextChapter);
-  };
-
-  const goPreviousPage = () => {
-    if (isIntroPage.value) return;
-    const previousChapter = catalog.value[chapterIndex.value - 1];
-    if (previousChapter) {
-      openChapter(previousChapter);
-      return;
-    }
-    showIntroPage();
-  };
-
   return {
     title,
     chapterContent,
@@ -363,23 +565,26 @@ export const useReaderRuntime = () => {
     introLoading,
     catalogLoading,
     contentStyle,
-    currentPage,
-    totalPages,
-    progressValue,
     readingBook,
     catalog,
+    introContinuation,
+    chapterStream,
     chapterIndex,
     isPreviewBook,
     isIntroPage,
+    hasIntroPage,
     abortReaderTask,
     loadReaderBook,
     loadBookIntro,
+    loadIntroContinuation,
     startReading,
     showIntroPage,
+    promoteIntroContinuation,
+    syncReadingProgress,
+    activateChapterStreamItem,
+    loadNextChapterIntoStream,
+    loadPreviousChapterIntoStream,
     openChapter,
-    refreshCatalog,
-    goToReaderPage,
-    goNextPage,
-    goPreviousPage
+    refreshCatalog
   };
 };

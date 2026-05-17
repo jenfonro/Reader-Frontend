@@ -17,6 +17,8 @@
         v-bind="currentViewProps"
         @enter-reader="openReader"
         @open-page="openPage"
+        @navigate-home="handleShellNavigate"
+        @search="openSearch"
         @back="goBack"
         @edit="openSourceEditor"
         @edit-replace="openReplaceEditor"
@@ -145,9 +147,7 @@ const homeActiveKey = ref(
 );
 const isReaderPage = computed(() => currentPage.value.name === PAGE_READER);
 
-const showShellMobileNav = computed(() =>
-  currentPage.value.name === PAGE_HOME || currentPage.value.name === PAGE_SEARCH
-);
+const showShellMobileNav = computed(() => currentPage.value.name === PAGE_HOME);
 
 const shellActiveKey = computed(() => {
   if (currentPage.value.name === PAGE_HOME) return homeActiveKey.value;
@@ -261,21 +261,20 @@ const openReader = book => {
   pushPage({ name: PAGE_READER, book: nextBook });
 };
 
+const openSearch = async value => {
+  const keyword = String(value || "").trim();
+  if (!keyword) return;
+
+  const searchState = await import("./search/searchPageState.js");
+  searchState.searchByKeyword(keyword);
+
+  if (currentPage.value.name !== PAGE_SEARCH) pushPage({ name: PAGE_SEARCH });
+};
+
 const handleShellNavigate = key => {
   const activeKey = key || HOME_ACTIVE_DEFAULT;
-
-  if (activeKey === PAGE_SEARCH) {
-    if (currentPage.value.name === PAGE_SEARCH) return;
-    pushPage({ name: PAGE_SEARCH });
-    return;
-  }
-
-  if (currentPage.value.name === PAGE_HOME) {
-    homeActiveKey.value = activeKey;
-    replaceCurrentPage(createHomePage(activeKey));
-    return;
-  }
-  pushPage(createHomePage(activeKey));
+  homeActiveKey.value = activeKey;
+  replaceCurrentPage(createHomePage(activeKey));
 };
 
 const openPage = page => {

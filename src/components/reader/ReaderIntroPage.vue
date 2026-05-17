@@ -25,7 +25,7 @@
       <span>正在加载简介</span>
     </div>
 
-    <div class="reader-intro-page__actions" @click.stop>
+    <div class="reader-intro-page__actions" @click.stop @mousedown.stop @touchstart.stop>
       <button type="button" @click="emit('add-bookshelf')">加入书架</button>
       <button type="button" class="is-primary" @click="emit('start-reading')">开始阅读</button>
     </div>

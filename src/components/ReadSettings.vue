@@ -1,366 +1,377 @@
 <template>
-  <div
-    class="reading-settings"
-    :class="{ night: isNight, day: !isNight }"
-  >
-    <div class="reading-settings__body">
-      <ul>
-        <li class="reading-settings__color-row">
-          <span class="setting-field__label">颜色</span>
-          <div class="setting-color-row">
-            <div class="setting-theme-scroll">
-              <span
-                class="theme-choice"
-                v-for="(themeColor, index) in themeColors"
-                :key="index"
-                :style="themeColor"
-                @click="setConfig('theme', index)"
-                :class="{ selected: config.theme === index }"
-                ><em v-if="index !== 6" class="iconfont">&#58980;</em
-                ><em v-else class="moon-icon">{{ moonIcon }}</em></span
-              >
-            </div>
-            <span
-              class="setting-choice setting-choice--fixed"
-              :key="'custom'"
-              @click="setConfig('theme', 'custom')"
-              :class="{ selected: config.theme === 'custom' }"
-              >自定义</span
-            >
-          </div>
-        </li>
-        <li v-if="config.theme === 'custom'">
-          <span class="setting-field__label">自定义</span>
-          <div class="custom-theme-editor">
-            <div class="custom-theme-editor__field">
-              <span class="custom-theme-editor__field">主题模式</span>
-              <span
-                class="setting-choice"
-                v-for="(type, index) in themeTypes"
-                :key="index"
-                :class="{ selected: config.themeType === type }"
-                @click="setConfig('themeType', type)"
-                >{{ type === "day" ? "白天" : "黑夜" }}</span
-              >
-            </div>
-            <span class="custom-theme-editor__field"
-              >页面背景颜色
-              <el-color-picker v-model="config.bodyColor"></el-color-picker>
-            </span>
-            <span class="custom-theme-editor__field"
-              >浮窗背景颜色
-              <el-color-picker v-model="config.popupColor"></el-color-picker
-            ></span>
-            <span class="custom-theme-editor__field"
-              >阅读背景颜色
-              <el-color-picker v-model="config.contentColor"></el-color-picker
-            ></span>
-            <span class="custom-theme-editor__field"
-              >阅读背景图片
-              <img
-                class="theme-background-option"
-                v-for="(item, index) in builtinBG"
-                :key="index"
-                :class="{
-                  selected: config.contentBGImg === item.src
-                }"
-                :src="item.src"
-                alt=""
-                @click="setBGImg(item.src)"
-              />
-              <div
-                class="theme-background-option"
-                v-for="item in config.customBGImgList || []"
-                :key="item"
-                :class="{
-                  selected: config.contentBGImg === item
-                }"
-              >
-                <img
-                  :src="getCustomBGImgURL(item)"
-                  alt=""
-                  @click="setBGImg(item)"
-                />
-                <el-icon
-                  class="theme-background-delete"
-                  @click.stop="deleteCustomBGImg(item)"
-                >
-                  <Close />
-                </el-icon>
-              </div>
+  <div class="reading-settings" :class="{ night: isNight, day: !isNight }">
+    <transition name="reading-settings-panel" mode="out-in">
+      <div v-if="activePanel === 'main'" class="reading-settings__body" key="main">
+      <div class="setting-row setting-row--brightness">
+        <span class="setting-row__label">亮度</span>
+        <input
+          :value="config.brightness"
+          class="setting-range"
+          type="range"
+          min="0"
+          max="100"
+          aria-label="亮度"
+          @input="setNumberConfig('brightness', $event.target.value)"
+        />
+        <button
+          type="button"
+          class="setting-text-action"
+          :class="{ selected: config.eyeCare }"
+          @click="setConfig('eyeCare', !config.eyeCare)"
+        >
+          护眼模式
+        </button>
+      </div>
 
-              <span class="theme-background-upload" @click="uploadBGFile">上传</span>
-              <input
-                ref="bgFileRef"
-                type="file"
-                @change="onBGFileChange"
-                style="display:none"
-              />
-            </span>
-          </div>
-        </li>
-        <li>
-          <span class="setting-field__label">字体</span>
-          <div class="setting-stepper">
-            <span class="less" @click="decConfig('fontSize')"
-              ><em class="iconfont">&#58966;</em></span
-            ><b></b>
-            <span class="setting-stepper__value">
-              <el-input
-                class="setting-input"
-                v-model="config.fontSize"
-                size="small"
-              ></el-input></span
-            ><b></b>
-            <span class="more" @click="incConfig('fontSize')"
-              ><em class="iconfont">&#58976;</em></span
+      <div class="setting-row setting-row--font">
+        <span class="setting-row__label">字体</span>
+        <button type="button" class="setting-pill setting-font-step" @click="decConfig('fontSize')">A<sup>-</sup></button>
+        <input
+          class="setting-font-size setting-number-input"
+          type="number"
+          :min="configRules.fontSize.min"
+          :value="config.fontSize"
+          aria-label="字体大小"
+          @change="setNumberConfig('fontSize', $event.target.value)"
+        />
+        <button type="button" class="setting-pill setting-font-step" @click="incConfig('fontSize')">A<sup>+</sup></button>
+        <button type="button" class="setting-pill setting-font-config" @click="openPanel('font')">
+          字体设置 ›
+        </button>
+      </div>
+
+      <div class="setting-row">
+        <span class="setting-row__label">颜色</span>
+        <div class="setting-scroll-row">
+          <button
+            v-for="item in readerThemeOptions"
+            :key="item.value"
+            type="button"
+            class="setting-color-dot setting-theme-dot"
+            :class="{ selected: config.theme === item.value }"
+            :style="{ background: item.preview }"
+            :aria-label="item.name"
+            @click="setTheme(item)"
+          >
+            <span v-if="config.theme === item.value">✓</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <span class="setting-row__label">背景</span>
+        <div class="setting-scroll-row">
+          <button
+            v-for="item in backgroundChoices"
+            :key="item.value"
+            type="button"
+            class="setting-background-card"
+            :class="{ selected: config.contentBGImg === item.value }"
+            :style="getBackgroundPreviewStyle(item)"
+            :aria-label="item.name"
+            @click="setBGImg(item.value)"
+          ></button>
+          <button type="button" class="setting-background-card setting-background-card--custom" @click="openPanel('background')">
+            <span>＋</span>
+            <small>自定义</small>
+          </button>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <span class="setting-row__label">翻页</span>
+        <div
+          class="setting-segmented"
+          :style="{ '--setting-segmented-count': readMethods.length }"
+        >
+          <button
+            v-for="method in readMethods"
+            :key="method"
+            type="button"
+            :class="{ selected: config.readMethod === method }"
+            @click="setReadMethod(method)"
+          >
+            {{ method }}
+          </button>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <span class="setting-row__label">其他</span>
+        <div class="setting-button-group">
+          <button type="button" class="setting-pill setting-pill--group" @click="openPanel('spacing')">间距设置</button>
+          <button type="button" class="setting-pill setting-pill--group" @click="openPanel('more')">更多 ›</button>
+        </div>
+      </div>
+
+      </div>
+
+      <div v-else class="reading-settings__subpanel" :key="activePanel">
+      <div class="setting-subpanel__header">
+        <button type="button" class="setting-subpanel__back" @click="activePanel = 'main'">‹</button>
+        <span>{{ activePanelTitle }}</span>
+      </div>
+
+      <div v-if="activePanel === 'font'" class="setting-subpanel__body">
+        <div class="setting-subpanel-row setting-subpanel-row--font-family">
+          <span class="setting-choice-label">正文字体设置</span>
+          <div class="setting-scroll-row setting-font-options">
+            <button
+              v-for="font in fontOptions"
+              :key="font.value"
+              type="button"
+              class="setting-font-option"
+              :class="{ selected: config.font === font.value }"
+              @click="setConfig('font', font.value)"
             >
+              {{ font.name }}
+            </button>
           </div>
-        </li>
-        <li>
-          <span class="setting-field__label">简繁转换</span>
-          <div class="setting-choice-list">
-            <span
-              class="setting-choice"
-              v-for="(chineseFont, index) in chineseFonts"
-              :key="index"
-              :class="{ selected: config.chineseFont === chineseFont }"
-              @click="setConfig('chineseFont', chineseFont)"
-              >{{ chineseFont }}</span
+        </div>
+        <div
+          v-for="item in fontStepperItems"
+          :key="item.name"
+          class="setting-subpanel-row setting-subpanel-row--stepper"
+        >
+          <span class="setting-subpanel-row__label">{{ item.label }}</span>
+          <div class="setting-subpanel-stepper">
+            <button
+              type="button"
+              class="setting-pill setting-font-step setting-subpanel-stepper__button"
+              @click="decConfig(item.name)"
             >
-          </div>
-        </li>
-        <li>
-          <span class="setting-field__label">段落行高</span>
-          <div class="setting-stepper">
-            <span class="less" @click="decConfig('lineHeight')"
-              ><el-icon><Minus /></el-icon></span
-            ><b></b>
-            <span class="setting-stepper__value">
-              <el-input
-                class="setting-input"
-                v-model="config.lineHeight"
-                size="small"
-              ></el-input></span
-            ><b></b>
-            <span class="less" @click="incConfig('lineHeight')"
-              ><el-icon><Plus /></el-icon></span>
-          </div>
-        </li>
-        <li>
-          <span class="setting-field__label">段落间距</span>
-          <div class="setting-stepper">
-            <span class="less" @click="decConfig('paragraphSpace')"
-              ><el-icon><Minus /></el-icon></span
-            ><b></b>
-            <span class="setting-stepper__value">
-              <el-input
-                class="setting-input"
-                v-model="config.paragraphSpace"
-                size="small"
-              ></el-input></span
-            ><b></b>
-            <span class="less" @click="incConfig('paragraphSpace')"
-              ><el-icon><Plus /></el-icon></span>
-          </div>
-        </li>
-        <li>
-          <span class="setting-field__label setting-field__label--color">字体颜色</span>
-          <el-color-picker v-model="config.fontColor"></el-color-picker>
-        </li>
-        <li>
-          <span class="setting-field__label">页面模式</span>
-          <div class="setting-choice-list">
-            <span
-              class="setting-choice"
-              v-for="(mode, index) in pageModes"
-              :key="index"
-              :class="{ selected: config.pageMode === mode }"
-              @click="setPageMode(mode)"
-              >{{ mode }}</span
+              −
+            </button>
+            <input
+              v-if="item.editable"
+              class="setting-number-input setting-subpanel-number"
+              type="number"
+              :min="item.min"
+              :max="item.max"
+              :step="item.step"
+              :value="item.value"
+              @change="setNumberConfig(item.name, $event.target.value)"
+            />
+            <span v-else class="setting-subpanel-value">{{ item.value }}</span>
+            <button
+              type="button"
+              class="setting-pill setting-font-step setting-subpanel-stepper__button"
+              @click="incConfig(item.name)"
             >
+              +
+            </button>
           </div>
-        </li>
-        <li v-if="!miniInterface">
-          <span class="setting-field__label">页面宽度</span>
-          <div class="setting-stepper">
-            <span class="less" @click="decConfig('readWidth')"
-              ><em class="iconfont">&#58965;</em></span
-            ><b></b> <span class="setting-stepper__value">{{ config.readWidth }}</span
-            ><b></b>
-            <span class="more" @click="incConfig('readWidth')"
-              ><em class="iconfont">&#58975;</em></span
+        </div>
+        <div class="setting-subpanel-row setting-subpanel-row--font-color">
+          <span class="setting-choice-label">字体颜色</span>
+          <div class="setting-scroll-row setting-font-colors">
+            <button
+              v-for="item in textColors"
+              :key="item.value"
+              type="button"
+              class="setting-color-dot"
+              :class="{ selected: config.fontColor === item.value }"
+              :style="{ background: item.value }"
+              :aria-label="item.name"
+              @click="setConfig('fontColor', item.value)"
+            ></button>
+          </div>
+        </div>
+      </div>
+
+      <div v-else-if="activePanel === 'background'" class="setting-subpanel__body">
+        <div class="setting-subpanel-row">
+          <span>页面背景</span>
+          <input v-model="config.bodyColor" type="color" />
+        </div>
+        <div class="setting-subpanel-row">
+          <span>阅读背景</span>
+          <input v-model="config.contentColor" type="color" />
+        </div>
+        <div class="setting-subpanel-row">
+          <span>浮窗背景</span>
+          <input v-model="config.popupColor" type="color" />
+        </div>
+        <button type="button" class="setting-list-button" @click="uploadBGFile">
+          <span>上传背景图片</span>
+          <span>›</span>
+        </button>
+        <input ref="bgFileRef" type="file" accept="image/*" @change="onBGFileChange" style="display:none" />
+      </div>
+
+      <div v-else-if="activePanel === 'spacing'" class="setting-subpanel__body">
+        <div
+          v-for="item in spacingStepperItems"
+          :key="item.name"
+          class="setting-subpanel-row setting-subpanel-row--stepper setting-subpanel-row--spacing"
+        >
+          <span class="setting-subpanel-row__label">{{ item.label }}</span>
+          <div class="setting-subpanel-stepper">
+            <button
+              type="button"
+              class="setting-pill setting-font-step setting-subpanel-stepper__button"
+              @click="decConfig(item.name)"
             >
-          </div>
-        </li>
-        <li>
-          <span class="setting-field__label">翻页模式</span>
-          <div class="setting-choice-list">
-            <span
-              class="setting-choice"
-              v-for="(method, index) in readMethods"
-              :key="index"
-              :class="{ selected: config.readMethod === method }"
-              @click="setReadMethod(method)"
-              >{{ method }}</span
+              −
+            </button>
+            <span class="setting-subpanel-value">{{ item.value }}</span>
+            <button
+              type="button"
+              class="setting-pill setting-font-step setting-subpanel-stepper__button"
+              @click="incConfig(item.name)"
             >
+              +
+            </button>
           </div>
-        </li>
-        <li>
-          <span class="setting-field__label">动画时长</span>
-          <div class="setting-stepper">
-            <span class="less" @click="decConfig('animateMSTime')"
-              ><el-icon><Minus /></el-icon></span
-            ><b></b>
-            <span class="setting-stepper__value">
-              <el-input
-                class="setting-input"
-                v-model="config.animateMSTime"
-                size="small"
-              ></el-input></span
-            ><b></b>
-            <span class="less" @click="incConfig('animateMSTime')"
-              ><el-icon><Plus /></el-icon></span>
-          </div>
-        </li>
-        <li>
-          <span class="setting-field__label">自动翻页</span>
-          <div class="setting-choice-list">
-            <span
-              class="setting-choice"
-              v-for="(method, index) in autoReadingMethods"
-              :key="index"
-              :class="{ selected: config.autoReadingMethod === method }"
-              @click="setConfig('autoReadingMethod', method)"
-              >{{ method }}</span
+        </div>
+      </div>
+
+      <div v-else class="setting-subpanel__body">
+        <button type="button" class="setting-list-button setting-choice-row" @click="openChoicePicker('chineseFont')">
+          <span>简繁体设置</span>
+          <span class="setting-choice-row__value">{{ getChoiceLabel('chineseFont') }} ›</span>
+        </button>
+        <button type="button" class="setting-list-button setting-choice-row" @click="openChoicePicker('pageMode')">
+          <span>页面模式</span>
+          <span class="setting-choice-row__value">{{ getChoiceLabel('pageMode') }} ›</span>
+        </button>
+        <button type="button" class="setting-list-button setting-choice-row" @click="openChoicePicker('clickAreaMode')">
+          <span>点击区域模式</span>
+          <span class="setting-choice-row__value">{{ getChoiceLabel('clickAreaMode') }} ›</span>
+        </button>
+        <button type="button" class="setting-list-button setting-choice-row" @click="openClickAreaEditor">
+          <span>点击区域设置</span>
+          <span class="setting-choice-row__value">{{ currentClickAreaModeLabel }} ›</span>
+        </button>
+        <div
+          v-for="item in moreStepperItems"
+          :key="item.name"
+          class="setting-subpanel-row setting-subpanel-row--stepper"
+        >
+          <span class="setting-subpanel-row__label">{{ item.label }}</span>
+          <div class="setting-subpanel-stepper">
+            <button
+              type="button"
+              class="setting-pill setting-font-step setting-subpanel-stepper__button"
+              @click="decConfig(item.name)"
             >
-          </div>
-        </li>
-        <li v-if="config.autoReadingMethod === '像素滚动'">
-          <span class="setting-field__label">滚动像素</span>
-          <div class="setting-stepper">
-            <span class="less" @click="decConfig('autoReadingPixel')"
-              ><el-icon><Minus /></el-icon></span
-            ><b></b>
-            <span class="setting-stepper__value">
-              <el-input
-                class="setting-input"
-                v-model="config.autoReadingPixel"
-                size="small"
-              ></el-input> </span
-            ><b></b>
-            <span class="less" @click="incConfig('autoReadingPixel')"
-              ><el-icon><Plus /></el-icon></span>
-          </div>
-        </li>
-        <li>
-          <span class="setting-field__label">翻页速度</span>
-          <div class="setting-stepper">
-            <span class="less" @click="decConfig('autoReadingLineTime')"
-              ><el-icon><Minus /></el-icon></span
-            ><b></b>
-            <span class="setting-stepper__value"
-              ><el-input
-                class="setting-input"
-                v-model="config.autoReadingLineTime"
-                size="small"
-              ></el-input></span
-            ><b></b>
-            <span class="less" @click="incConfig('autoReadingLineTime')"
-              ><el-icon><Plus /></el-icon></span>
-          </div>
-        </li>
-        <li>
-          <span class="setting-field__label">选择文字</span>
-          <div class="setting-choice-list">
-            <span
-              class="setting-choice"
-              v-for="(action, index) in selectionActions"
-              :key="index"
-              :class="{ selected: config.selectionAction === action }"
-              @click="setConfig('selectionAction', action)"
-              >{{ action }}</span
+              −
+            </button>
+            <span class="setting-subpanel-value">{{ item.value }}</span>
+            <button
+              type="button"
+              class="setting-pill setting-font-step setting-subpanel-stepper__button"
+              @click="incConfig(item.name)"
             >
+              +
+            </button>
           </div>
-        </li>
-        <el-divider></el-divider>
-        <li class="reading-settings__operations">
-          <span class="reading-settings__operation" @click="showReaderClickMap">显示翻页区域</span>
-          <span class="reading-settings__operation" @click="showRuleEditor">过滤规则管理</span>
-        </li>
-      </ul>
-    </div>
+        </div>
+      </div>
+      </div>
+    </transition>
+    <transition name="setting-picker">
+      <div v-if="activeChoicePicker" class="setting-picker" @click.self="closeChoicePicker">
+        <div class="setting-picker__panel">
+          <div class="setting-picker__title">{{ activeChoiceTitle }}</div>
+          <button
+            v-for="option in activeChoiceOptions"
+            :key="option.value"
+            type="button"
+            class="setting-picker__option"
+            :class="{ selected: isChoiceSelected(option) }"
+            @click="selectChoiceOption(option)"
+          >
+            <span>{{ option.label }}</span>
+            <span v-if="isChoiceSelected(option)">✓</span>
+          </button>
+        </div>
+      </div>
+    </transition>
   </div>
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
-import { ElMessage } from "element-plus/es/components/message/index.mjs";
-import { ElColorPicker } from "element-plus/es/components/color-picker/index.mjs";
-import { ElDivider } from "element-plus/es/components/divider/index.mjs";
-import { ElIcon } from "element-plus/es/components/icon/index.mjs";
-import { ElInput } from "element-plus/es/components/input/index.mjs";
-import "element-plus/es/components/color-picker/style/css.mjs";
-import "element-plus/es/components/divider/style/css.mjs";
-import "element-plus/es/components/icon/style/css.mjs";
-import "element-plus/es/components/input/style/css.mjs";
-import "element-plus/es/components/message/style/css.mjs";
-import { Close, Minus, Plus } from "@element-plus/icons-vue";
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import { getMiniInterface } from "../utils/interface";
-import { previewConfig } from "../previewData";
+import { previewConfig, readerThemeOptions } from "../previewData";
+import { READ_METHODS, normalizeReadMethod } from "../utils/readMethod";
+import {
+  clickAreaModes,
+  getClickAreaModeLabel,
+  normalizeClickAreaActions
+} from "../utils/clickArea";
 
 defineOptions({
   name: "ReadSettings"
 });
 
-defineProps({
+const props = defineProps({
   visible: {
     type: Boolean,
     default: false
+  },
+  readerConfig: {
+    type: Object,
+    default: null
   }
 });
 
-const emit = defineEmits(["close", "show-reader-click-map", "read-method-change", "page-mode-change"]);
+const emit = defineEmits(["update-config", "open-click-area-editor"]);
 
-const themeColors = [
-  { background: "rgba(250, 245, 235, 0.8)" },
-  { background: "rgba(245, 234, 204, 0.8)" },
-  { background: "rgba(230, 242, 230, 0.8)" },
-  { background: "rgba(228, 241, 245, 0.8)" },
-  { background: "rgba(245, 228, 228, 0.8)" },
-  { background: "rgba(224, 224, 224, 0.8)" },
-  { background: "rgba(0, 0, 0, 0.5)" },
-  { background: "rgba(255, 255, 255, 0.8)" }
+const textColors = [
+  { name: "白色", value: "#f6f5ef" },
+  { name: "米色", value: "#ded8bf" },
+  { name: "浅绿", value: "#dff0d8" },
+  { name: "浅蓝", value: "#dce9f0" },
+  { name: "黑色", value: "#111111" },
+  { name: "深灰", value: "#333333" },
+  { name: "灰色", value: "#555555" }
 ];
-const builtinBG = [
-  { src: "bg/山水画.jpg" },
-  { src: "bg/山水墨影.jpg" },
-  { src: "bg/羊皮纸1.jpg" },
-  { src: "bg/护眼漫绿.jpg" },
-  { src: "bg/羊皮纸2.jpg" },
-  { src: "bg/新羊皮纸.jpg" },
-  { src: "bg/羊皮纸3.jpg" },
-  { src: "bg/明媚倾城.jpg" },
-  { src: "bg/羊皮纸4.jpg" },
-  { src: "bg/深宫魅影.jpg" },
-  { src: "bg/午后沙滩.jpg" },
-  { src: "bg/清新时光.jpg" },
-  { src: "bg/宁静夜色.jpg" },
-  { src: "bg/边彩画布.jpg" }
+const backgroundChoices = [
+  { name: "空背景", value: "", background: "transparent" }
 ];
-const readMethods = ["上下", "覆盖", "平移", "无动画"];
-const selectionActions = ["操作弹窗", "忽略"];
-const pageModes = ["自适应", "手机模式"];
-const themeTypes = ["day", "night"];
-const autoReadingMethods = ["像素滚动", "段落滚动"];
-const chineseFonts = ["简体", "繁体"];
+const fontOptions = [
+  { name: "系统字体", value: 0 },
+  { name: "黑体", value: 1 },
+  { name: "楷体", value: 2 },
+  { name: "宋体", value: 3 },
+  { name: "仿宋", value: 4 }
+];
+const readMethods = READ_METHODS;
+const choicePickers = {
+  chineseFont: {
+    title: "简繁体设置",
+    field: "chineseFont",
+    options: [
+      { label: "简体", value: "简体" },
+      { label: "繁体", value: "繁体" }
+    ]
+  },
+  pageMode: {
+    title: "页面模式",
+    field: "pageMode",
+    options: [
+      { label: "自适应", value: "自适应" },
+      { label: "手机模式", value: "手机模式" }
+    ]
+  },
+  clickAreaMode: {
+    title: "点击区域模式",
+    field: "clickAreaMode",
+    options: clickAreaModes
+  }
+};
 const configRules = {
+  brightness: { min: 0, max: 100, delta: 1 },
   fontSize: { min: 8, delta: 1 },
+  fontWeight: { min: 100, max: 900, delta: 100 },
   animateMSTime: { min: 0, max: 500, delta: 50 },
-  autoReadingPixel: { min: 1, delta: 5 },
-  autoReadingLineTime: { min: 10, delta: 50 },
   lineHeight: { min: 1, max: 5, delta: 0.2 },
   paragraphSpace: { min: 0, max: 5, delta: 0.2 },
+  pageHorizontalMargin: { min: 0, max: 120, delta: 2 },
+  pageTopMargin: { min: 0, max: 120, delta: 2 },
+  pageBottomMargin: { min: 0, max: 120, delta: 2 },
   readWidth: {
     min: Math.min(Math.floor(window.innerWidth / 160), 4) * 160,
     max: Math.floor(window.innerWidth / 160) * 160,
@@ -368,48 +379,205 @@ const configRules = {
   }
 };
 
+const buildLocalConfig = source => {
+  const merged = {
+    ...previewConfig,
+    brightness: 100,
+    eyeCare: true,
+    readMethod: "上下",
+    ...(source || {})
+  };
+  return {
+    ...merged,
+    readMethod: normalizeReadMethod(merged.readMethod),
+    clickAreaActions: normalizeClickAreaActions(merged.clickAreaActions)
+  };
+};
+
 const bgFileRef = ref(null);
-const config = reactive({ ...previewConfig });
-const isNight = ref(false);
+const activePanel = ref("main");
+const activeChoicePicker = ref("");
+const config = reactive(buildLocalConfig(props.readerConfig));
 const miniInterface = ref(getMiniInterface());
 
-const moonIcon = computed(() => (config.themeType === "night" ? "" : ""));
+const isNight = computed(() => config.themeType === "night");
+const activePanelTitle = computed(() => {
+  const titleMap = {
+    font: "字体设置",
+    background: "背景设置",
+    spacing: "间距设置",
+    more: "更多设置"
+  };
+  return titleMap[activePanel.value] || "设置";
+});
+const currentClickAreaModeLabel = computed(() => getClickAreaModeLabel(config.clickAreaMode));
+const activeChoice = computed(() => choicePickers[activeChoicePicker.value] || null);
+const activeChoiceTitle = computed(() => activeChoice.value?.title || "");
+const activeChoiceOptions = computed(() => activeChoice.value?.options || []);
+
+const buildStepperItem = ({ label, name, editable = false }) => {
+  const rule = configRules[name] || {};
+  return {
+    label,
+    name,
+    editable,
+    value: config[name],
+    min: rule.min,
+    max: rule.max,
+    step: rule.delta || 1
+  };
+};
+
+const fontStepperItems = computed(() => [
+  buildStepperItem({ label: "字体大小", name: "fontSize", editable: true }),
+  buildStepperItem({ label: "字体粗细", name: "fontWeight" })
+]);
+
+const spacingStepperItems = computed(() => {
+  const items = [
+    buildStepperItem({ label: "段落行高", name: "lineHeight" }),
+    buildStepperItem({ label: "段落间距", name: "paragraphSpace" }),
+    buildStepperItem({ label: "左右边距", name: "pageHorizontalMargin" }),
+    buildStepperItem({ label: "顶部边距", name: "pageTopMargin" }),
+    buildStepperItem({ label: "底部边距", name: "pageBottomMargin" })
+  ];
+  if (!miniInterface.value) {
+    items.push(buildStepperItem({ label: "页面宽度", name: "readWidth" }));
+  }
+  return items;
+});
+
+const moreStepperItems = computed(() => [
+  buildStepperItem({ label: "动画时长", name: "animateMSTime" })
+]);
+
 const syncInterface = () => {
   miniInterface.value = getMiniInterface();
 };
 
+const syncLocalConfig = value => {
+  Object.assign(config, buildLocalConfig(value));
+};
+
+const emitConfigPatch = patch => {
+  const nextPatch = { ...patch };
+  if (Object.prototype.hasOwnProperty.call(nextPatch, "clickAreaActions")) {
+    nextPatch.clickAreaActions = normalizeClickAreaActions(nextPatch.clickAreaActions);
+  }
+  emit("update-config", nextPatch);
+};
+
+const openPanel = panel => {
+  activeChoicePicker.value = "";
+  activePanel.value = panel;
+};
+
 const setConfig = (name, value) => {
+  if (config[name] === value) return;
   config[name] = value;
+  if (name === "clickAreaMode") {
+    const clickAreaActions = normalizeClickAreaActions(config.clickAreaActions);
+    config.clickAreaActions = clickAreaActions;
+    emitConfigPatch({ [name]: value, clickAreaActions });
+    return;
+  }
+  emitConfigPatch({ [name]: value });
+};
+const setTheme = themeOption => {
+  if (!themeOption) return;
+  Object.assign(config, {
+    theme: themeOption.value,
+    themeType: themeOption.themeType,
+    fontColor: themeOption.fontColor
+  });
+  emitConfigPatch({
+    theme: themeOption.value,
+    themeType: themeOption.themeType,
+    fontColor: themeOption.fontColor
+  });
+};
+
+const clampConfigNumber = (name, value) => {
+  const rule = configRules[name] || {};
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return config[name];
+  const minValue = "min" in rule ? rule.min : parsed;
+  const maxValue = "max" in rule ? rule.max : parsed;
+  const nextValue = Math.min(maxValue, Math.max(minValue, parsed));
+  return Number.isInteger(rule.delta) ? Math.round(nextValue) : Number(nextValue.toFixed(1));
+};
+
+const setNumberConfig = (name, value) => {
+  setConfig(name, clampConfigNumber(name, value));
+};
+
+const getChoiceLabel = name => {
+  const picker = choicePickers[name];
+  if (!picker) return "";
+  const value = config[picker.field];
+  return picker.options.find(option => option.value === value)?.label || value;
+};
+
+const openChoicePicker = name => {
+  activeChoicePicker.value = name;
+};
+
+const closeChoicePicker = () => {
+  activeChoicePicker.value = "";
+};
+
+const isChoiceSelected = option => {
+  const picker = activeChoice.value;
+  return picker?.field ? config[picker.field] === option.value : false;
+};
+
+const selectChoiceOption = option => {
+  const picker = activeChoice.value;
+  if (!picker) return;
+  if (picker.field === "pageMode") {
+    setPageMode(option.value);
+  } else {
+    setConfig(picker.field, option.value);
+  }
+  closeChoicePicker();
+};
+
+const openClickAreaEditor = () => {
+  activeChoicePicker.value = "";
+  emit("open-click-area-editor");
 };
 
 const setPageMode = pageMode => {
   setConfig("pageMode", pageMode);
-  emit("page-mode-change");
 };
 
 const setReadMethod = readMethod => {
-  setConfig("readMethod", readMethod);
-  emit("read-method-change");
+  setConfig("readMethod", normalizeReadMethod(readMethod));
 };
 
 const incConfig = name => {
   const rule = configRules[name];
   const value = +config[name];
-  const nextValue =
-    "max" in rule ? Math.min(rule.max, value + rule.delta) : value + rule.delta;
-  setConfig(name, nextValue);
+  const nextValue = "max" in rule ? Math.min(rule.max, value + rule.delta) : value + rule.delta;
+  setNumberConfig(name, nextValue);
 };
 
 const decConfig = name => {
   const rule = configRules[name];
   const value = +config[name];
-  const nextValue =
-    "min" in rule ? Math.max(rule.min, value - rule.delta) : value - rule.delta;
-  setConfig(name, nextValue);
+  const nextValue = "min" in rule ? Math.max(rule.min, value - rule.delta) : value - rule.delta;
+  setNumberConfig(name, nextValue);
 };
 
 const setBGImg = item => {
-  setConfig("contentBGImg", typeof item === "string" ? item : item.src);
+  setConfig("contentBGImg", item);
+};
+
+const getBackgroundPreviewStyle = item => {
+  if (item.value) {
+    return { backgroundImage: `url(${item.value})` };
+  }
+  return { background: item.background };
 };
 
 const uploadBGFile = () => {
@@ -418,25 +586,15 @@ const uploadBGFile = () => {
 
 const onBGFileChange = event => {
   event.target.value = null;
-  ElMessage.success("上传背景预览");
 };
 
-const getCustomBGImgURL = src => src;
-
-const deleteCustomBGImg = src => {
-  config.customBGImgList = (config.customBGImgList || []).filter(
-    item => item !== src
-  );
-};
-
-const showReaderClickMap = () => {
-  emit("close");
-  emit("show-reader-click-map");
-};
-
-const showRuleEditor = () => {
-  ElMessage.success("过滤规则管理预览");
-};
+watch(
+  () => props.readerConfig,
+  value => {
+    syncLocalConfig(value);
+  },
+  { deep: true }
+);
 
 onMounted(() => {
   window.addEventListener("resize", syncInterface);
@@ -448,356 +606,569 @@ onBeforeUnmount(() => {
 </script>
 
 <style lang="stylus" scoped>
-:deep(.iconfont) {
-  font-family: iconfont;
-  font-style: normal;
-}
-
-:deep(.moon-icon) {
-  font-family: iconfont;
-  font-style: normal;
-}
-
 .reading-settings {
+  --reading-settings-main-height: 398px;
+  position: relative;
   user-select: none;
   margin: -16px;
   margin-bottom: -13px;
-  text-align: left;
-  padding: 24px;
+  padding: 18px 22px 20px;
+  height: var(--reading-settings-main-height);
+  max-height: 52vh;
+  overflow: hidden;
   background: var(--reader-panel-background, #ede7da);
   color: var(--reader-font-color, inherit);
-  padding-top: calc(24px + constant(safe-area-inset-top));
-  padding-top: calc(24px + env(safe-area-inset-top));
+  text-align: left;
+  box-sizing: border-box;
+}
 
-  .reading-settings__body {
-    max-height: 45vh;
-    overflow-y: auto;
-    ul {
-      list-style: none outside none;
-      margin: 0;
-      padding: 0;
+.reading-settings__body,
+.reading-settings__subpanel {
+  height: 100%;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
 
-      li:not(:first-child) {
-        margin-top: 20px;
-      }
+.reading-settings__body::-webkit-scrollbar,
+.reading-settings__subpanel::-webkit-scrollbar {
+  display: none;
+}
 
-      li {
-        list-style: none outside none;
-        display: flex;
-        align-items: flex-start;
-        gap: 16px;
+.reading-settings-panel-enter-active,
+.reading-settings-panel-leave-active {
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
 
-        .setting-field__label {
-          flex: 0 0 56px;
-          display: flex;
-          align-items: center;
-          min-height: 36px;
-          line-height: 1;
-          color: #666;
-        }
-        .setting-field__label--color {
-          line-height: 40px;
-        }
-        .setting-choice-list {
-          flex: 1;
-          display: flex;
-          flex-wrap: wrap;
-          gap: 5px 16px;
+.reading-settings-panel-enter-from,
+.reading-settings-panel-leave-to {
+  opacity: 0;
+  transform: translateY(22px);
+}
 
-          span {
-            margin-bottom: 0;
-          }
-        }
+.setting-row,
+.setting-subpanel-row {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
 
-        .setting-color-row {
-          flex: 1;
-          min-width: 0;
-          display: flex;
-          align-items: center;
-          gap: 12px;
-        }
+.setting-row--brightness {
+  grid-template-columns: 54px minmax(0, 1fr) auto;
+}
 
-        .setting-theme-scroll {
-          flex: 1;
-          min-width: 0;
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          overflow-x: auto;
-          overflow-y: hidden;
-          scrollbar-width: none;
-        }
+.setting-row--font {
+  grid-template-columns: 54px 42px 42px 42px minmax(0, 1fr);
+}
 
-        .setting-theme-scroll::-webkit-scrollbar {
-          display: none;
-        }
+.setting-row__label {
+  font-size: 16px;
+  line-height: 1;
+  white-space: nowrap;
+}
 
-        .setting-choice--fixed {
-          flex: 0 0 78px;
-        }
+.setting-range {
+  width: 100%;
+  height: 34px;
+  accent-color: rgba(54, 47, 34, 0.36);
+}
 
-        .setting-choice {
-          width: 78px;
-          height: 34px;
-          cursor: pointer;
-          border-radius: 2px;
-          text-align: center;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          font: 14px / 1 PingFangSC-Regular, HelveticaNeue-Light, 'Helvetica Neue Light', 'Microsoft YaHei', sans-serif;
-          position: relative;
+.setting-text-action,
+.setting-pill,
+.setting-segmented,
+.setting-list-button {
+  background: rgba(120, 104, 75, 0.12);
+}
 
-          .setting-choice__delete {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            position: absolute;
-            top: -10px;
-            right: -10px;
-            font-size: 20px;
-            color: #ed4259;
-            z-index: 10;
-          }
+.setting-text-action,
+.setting-pill,
+.setting-list-button {
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+}
 
-          .setting-choice__upload {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            position: absolute;
-            top: -10px;
-            right: -10px;
-            font-size: 20px;
-            z-index: 10;
-            color: #606266;
+.setting-text-action,
+.setting-pill {
+  height: 42px;
+  border-radius: 999px;
+  padding: 0 18px;
+  font-size: 16px;
+  line-height: 1;
+}
 
-            &.active {
-              color: #ed4259;
-            }
-          }
-        }
+.setting-text-action.selected,
+.setting-pill.selected,
+.setting-segmented button.selected,
+.setting-list-button.selected {
+  background: rgba(255, 250, 235, 0.62);
+  box-shadow: inset 0 0 0 1px rgba(120, 104, 75, 0.16);
+}
 
-        .setting-choice.selected  {
-          border: 1px solid #ed4259;
-          color: #ed4259;
-        }
+.setting-font-config {
+  justify-self: start;
+  width: 118px;
+  min-width: 0;
+  padding: 0 14px;
+}
 
-        .custom-theme-editor {
-          flex: 1;
-          display: flex;
-          flex-wrap: wrap;
-          align-items: center;
-          gap: 8px 12px;
+.setting-font-step {
+  width: 42px;
+  padding: 0;
+  font-size: 14px;
+}
 
-          .custom-theme-editor__field {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            margin-right: 20px;
-            margin-bottom: 5px;
-          }
+.setting-font-step sup {
+  font-size: 10px;
+  line-height: 1;
+}
 
-          .theme-background-option {
-            width: 36px;
-            height: 36px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            margin-left: 0;
-            margin-bottom: 8px;
-            position: relative;
-            box-sizing: border-box;
+.setting-pill--group {
+  flex: 1;
+}
 
-            img {
-              width: 100%;
-              height: 100%;
-              display: block;
-            }
+.setting-font-size {
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  text-align: center;
+  font-size: 18px;
+  line-height: 42px;
+}
 
-            .theme-background-delete {
-              position: absolute;
-              top: -6px;
-              right: -6px;
-              font-size: 18px;
-              color: #ed4259;
-            }
-          }
-          .selected {
-            color: #ed4259;
-            border: 1px solid #ed4259;
-          }
-          .theme-background-upload {
-            display: inline-flex;
-            align-items: center;
-            margin-left: 0;
-            color: #ed4259;
-            cursor: pointer;
-          }
-        }
+.setting-number-input {
+  min-width: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(120, 104, 75, 0.12);
+  color: inherit;
+  outline: none;
+  box-sizing: border-box;
+  appearance: textfield;
+}
 
-        .theme-choice {
-          width: 34px;
-          height: 34px;
-          flex: 0 0 34px;
-          margin-right: 0;
-          border-radius: 100%;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
+.setting-number-input::-webkit-outer-spin-button,
+.setting-number-input::-webkit-inner-spin-button {
+  appearance: none;
+  margin: 0;
+}
 
-          .iconfont {
-            display: none;
-          }
-        }
+.setting-scroll-row {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
 
-        .selected {
-          color: #ed4259;
+.setting-scroll-row::-webkit-scrollbar {
+  display: none;
+}
 
-          .iconfont {
-            display: inline;
-          }
-        }
-      }
+.setting-color-dot {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  color: inherit;
+  cursor: pointer;
+  box-shadow: 0 0 0 1px rgba(120, 104, 75, 0.18);
+}
 
-      li {
+.setting-color-dot.selected {
+  border-color: currentColor;
+  box-shadow: 0 0 0 1px currentColor, inset 0 0 0 2px rgba(255, 250, 235, 0.68);
+}
 
-        .setting-stepper {
-          display: inline-flex;
-          align-items: center;
-          height: 34px;
-          border-radius: 2px;
+.setting-theme-dot span {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(255, 250, 235, 0.72);
+  color: #4d402b;
+  font-size: 12px;
+  line-height: 1;
+}
 
-          span {
-            min-width: 72px;
-            height: 34px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            text-align: center;
-            line-height: 1;
+.setting-font-options,
+.setting-font-colors {
+  justify-content: flex-start;
+}
 
-            em {
-              font-style: normal;
-            }
-          }
+.setting-font-option {
+  height: 34px;
+  flex: 0 0 auto;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(120, 104, 75, 0.12);
+  color: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
 
-          .setting-stepper__value {
-            color: #a6a6a6;
-            font-weight: 400;
-            font-family: -apple-system, "Noto Sans", "Helvetica Neue", Helvetica, "Nimbus Sans L", Arial, "Liberation Sans", "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", "Source Han Sans SC", "Source Han Sans CN", "Microsoft YaHei", "Wenquanyi Micro Hei", "WenQuanYi Zen Hei", "ST Heiti", SimHei, "WenQuanYi Zen Hei Sharp", sans-serif;
-          }
+.setting-font-option.selected {
+  background: rgba(255, 250, 235, 0.62);
+  box-shadow: inset 0 0 0 1px rgba(120, 104, 75, 0.16);
+}
 
-          b {
-            display: inline-flex;
-            align-items: center;
-            height: 20px;
-          }
-        }
-      }
+.setting-background-card {
+  width: 92px;
+  height: 38px;
+  flex: 0 0 92px;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid rgba(120, 104, 75, 0.14);
+  border-radius: 10px;
+  background-size: cover;
+  background-position: center;
+  color: inherit;
+  cursor: pointer;
+}
 
-      .reading-settings__operations {
-        display: flex;
-        flex-direction: row;
-        justify-content: space-between;
+.setting-background-card.selected {
+  border-color: currentColor;
+  box-shadow: inset 0 0 0 1px currentColor;
+}
 
-        .reading-settings__operation {
-          cursor: pointer;
-          color: #ed4259;
-        }
-      }
-    }
-  }
-  .reading-settings__body::-webkit-scrollbar {
-    width: 0 !important;
-  }
-  .el-color-picker {
-    display: inline-flex;
-  }
+.setting-background-card--custom {
+  background: rgba(120, 104, 75, 0.12);
+  font-size: 16px;
+}
+
+.setting-background-card--custom small {
+  font-size: 11px;
+  opacity: 0.66;
+}
+
+.setting-segmented {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(var(--setting-segmented-count), minmax(0, 1fr));
+  gap: 0;
+  padding: 4px;
+  border-radius: 999px;
+}
+
+.setting-segmented button {
+  height: 38px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.setting-button-group {
+  display: flex;
+  gap: 12px;
+}
+
+.setting-subpanel__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.setting-subpanel__back {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(120, 104, 75, 0.12);
+  color: inherit;
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.setting-list-button {
+  width: 100%;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  padding: 0 16px;
+  border-radius: 16px;
+  font-size: 15px;
+}
+
+.setting-choice-row__value {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: rgba(80, 68, 48, 0.66);
+  white-space: nowrap;
+}
+
+.setting-subpanel-row {
+  min-height: 42px;
+  margin-bottom: 12px;
+}
+
+.setting-subpanel-row--font-family,
+.setting-subpanel-row--font-color,
+.setting-subpanel-row--stepper {
+  grid-template-columns: max-content minmax(0, 1fr);
+}
+
+.setting-subpanel-row--spacing {
+  grid-template-columns: max-content max-content;
+}
+
+.setting-subpanel-row--spacing .setting-subpanel-stepper {
+  justify-self: start;
+}
+
+.setting-subpanel-row__label,
+.setting-choice-label {
+  min-width: 0;
+  font-size: 15px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.setting-subpanel-stepper {
+  min-width: 154px;
+  display: grid;
+  grid-template-columns: 42px minmax(46px, auto) 42px;
+  align-items: center;
+  justify-self: end;
+  gap: 8px;
+}
+
+.setting-subpanel-stepper__button {
+  font-size: 20px;
+}
+
+.setting-subpanel-stepper__button:active {
+  transform: scale(0.94);
+}
+
+.setting-subpanel-value,
+.setting-subpanel-number {
+  width: 46px;
+  height: 42px;
+  min-width: 0;
+  border-radius: 999px;
+  background: rgba(120, 104, 75, 0.12);
+  color: inherit;
+  text-align: center;
+  font-size: 15px;
+  line-height: 42px;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+.setting-subpanel-value {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.setting-subpanel-number {
+  padding: 0 6px;
+  border: 0;
+  outline: none;
+  appearance: textfield;
+}
+
+.setting-picker {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(45, 38, 28, 0.18);
+  box-sizing: border-box;
+}
+
+.setting-picker__panel {
+  width: min(280px, 100%);
+  padding: 12px;
+  border-radius: 18px;
+  background: var(--reader-panel-background, #ede7da);
+  box-shadow: 0 16px 38px rgba(72, 55, 34, 0.18);
+  box-sizing: border-box;
+}
+
+.setting-picker__title {
+  padding: 2px 4px 10px;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.setting-picker__option {
+  width: 100%;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: inherit;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.setting-picker__option.selected {
+  background: rgba(255, 250, 235, 0.62);
+}
+
+.setting-picker-enter-active,
+.setting-picker-leave-active {
+  transition: opacity 0.16s ease;
+}
+
+.setting-picker-enter-active .setting-picker__panel,
+.setting-picker-leave-active .setting-picker__panel {
+  transition: transform 0.16s ease;
+}
+
+.setting-picker-enter-from,
+.setting-picker-leave-to {
+  opacity: 0;
+}
+
+.setting-picker-enter-from .setting-picker__panel,
+.setting-picker-leave-to .setting-picker__panel {
+  transform: translateY(12px) scale(0.98);
 }
 
 .night {
-  :deep(.theme-choice) {
-    border: 1px solid #666;
+  .setting-text-action,
+  .setting-pill,
+  .setting-segmented,
+  .setting-list-button,
+  .setting-subpanel-value,
+  .setting-number-input {
+    background: rgba(255, 255, 255, 0.08);
   }
 
-  :deep(.selected) {
-    border: 1px solid #666;
-  }
-
-  :deep(.moon-icon) {
-    color: #ed4259;
-  }
-
-  .setting-choice {
-    border: 1px solid #666;
-    background: var(--reader-content-background, rgba(45, 45, 45, 0.5));
-  }
-
-  :deep(.setting-stepper) {
-    border: 1px solid #666;
-    background: var(--reader-content-background, rgba(45, 45, 45, 0.5));
-
-    b {
-      border-right: 1px solid #666;
-    }
-  }
-}
-
-.day {
-  :deep(.theme-choice) {
-    border: 1px solid #e5e5e5;
-  }
-
-  :deep(.selected) {
-    border: 1px solid #ed4259;
-  }
-
-  :deep(.moon-icon) {
-    display: inline;
-    color: rgba(255, 255, 255, 0.2);
-  }
-
-  .setting-choice {
-    background: var(--reader-content-background, rgba(255, 255, 255, 0.5));
-    border: 1px solid rgba(0, 0, 0, 0.1);
-  }
-
-  :deep(.setting-stepper) {
-    border: 1px solid #e5e5e5;
-    background: var(--reader-content-background, rgba(255, 255, 255, 0.5));
-
-    b {
-      border-right: 1px solid #e5e5e5;
-    }
-  }
-}
-
-@media (hover: hover) {
-  .setting-choice:hover {
-    border: 1px solid #ed4259;
-    color: #ed4259;
-  }
-  li {
-    .less:hover, .more:hover {
-      color: #ed4259;
-    }
-  }
-}
-</style>
-
-<style lang="stylus">
-.setting-input {
-  .el-input__inner {
+  .setting-font-option {
     background: transparent;
-    border: none !important;
-    text-align: center;
-    width: 72px;
+  }
+
+  .setting-font-option.selected,
+  .setting-picker__option.selected {
+    background: rgba(255, 255, 255, 0.16);
+  }
+
+  .setting-choice-row__value {
+    color: rgba(255, 255, 255, 0.52);
+  }
+}
+
+@media (max-width: 560px) {
+  .reading-settings {
+    --reading-settings-main-height: 378px;
+    padding: 16px 18px 18px;
+  }
+
+  .setting-row,
+  .setting-subpanel-row {
+    grid-template-columns: 44px minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .setting-subpanel-row--font-family,
+  .setting-subpanel-row--font-color,
+  .setting-subpanel-row--stepper {
+    grid-template-columns: max-content minmax(0, 1fr);
+  }
+
+  .setting-subpanel-row--spacing {
+    grid-template-columns: max-content max-content;
+  }
+
+  .setting-subpanel-stepper {
+    min-width: 140px;
+    grid-template-columns: 38px minmax(42px, auto) 38px;
+    gap: 7px;
+  }
+
+  .setting-subpanel-stepper__button {
+    font-size: 18px;
+  }
+
+  .setting-subpanel-value,
+  .setting-subpanel-number {
+    width: 42px;
+    height: 38px;
     font-size: 14px;
-    color: #a6a6a6;
+    line-height: 38px;
+  }
+
+  .setting-row--brightness {
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+  }
+
+  .setting-row--font {
+    grid-template-columns: 44px 38px 38px 38px minmax(0, 1fr);
+  }
+
+  .setting-row__label,
+  .setting-segmented button,
+  .setting-pill,
+  .setting-text-action {
+    font-size: 14px;
+  }
+
+  .setting-pill,
+  .setting-text-action {
+    height: 38px;
+    padding: 0 12px;
+  }
+
+  .setting-font-step {
+    width: 38px;
+    padding: 0;
+    font-size: 13px;
+  }
+
+  .setting-font-size {
+    width: 38px;
+    height: 38px;
+    font-size: 16px;
+    line-height: 38px;
+  }
+
+  .setting-font-config {
+    width: 96px;
+    padding: 0 10px;
+  }
+
+  .setting-color-dot {
+    width: 38px;
+    height: 38px;
+    flex-basis: 38px;
+  }
+
+  .setting-background-card {
+    width: 76px;
+    flex-basis: 76px;
   }
 }
 </style>

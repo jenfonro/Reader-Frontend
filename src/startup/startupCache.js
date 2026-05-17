@@ -5,6 +5,7 @@ const SERVICE_WORKER_URL = "/service-worker.js";
 const CACHE_PREFIX = "reader-frontend-cache-";
 const VERSION_STORAGE_KEY = "reader-frontend-version";
 const VERSION_INFO_STORAGE_KEY = "reader-frontend-version-info";
+const SERVICE_WORKER_RELOAD_KEY = "reader-frontend-sw-control-reloaded";
 const CACHE_UPDATE_HEADER = "X-Reader-Cache-Update";
 
 const STARTUP_STATUS = {
@@ -85,6 +86,32 @@ const waitForServiceWorkerController = () => {
   });
 };
 
+const canUseSessionStorage = () =>
+  typeof window !== "undefined" && Boolean(window.sessionStorage);
+
+const ensureServiceWorkerControlledPage = async () => {
+  if (navigator.serviceWorker.controller) {
+    if (canUseSessionStorage()) {
+      window.sessionStorage.removeItem(SERVICE_WORKER_RELOAD_KEY);
+    }
+    return;
+  }
+
+  await waitForServiceWorkerController();
+  if (navigator.serviceWorker.controller) {
+    if (canUseSessionStorage()) {
+      window.sessionStorage.removeItem(SERVICE_WORKER_RELOAD_KEY);
+    }
+    return;
+  }
+
+  if (canUseSessionStorage() && !window.sessionStorage.getItem(SERVICE_WORKER_RELOAD_KEY)) {
+    window.sessionStorage.setItem(SERVICE_WORKER_RELOAD_KEY, "1");
+    window.location.reload();
+    await new Promise(() => {});
+  }
+};
+
 const registerServiceWorker = async () => {
   if (!import.meta.env.PROD || !("serviceWorker" in navigator)) {
     return null;
@@ -92,7 +119,7 @@ const registerServiceWorker = async () => {
 
   const registration = await navigator.serviceWorker.register(SERVICE_WORKER_URL);
   await navigator.serviceWorker.ready;
-  await waitForServiceWorkerController();
+  await ensureServiceWorkerControlledPage();
   return registration;
 };
 

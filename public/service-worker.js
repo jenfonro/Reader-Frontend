@@ -69,15 +69,16 @@ const networkFirst = async request => {
   }
 };
 
-const cacheFirst = async request => {
+const cacheOnly = async request => {
   const cachedResponse = await fromCache(request);
   if (cachedResponse) {
     return cachedResponse;
   }
 
-  const response = await fetch(request);
-  await putInLatestCache(request, response);
-  return response;
+  return new Response("Offline resource missing", {
+    status: 504,
+    statusText: "Offline resource missing"
+  });
 };
 
 self.addEventListener("install", event => {
@@ -105,10 +106,10 @@ self.addEventListener("fetch", event => {
     return;
   }
 
-  if (requestUrl.pathname === "/app-version.json" || event.request.cache === "reload") {
+  if (requestUrl.pathname === "/app-version.json") {
     event.respondWith(networkFirst(event.request));
     return;
   }
 
-  event.respondWith(cacheFirst(event.request));
+  event.respondWith(cacheOnly(event.request));
 });
