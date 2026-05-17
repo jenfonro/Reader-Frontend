@@ -43,9 +43,9 @@
             aria-hidden="true"
           ></i>
         </button>
-        <BookSourceRowMenu
+        <ManageRowMenu
           v-if="activeRowMenuKey === source.key"
-          :source="source"
+          :items="getSourceRowMenuItems(source)"
           @close="emit('toggle-row-menu', source)"
           @action="emit('row-menu-action', source, $event)"
         />
@@ -57,7 +57,7 @@
 <script setup>
 import { computed } from "vue";
 import Icon from "../Icon.vue";
-import BookSourceRowMenu from "./BookSourceRowMenu.vue";
+import ManageRowMenu from "../ManageRowMenu.vue";
 
 const props = defineProps({
   activeRowMenuKey: { type: String, default: "" },
@@ -74,6 +74,17 @@ const emit = defineEmits([
   "toggle-row-menu",
   "row-menu-action"
 ]);
+
+const getSourceRowMenuItems = source => [
+  { label: "置顶", value: "top" },
+  { label: "置底", value: "bottom" },
+  {
+    label: source?.enabledExplore ? "禁用发现" : "启用发现",
+    value: "toggle-explore",
+    visible: Boolean(source?.hasExplore)
+  },
+  { label: "删除", value: "delete", danger: true }
+];
 
 const selectedModel = computed({
   get: () => props.selectedSources,

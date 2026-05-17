@@ -18,6 +18,43 @@ const previewChapterContent = `这是阅读器界面预览内容。
 
 const createInitialBook = book => (book ? { ...book } : { ...previewBook });
 
+const normalizeUrl = value => String(value || "").trim().replace(/\/+$/, "");
+
+const createSwitchedBook = ({ selectedBook, source, previousBook, targetIndex }) => {
+  const bookUrl = selectedBook.bookUrl || selectedBook.url || "";
+  const name = selectedBook.name || selectedBook.title || previousBook.name || previousBook.title || "";
+  const sourceName = source.bookSourceName || selectedBook.originName || selectedBook.sourceName || "";
+  const origin = normalizeUrl(source.bookSourceUrl || selectedBook.origin || selectedBook.bookSourceUrl);
+
+  return {
+    name,
+    title: name,
+    author: selectedBook.author || previousBook.author || "",
+    intro: selectedBook.intro || previousBook.intro || "",
+    kind: selectedBook.kind || previousBook.kind || "",
+    wordCount: selectedBook.wordCount || previousBook.wordCount || "",
+    coverUrl: selectedBook.coverUrl || selectedBook.cover || previousBook.coverUrl || previousBook.cover || "",
+    imageUrl: selectedBook.imageUrl || selectedBook.coverUrl || previousBook.imageUrl || previousBook.coverUrl || "",
+    tags: selectedBook.tags || previousBook.tags || [],
+    latestChapterTitle: selectedBook.latestChapterTitle || selectedBook.latestChapter || "",
+    lastChapter: selectedBook.latestChapterTitle || selectedBook.latestChapter || "",
+    bookUrl,
+    url: bookUrl,
+    tocUrl: selectedBook.tocUrl || "",
+    origin,
+    bookSourceUrl: origin,
+    originName: sourceName,
+    sourceName,
+    sourceGroup: source.bookSourceGroup || selectedBook.sourceGroup || "",
+    sourceKey: source.__sourceKey || selectedBook.sourceKey || "",
+    sourceCount: selectedBook.sourceCount || previousBook.sourceCount || 1,
+    sources: selectedBook.sources || [selectedBook],
+    index: targetIndex,
+    durChapterIndex: targetIndex,
+    durChapterTitle: previousBook.durChapterTitle || previousBook.chapterTitle || ""
+  };
+};
+
 const createIntroContinuation = () => ({
   title: "",
   content: "",
@@ -158,6 +195,7 @@ export const useReaderRuntime = () => {
   const applyChapterContent = (chapter, result = {}) => {
     const nextTitle = result.title || chapter.title || chapter.name || "";
     const nextContent = result.content || "正文为空";
+    const nextChapterUrl = result.chapter?.chapterUrl || result.chapter?.url || chapter.chapterUrl || chapter.url || "";
     title.value = nextTitle;
     chapterContent.value = nextContent;
     chapterContentCache.set(getChapterKey(chapter), { title: nextTitle, content: nextContent });
@@ -167,7 +205,9 @@ export const useReaderRuntime = () => {
       ...readingBook.value,
       index: nextIndex,
       durChapterIndex: nextIndex,
-      durChapterTitle: nextTitle
+      durChapterTitle: nextTitle,
+      durChapterUrl: nextChapterUrl,
+      chapterUrl: nextChapterUrl
     };
   };
 
@@ -175,6 +215,7 @@ export const useReaderRuntime = () => {
     if (!item) return;
     const nextIndex = toChapterIndex(item.index);
     const nextTitle = item.title || item.chapter?.title || item.chapter?.name || "";
+    const nextChapterUrl = item.chapter?.chapterUrl || item.chapter?.url || "";
     if (
       toChapterIndex(readingBook.value.index) === nextIndex &&
       readingBook.value.durChapterTitle === nextTitle
@@ -186,7 +227,9 @@ export const useReaderRuntime = () => {
       ...readingBook.value,
       index: nextIndex,
       durChapterIndex: nextIndex,
-      durChapterTitle: nextTitle
+      durChapterTitle: nextTitle,
+      durChapterUrl: nextChapterUrl,
+      chapterUrl: nextChapterUrl
     };
   };
 
@@ -502,6 +545,100 @@ export const useReaderRuntime = () => {
       });
   };
 
+  const switchBookSource = async selectedBook => {
+    if (!selectedBook) {
+      setReaderError("未找到可用书源，换源失败");
+      return false;
+    }
+
+    const nextSource = findSourceForBook(selectedBook);
+    if (!nextSource) {
+      setReaderError("未找到可用书源，换源失败");
+      return false;
+    }
+
+    const targetIndex = chapterIndex.value;
+    const previousState = {
+      title: title.value,
+      chapterContent: chapterContent.value,
+      error: error.value,
+      readerPageMode: readerPageMode.value
+    };
+    const candidateBook = createSwitchedBook({
+      selectedBook,
+      source: nextSource,
+      previousBook: readingBook.value || {},
+      targetIndex
+    });
+    const controller = startReaderTask();
+
+    readerPageMode.value = READER_PAGE_MODE.chapter;
+    error.value = false;
+    loadingText.value = "正在换源";
+    loadingVisible.value = true;
+    title.value = candidateBook.name || "正在换源...";
+    chapterContent.value = "";
+
+    try {
+      let nextBook = candidateBook;
+      try {
+        nextBook = await loadBookInfo({
+          source: nextSource,
+          book: candidateBook,
+          signal: controller.signal
+        });
+      } catch (loadError) {
+        if (loadError?.name === "AbortError") throw loadError;
+      }
+      if (controller.signal.aborted) return false;
+
+      const chapters = await loadBookCatalog({
+        source: nextSource,
+        book: nextBook,
+        signal: controller.signal
+      });
+      if (controller.signal.aborted) return false;
+      if (!chapters?.length) throw new Error("新书源目录为空，换源失败");
+
+      const nextChapterIndex = Math.min(targetIndex, chapters.length - 1);
+      const nextChapter = chapters[nextChapterIndex];
+      const chapterResult = await loadChapterContent({
+        source: nextSource,
+        book: nextBook,
+        chapter: nextChapter,
+        signal: controller.signal
+      });
+      if (controller.signal.aborted) return false;
+
+      currentSource.value = nextSource;
+      readingBook.value = nextBook;
+      bookInfoLoaded.value = true;
+      introPageEnabled.value = false;
+      introContinuation.value = createIntroContinuation();
+      chapterStream.value = [];
+      chapterContentCache.clear();
+      catalog.value = [];
+      applyCatalogToBook(chapters);
+      readerPageMode.value = READER_PAGE_MODE.chapter;
+      error.value = false;
+      applyChapterContent(nextChapter, chapterResult);
+      loadAdjacentChaptersIntoStream();
+      return true;
+    } catch (loadError) {
+      if (loadError?.name !== "AbortError") {
+        title.value = previousState.title;
+        chapterContent.value = previousState.chapterContent;
+        error.value = previousState.error;
+        readerPageMode.value = previousState.readerPageMode;
+      }
+      return false;
+    } finally {
+      if (!controller.signal.aborted) loadingVisible.value = false;
+      if (readerController === controller) readerController = null;
+    }
+  };
+
+
   const startReading = () => {
     if (isPreviewBook.value) {
       setPreviewContent();
@@ -575,6 +712,7 @@ export const useReaderRuntime = () => {
     hasIntroPage,
     abortReaderTask,
     loadReaderBook,
+    switchBookSource,
     loadBookIntro,
     loadIntroContinuation,
     startReading,

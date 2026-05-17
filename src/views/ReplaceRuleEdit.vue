@@ -86,10 +86,11 @@
     </section>
 
     <template #overlay>
-      <section v-if="moreMenuOpen" class="reader-source-editor__more-menu" @pointerdown.stop>
-        <button type="button" @click="copyRule">复制规则</button>
-        <button type="button" @click="pasteRule">粘贴规则</button>
-      </section>
+      <EditorMoreMenu
+        :open="moreMenuOpen"
+        :items="replaceRuleMoreMenuItems"
+        @action="handleMoreMenuAction"
+      />
       <div
         v-if="toast.open"
         class="reader-replace-editor__toast"
@@ -104,6 +105,7 @@
 
 <script setup>
 import { onBeforeUnmount, onMounted, ref } from "vue";
+import EditorMoreMenu from "../components/EditorMoreMenu.vue";
 import PageLayout from "../components/PageLayout.vue";
 import PageTopbar from "../components/PageTopbar.vue";
 import {
@@ -129,6 +131,10 @@ const savingRule = ref(false);
 const pageActions = [
   { key: "replace-editor-save", label: "保存", icon: "save" },
   { key: "replace-editor-more", label: "更多", icon: "more-vertical" }
+];
+const replaceRuleMoreMenuItems = [
+  { label: "复制规则", value: "copy" },
+  { label: "粘贴规则", value: "paste" }
 ];
 
 const normalizeEditorRule = rule => ({
@@ -273,6 +279,15 @@ const handlePageAction = action => {
     moreMenuOpen.value = !moreMenuOpen.value;
   }
 };
+
+const handleMoreMenuAction = action => {
+  if (action === "copy") {
+    copyRule();
+    return;
+  }
+  if (action === "paste") pasteRule();
+};
+
 
 const handleDocumentPointerDown = () => {
   moreMenuOpen.value = false;

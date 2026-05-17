@@ -163,23 +163,6 @@
   background: rgba(255, 59, 48, 0.94);
 }
 
-.reader-replace-row-menu-layer {
-  position: absolute;
-  inset: 0;
-  z-index: 25;
-  pointer-events: none;
-}
-
-.reader-replace-row-menu {
-  top: 46px;
-  right: 18px;
-  width: 132px;
-  pointer-events: auto;
-}
-
-.reader-replace-row-menu .reader-manage-menu__button.is-danger {
-  color: #ff3b30;
-}
 
 .reader-source-import-row__badge.is-updated {
   background: rgba(0, 122, 255, 0.12);

@@ -20,7 +20,7 @@
       <p>{{ bookIntro }}</p>
     </section>
 
-    <div v-if="loading" class="reader-intro-page__loading" role="status" aria-live="polite">
+    <div v-if="showLoading" class="reader-intro-page__loading" role="status" aria-live="polite">
       <span class="reader-intro-page__spinner" aria-hidden="true"></span>
       <span>正在加载简介</span>
     </div>
@@ -57,6 +57,8 @@ const emit = defineEmits(["add-bookshelf", "start-reading"]);
 const bookTitle = computed(() => getReaderBookTitle(props.book));
 const bookAuthor = computed(() => getReaderBookAuthor(props.book));
 const bookIntro = computed(() => getReaderBookIntro(props.book));
+const hasBookIntro = computed(() => String(props.book?.intro || "").trim().length > 0);
+const showLoading = computed(() => props.loading && !hasBookIntro.value);
 const latestChapter = computed(() => getReaderBookLatestChapter(props.book));
 const bookTags = computed(() => getReaderBookTags(props.book));
 const coverText = computed(() => getReaderBookCoverText(props.book));

@@ -72,6 +72,7 @@
         <BookSource
           class="reader-source-sheet__content"
           :visible="popBookSourceVisible"
+          :book="readingBook"
           @change-book-source="changeBookSource"
         />
       </div>
@@ -489,6 +490,7 @@ const {
   hasIntroPage,
   abortReaderTask,
   loadReaderBook,
+  switchBookSource,
   loadBookIntro,
   loadIntroContinuation,
   startReading,
@@ -634,8 +636,8 @@ const getIntroPageStyle = page => ({
   transform: `translate3d(0, ${getPageTranslateY(page)}px, 0)`
 });
 const introPageBlockStyle = computed(() => {
-  if (!isVerticalPageTurn.value || !isIntroPage.value || !introPageBlockHeight.value) return undefined;
-  return { minHeight: `${introPageBlockHeight.value}px` };
+  if (!isVerticalPageTurn.value || !isIntroPage.value) return undefined;
+  return { minHeight: introPageBlockHeight.value ? `${introPageBlockHeight.value}px` : "100%" };
 });
 const currentChapterStreamItem = computed(() => ({
   key: `current-${chapterIndex.value}`,
@@ -1069,8 +1071,37 @@ const toShelf = () => {
   emit("close-reader");
 };
 
-const changeBookSource = () => {
+const resetReaderRuntimeViewState = () => {
+  introTotalPages.value = 1;
+  introPageBlockHeight.value = 0;
+  chapterFlowBlockHeights.value = {};
+  horizontalChapterPageCounts.value = {};
+  horizontalStreamLoading.value = { previous: false, next: false };
+  pendingHorizontalPagePlacement.value = "";
+  pendingChapterFlowPlacement.value = "";
+  pendingChapterFlowTargetKey.value = "";
+  activeChapterKey.value = "";
+  activeChapterTitle.value = "";
+  activeChapterIndex.value = 0;
+  currentPage.value = 1;
+  pageScrollOffset.value = 0;
+};
+
+const changeBookSource = async searchBook => {
+  if (!searchBook) return;
   popBookSourceVisible.value = false;
+  showToolBar.value = false;
+
+  try {
+    const switched = await switchBookSource(searchBook);
+    if (switched) {
+      resetReaderRuntimeViewState();
+      return;
+    }
+    ElMessage.error("换源失败，请稍后再试");
+  } catch (error) {
+    ElMessage.error("换源失败，请稍后再试");
+  }
 };
 
 const toggleBookSourcePanel = () => {
@@ -2205,15 +2236,7 @@ const handlerClick = event => {
 watch(
   () => props.book,
   book => {
-    introTotalPages.value = 1;
-    introPageBlockHeight.value = 0;
-    chapterFlowBlockHeights.value = {};
-    horizontalChapterPageCounts.value = {};
-    horizontalStreamLoading.value = { previous: false, next: false };
-    pendingHorizontalPagePlacement.value = "";
-    activeChapterKey.value = "";
-    activeChapterTitle.value = "";
-    activeChapterIndex.value = 0;
+    resetReaderRuntimeViewState();
     loadReaderBook(book);
   },
   { immediate: true }

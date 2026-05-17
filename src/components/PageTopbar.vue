@@ -123,15 +123,21 @@ const normalizedActions = computed(() =>
   transition: background 0.16s ease, color 0.16s ease, transform 0.16s ease;
 }
 
-.reader-page-topbar__button:hover,
 .reader-page-topbar__button--primary {
   background: rgba(0, 122, 255, 0.12);
   color: var(--reader-app-accent);
 }
 
-.reader-page-topbar__button--primary:hover {
-  background: rgba(0, 122, 255, 0.18);
-  color: var(--reader-app-accent);
+@media (hover: hover) and (pointer: fine) {
+  .reader-page-topbar__button:hover {
+    background: rgba(0, 122, 255, 0.12);
+    color: var(--reader-app-accent);
+  }
+
+  .reader-page-topbar__button--primary:hover {
+    background: rgba(0, 122, 255, 0.18);
+    color: var(--reader-app-accent);
+  }
 }
 
 .reader-page-topbar__button:active {

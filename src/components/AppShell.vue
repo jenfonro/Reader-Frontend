@@ -206,14 +206,16 @@ onBeforeUnmount(() => {
       color: var(--reader-sidebar-muted);
     }
 
-    .reader-sidebar__item:hover {
-      color: var(--reader-blue);
-      background: var(--reader-sidebar-hover);
-    }
-
     .reader-sidebar__item.is-active {
       color: var(--reader-blue);
       background: var(--reader-sidebar-active);
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      .reader-sidebar__item:hover {
+        color: var(--reader-blue);
+        background: var(--reader-sidebar-hover);
+      }
     }
 
     .reader-sidebar__item.is-active svg {

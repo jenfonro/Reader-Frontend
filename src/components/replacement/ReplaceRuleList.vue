@@ -35,8 +35,9 @@
         >
           <span aria-hidden="true"></span>
         </button>
-        <ReplaceRuleRowMenu
+        <ManageRowMenu
           v-if="activeRowMenuKey === rule.key"
+          :items="replaceRuleRowMenuItems"
           @close="emit('toggle-row-menu', rule)"
           @action="emit('row-menu-action', rule, $event)"
         />
@@ -48,7 +49,7 @@
 <script setup>
 import { computed } from "vue";
 import Icon from "../Icon.vue";
-import ReplaceRuleRowMenu from "./ReplaceRuleRowMenu.vue";
+import ManageRowMenu from "../ManageRowMenu.vue";
 
 const props = defineProps({
   activeRowMenuKey: { type: String, default: "" },
@@ -65,6 +66,12 @@ const emit = defineEmits([
   "toggle-row-menu",
   "row-menu-action"
 ]);
+
+const replaceRuleRowMenuItems = [
+  { label: "置顶", value: "top" },
+  { label: "置底", value: "bottom" },
+  { label: "删除", value: "delete", danger: true }
+];
 
 const selectedModel = computed({
   get: () => props.selectedRules,

@@ -108,10 +108,6 @@
   background: var(--reader-app-line);
 }
 
-.reader-settings-list-item:hover {
-  background: rgba(0, 122, 255, 0.07);
-}
-
 .reader-settings-list-item__icon,
 .reader-settings-detail-card__icon {
   width: 32px;
@@ -242,11 +238,6 @@
   font-weight: 300;
 }
 
-.reader-settings-field--button:hover,
-.reader-settings-field--switch:hover {
-  background: rgba(0, 122, 255, 0.07);
-}
-
 .reader-settings-message {
   min-height: 20px;
   margin: 0;
@@ -265,6 +256,14 @@
   border: 0;
   background: transparent;
   text-align: left;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .reader-settings-list-item:hover,
+  .reader-settings-field--button:hover,
+  .reader-settings-field--switch:hover {
+    background: rgba(0, 122, 255, 0.07);
+  }
 }
 
 .reader-settings-switch {

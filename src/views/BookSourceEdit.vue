@@ -81,11 +81,11 @@
     </section>
 
     <template #overlay>
-      <section v-if="moreMenuOpen" class="reader-source-editor__more-menu" @pointerdown.stop>
-        <button type="button" @click="setActionMessage('复制书源功能待接入')">复制书源</button>
-        <button type="button" @click="setActionMessage('导出书源功能待接入')">导出书源</button>
-        <button type="button" @click="setActionMessage('校验规则功能待接入')">校验规则</button>
-      </section>
+      <EditorMoreMenu
+        :open="moreMenuOpen"
+        :items="bookSourceMoreMenuItems"
+        @action="handleMoreMenuAction"
+      />
     </template>
   </PageLayout>
 </template>
@@ -99,6 +99,7 @@ import {
   sourceTypeOptions
 } from "../data/bookSourceEditor";
 import { findBookSourceByKey, getSourceKey, saveBookSource } from "../data/bookSources";
+import EditorMoreMenu from "../components/EditorMoreMenu.vue";
 import PageLayout from "../components/PageLayout.vue";
 import PageTopbar from "../components/PageTopbar.vue";
 
@@ -118,6 +119,11 @@ const pageActions = [
   { key: "source-editor-save", label: "保存", icon: "save" },
   { key: "source-editor-debug", label: "Debug", icon: "debug" },
   { key: "source-editor-more", label: "更多", icon: "more-vertical" }
+];
+const bookSourceMoreMenuItems = [
+  { label: "复制书源", value: "copy" },
+  { label: "导出书源", value: "export" },
+  { label: "校验规则", value: "validate" }
 ];
 
 const activeFields = computed(() => {
@@ -200,6 +206,16 @@ const handlePageAction = action => {
     moreMenuOpen.value = !moreMenuOpen.value;
   }
 };
+
+const handleMoreMenuAction = action => {
+  const messageMap = {
+    copy: "复制书源功能待接入",
+    export: "导出书源功能待接入",
+    validate: "校验规则功能待接入"
+  };
+  setActionMessage(messageMap[action] || "功能待接入");
+};
+
 
 const handleDocumentPointerDown = () => {
   moreMenuOpen.value = false;

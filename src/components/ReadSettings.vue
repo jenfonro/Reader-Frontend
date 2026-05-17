@@ -114,7 +114,7 @@
 
       <div v-if="activePanel === 'font'" class="setting-subpanel__body">
         <div class="setting-subpanel-row setting-subpanel-row--font-family">
-          <span class="setting-choice-label">正文字体设置</span>
+          <span class="setting-choice-label">正文字体</span>
           <div class="setting-scroll-row setting-font-options">
             <button
               v-for="font in fontOptions"
@@ -128,40 +128,16 @@
             </button>
           </div>
         </div>
-        <div
+        <SettingsStepperRow
           v-for="item in fontStepperItems"
           :key="item.name"
-          class="setting-subpanel-row setting-subpanel-row--stepper"
-        >
-          <span class="setting-subpanel-row__label">{{ item.label }}</span>
-          <div class="setting-subpanel-stepper">
-            <button
-              type="button"
-              class="setting-pill setting-font-step setting-subpanel-stepper__button"
-              @click="decConfig(item.name)"
-            >
-              −
-            </button>
-            <input
-              v-if="item.editable"
-              class="setting-number-input setting-subpanel-number"
-              type="number"
-              :min="item.min"
-              :max="item.max"
-              :step="item.step"
-              :value="item.value"
-              @change="setNumberConfig(item.name, $event.target.value)"
-            />
-            <span v-else class="setting-subpanel-value">{{ item.value }}</span>
-            <button
-              type="button"
-              class="setting-pill setting-font-step setting-subpanel-stepper__button"
-              @click="incConfig(item.name)"
-            >
-              +
-            </button>
-          </div>
-        </div>
+          :item="item"
+          :editable="item.editable"
+          align="start"
+          @decrease="decConfig"
+          @increase="incConfig"
+          @change="setNumberConfig"
+        />
         <div class="setting-subpanel-row setting-subpanel-row--font-color">
           <span class="setting-choice-label">字体颜色</span>
           <div class="setting-scroll-row setting-font-colors">
@@ -200,30 +176,16 @@
       </div>
 
       <div v-else-if="activePanel === 'spacing'" class="setting-subpanel__body">
-        <div
+        <SettingsStepperRow
           v-for="item in spacingStepperItems"
           :key="item.name"
-          class="setting-subpanel-row setting-subpanel-row--stepper setting-subpanel-row--spacing"
-        >
-          <span class="setting-subpanel-row__label">{{ item.label }}</span>
-          <div class="setting-subpanel-stepper">
-            <button
-              type="button"
-              class="setting-pill setting-font-step setting-subpanel-stepper__button"
-              @click="decConfig(item.name)"
-            >
-              −
-            </button>
-            <span class="setting-subpanel-value">{{ item.value }}</span>
-            <button
-              type="button"
-              class="setting-pill setting-font-step setting-subpanel-stepper__button"
-              @click="incConfig(item.name)"
-            >
-              +
-            </button>
-          </div>
-        </div>
+          :item="item"
+          editable
+          align="start"
+          @decrease="decConfig"
+          @increase="incConfig"
+          @change="setNumberConfig"
+        />
       </div>
 
       <div v-else class="setting-subpanel__body">
@@ -239,30 +201,14 @@
           <span>点击区域设置</span>
           <span class="setting-choice-row__value">{{ currentClickAreaModeLabel }} ›</span>
         </button>
-        <div
+        <SettingsStepperRow
           v-for="item in moreStepperItems"
           :key="item.name"
-          class="setting-subpanel-row setting-subpanel-row--stepper"
-        >
-          <span class="setting-subpanel-row__label">{{ item.label }}</span>
-          <div class="setting-subpanel-stepper">
-            <button
-              type="button"
-              class="setting-pill setting-font-step setting-subpanel-stepper__button"
-              @click="decConfig(item.name)"
-            >
-              −
-            </button>
-            <span class="setting-subpanel-value">{{ item.value }}</span>
-            <button
-              type="button"
-              class="setting-pill setting-font-step setting-subpanel-stepper__button"
-              @click="incConfig(item.name)"
-            >
-              +
-            </button>
-          </div>
-        </div>
+          :item="item"
+          @decrease="decConfig"
+          @increase="incConfig"
+          @change="setNumberConfig"
+        />
       </div>
       </div>
     </transition>
@@ -289,6 +235,7 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
+import SettingsStepperRow from "./settings/SettingsStepperRow.vue";
 import { getMiniInterface } from "../utils/interface";
 import { previewConfig, readerThemeOptions } from "../previewData";
 import { READ_METHODS, normalizeReadMethod } from "../utils/readMethod";
@@ -898,78 +845,6 @@ onBeforeUnmount(() => {
   white-space: nowrap;
 }
 
-.setting-subpanel-row {
-  min-height: 42px;
-  margin-bottom: 12px;
-}
-
-.setting-subpanel-row--font-family,
-.setting-subpanel-row--font-color,
-.setting-subpanel-row--stepper {
-  grid-template-columns: max-content minmax(0, 1fr);
-}
-
-.setting-subpanel-row--spacing {
-  grid-template-columns: max-content max-content;
-}
-
-.setting-subpanel-row--spacing .setting-subpanel-stepper {
-  justify-self: start;
-}
-
-.setting-subpanel-row__label,
-.setting-choice-label {
-  min-width: 0;
-  font-size: 15px;
-  line-height: 1;
-  white-space: nowrap;
-}
-
-.setting-subpanel-stepper {
-  min-width: 154px;
-  display: grid;
-  grid-template-columns: 42px minmax(46px, auto) 42px;
-  align-items: center;
-  justify-self: end;
-  gap: 8px;
-}
-
-.setting-subpanel-stepper__button {
-  font-size: 20px;
-}
-
-.setting-subpanel-stepper__button:active {
-  transform: scale(0.94);
-}
-
-.setting-subpanel-value,
-.setting-subpanel-number {
-  width: 46px;
-  height: 42px;
-  min-width: 0;
-  border-radius: 999px;
-  background: rgba(120, 104, 75, 0.12);
-  color: inherit;
-  text-align: center;
-  font-size: 15px;
-  line-height: 42px;
-  white-space: nowrap;
-  box-sizing: border-box;
-}
-
-.setting-subpanel-value {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.setting-subpanel-number {
-  padding: 0 6px;
-  border: 0;
-  outline: none;
-  appearance: textfield;
-}
-
 .setting-picker {
   position: absolute;
   inset: 0;
@@ -1041,9 +916,7 @@ onBeforeUnmount(() => {
   .setting-text-action,
   .setting-pill,
   .setting-segmented,
-  .setting-list-button,
-  .setting-subpanel-value,
-  .setting-number-input {
+  .setting-list-button {
     background: rgba(255, 255, 255, 0.08);
   }
 
@@ -1071,34 +944,6 @@ onBeforeUnmount(() => {
   .setting-subpanel-row {
     grid-template-columns: 44px minmax(0, 1fr);
     gap: 10px;
-  }
-
-  .setting-subpanel-row--font-family,
-  .setting-subpanel-row--font-color,
-  .setting-subpanel-row--stepper {
-    grid-template-columns: max-content minmax(0, 1fr);
-  }
-
-  .setting-subpanel-row--spacing {
-    grid-template-columns: max-content max-content;
-  }
-
-  .setting-subpanel-stepper {
-    min-width: 140px;
-    grid-template-columns: 38px minmax(42px, auto) 38px;
-    gap: 7px;
-  }
-
-  .setting-subpanel-stepper__button {
-    font-size: 18px;
-  }
-
-  .setting-subpanel-value,
-  .setting-subpanel-number {
-    width: 42px;
-    height: 38px;
-    font-size: 14px;
-    line-height: 38px;
   }
 
   .setting-row--brightness {

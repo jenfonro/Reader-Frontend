@@ -4,6 +4,8 @@ import { buildSearchRequest, fetchSearchResponse } from "./legadoUrl.js";
 import { toText } from "./legadoCommon.js";
 import { analyzeSearchBooks } from "./legadoRules.js";
 
+const now = () => (typeof performance === "undefined" ? Date.now() : performance.now());
+
 const isSearchableSource = source =>
   source &&
   source.enabled !== false &&
@@ -53,12 +55,15 @@ export const searchBooksBySources = async ({
       if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
       const source = sources[cursor++];
       try {
+        const startedAt = now();
         const books = await searchBookSource({ source, keyword: normalizedKeyword, page, signal });
-        if (books.length) {
-          results.push(...books);
-          onEvent?.({ type: "source", source, books });
+        const duration = Math.max(0, Math.round(now() - startedAt));
+        const timedBooks = books.map(book => ({ ...book, time: duration }));
+        if (timedBooks.length) {
+          results.push(...timedBooks);
+          onEvent?.({ type: "source", source, books: timedBooks, duration });
         } else {
-          onEvent?.({ type: "source-empty", source, books: [] });
+          onEvent?.({ type: "source-empty", source, books: [], duration });
         }
       } catch (error) {
         if (signal?.aborted || error?.name === "AbortError") throw error;

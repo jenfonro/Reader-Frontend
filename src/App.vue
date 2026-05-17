@@ -412,6 +412,15 @@ onBeforeUnmount(() => {
 *:focus {
   outline: none !important;
 }
+
+button,
+[role="button"],
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
 </style><style lang="stylus">
 .popper-component {
   top: 0 !important;

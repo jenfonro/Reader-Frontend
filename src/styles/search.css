@@ -253,7 +253,7 @@
   color: #b56a00;
 }
 
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .reader-search-result {
     border-radius: 18px;
     transition: background 0.16s ease, transform 0.16s ease;

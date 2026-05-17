@@ -82,10 +82,6 @@ const submitSearch = () => {
   font-weight: 400;
 }
 
-.reader-search-bar__clear:hover {
-  background: rgba(118, 118, 128, 0.22);
-}
-
 .reader-search-bar__button {
   height: var(--reader-search-bar-button-height, 42px);
   padding: 0 var(--reader-search-bar-button-x, 12px);
@@ -99,7 +95,13 @@ const submitSearch = () => {
   white-space: nowrap;
 }
 
-.reader-search-bar__button:hover {
-  background: rgba(0, 122, 255, 0.08);
+@media (hover: hover) and (pointer: fine) {
+  .reader-search-bar__clear:hover {
+    background: rgba(118, 118, 128, 0.22);
+  }
+
+  .reader-search-bar__button:hover {
+    background: rgba(0, 122, 255, 0.08);
+  }
 }
 </style>

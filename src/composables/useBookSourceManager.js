@@ -1,4 +1,5 @@
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { shouldCloseManageMenu } from "../utils/manageMenu";
 import {
   bookSourceMoreActions,
   bookSourceSortItems,
@@ -168,15 +169,7 @@ export const useBookSourceManager = ({ rootEl, localImportInput } = {}) => {
   };
 
   const handleDocumentPointerDown = event => {
-    const target = event?.target || null;
-    const rootElement = rootEl?.value?.getRootElement ? rootEl.value.getRootElement() : null;
-    if (!target || !rootElement || !rootElement.contains(target)) {
-      closeMenu();
-      return;
-    }
-    if (target.closest(".reader-manage-menu") || target.closest(".reader-manage-icon-button")) return;
-    if (target.closest(".reader-manage-row-icon-button")) return;
-    closeMenu();
+    if (shouldCloseManageMenu(event, rootEl)) closeMenu();
   };
 
   onMounted(() => {
