@@ -172,7 +172,6 @@ export const previewConfig = {
   pageHorizontalMargin: 20,
   pageTopMargin: 0,
   pageBottomMargin: 0,
-  pageMode: "自适应",
   contentBGImg: "",
   customBGImgList: [],
   customFontsMap: {}

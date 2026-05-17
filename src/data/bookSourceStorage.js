@@ -3,8 +3,10 @@ import {
   normalizeBookSourceObject,
   toBookSourceText
 } from "./bookSourceCore.js";
+import { readPersistentJson, writePersistentJson } from "./persistentStorage";
+import { bookSourcesStorageKey } from "./userStorageKeys";
 
-const STORAGE_KEY = "reader.bookSources.v1";
+const STORAGE_KEY = bookSourcesStorageKey;
 
 export const getSourceKey = (source = {}, index = 0) => {
   const url = toBookSourceText(source.bookSourceUrl).trim();
@@ -15,16 +17,8 @@ export const getSourceKey = (source = {}, index = 0) => {
 };
 
 export const readBookSources = () => {
-  if (typeof window === "undefined") return [];
-
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.map(normalizeBookSourceObject).filter(Boolean) : [];
-  } catch (error) {
-    return [];
-  }
+  const parsed = readPersistentJson(STORAGE_KEY, []);
+  return Array.isArray(parsed) ? parsed.map(normalizeBookSourceObject).filter(Boolean) : [];
 };
 
 export const writeBookSources = sources => {
@@ -32,11 +26,7 @@ export const writeBookSources = sources => {
     ? sources.map(normalizeBookSourceObject).filter(Boolean)
     : [];
 
-  if (typeof window !== "undefined") {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizedSources));
-  }
-
-  return normalizedSources;
+  return writePersistentJson(STORAGE_KEY, normalizedSources);
 };
 
 export const normalizeBookSourceForList = (source = {}, index = 0) => {

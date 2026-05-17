@@ -1,4 +1,7 @@
-const STORAGE_KEY = "reader.replaceRules.v1";
+import { readPersistentJson, writePersistentJson } from "./persistentStorage";
+import { replaceRulesStorageKey } from "./userStorageKeys";
+
+const STORAGE_KEY = replaceRulesStorageKey;
 const GROUP_SPLIT_PATTERN = /[，,;；\n]/;
 const DEFAULT_RULE_ORDER = -2147483648;
 
@@ -65,16 +68,8 @@ export const normalizeReplaceRule = (rule = {}, index = 0) => {
 };
 
 export const readReplaceRules = () => {
-  if (typeof window === "undefined") return [];
-
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.map(normalizeReplaceRule).filter(Boolean) : [];
-  } catch (error) {
-    return [];
-  }
+  const parsed = readPersistentJson(STORAGE_KEY, []);
+  return Array.isArray(parsed) ? parsed.map(normalizeReplaceRule).filter(Boolean) : [];
 };
 
 export const writeReplaceRules = rules => {
@@ -82,11 +77,7 @@ export const writeReplaceRules = rules => {
     ? rules.map(normalizeReplaceRule).filter(Boolean)
     : [];
 
-  if (typeof window !== "undefined") {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizedRules));
-  }
-
-  return normalizedRules;
+  return writePersistentJson(STORAGE_KEY, normalizedRules);
 };
 
 export const normalizeReplaceRuleForList = (rule = {}, index = 0) => {

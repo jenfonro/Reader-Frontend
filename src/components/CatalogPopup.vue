@@ -50,7 +50,7 @@
               cached: cachedChapterMap[note.index]
             }"
           >
-            {{ note.title }}
+            {{ getDisplayTitle(note.title) }}
           </div>
         </div>
       </div>
@@ -66,6 +66,7 @@ import "element-plus/es/components/message/style/css.mjs";
 import { ElMessage } from "element-plus/es/components/message/index.mjs";
 import { Loading } from "@element-plus/icons-vue";
 import "../styles/reader-popup.css";
+import { convertChineseText } from "../utils/chinese";
 
 defineOptions({
   name: "CatalogPopup"
@@ -95,6 +96,10 @@ const props = defineProps({
   loading: {
     type: Boolean,
     default: false
+  },
+  chineseFont: {
+    type: String,
+    default: "简体"
   }
 });
 
@@ -109,6 +114,7 @@ const catalogList = computed(() =>
 );
 const refreshLoading = computed(() => props.loading);
 const isSelected = note => note.index === props.currentIndex;
+const getDisplayTitle = title => convertChineseText(title, props.chineseFont);
 
 const gotoChapter = note => {
   emit("get-content", note);

@@ -1,11 +1,8 @@
 import { previewShelfBooks } from "../previewData";
+import { readPersistentJson, writePersistentJson } from "./persistentStorage";
+import { historyStorageKey, shelfStorageKey } from "./userStorageKeys";
 
-const shelfStorageKey = "reader.bookshelf.items";
-const historyStorageKey = "reader.reading.history";
 export const bookshelfChangedEvent = "reader-bookshelf-change";
-
-const canUseLocalStorage = () =>
-  typeof window !== "undefined" && Boolean(window.localStorage);
 
 const cloneValue = value => {
   try {
@@ -66,24 +63,12 @@ const normalizeBookList = value =>
     .map(normalizeShelfBook)
     .filter(Boolean);
 
-const readBookList = (key, fallback = []) => {
-  if (!canUseLocalStorage()) return normalizeBookList(fallback);
-  try {
-    const raw = window.localStorage.getItem(key);
-    return normalizeBookList(raw ? JSON.parse(raw) : fallback);
-  } catch (error) {
-    return normalizeBookList(fallback);
-  }
-};
+const readBookList = (key, fallback = []) =>
+  normalizeBookList(readPersistentJson(key, fallback));
 
 const writeBookList = (key, books) => {
   const nextBooks = normalizeBookList(books);
-  if (!canUseLocalStorage()) return nextBooks;
-  try {
-    window.localStorage.setItem(key, JSON.stringify(nextBooks));
-  } catch (error) {
-    return nextBooks;
-  }
+  writePersistentJson(key, nextBooks);
   window.dispatchEvent(
     new CustomEvent(bookshelfChangedEvent, { detail: { key, books: nextBooks } })
   );
@@ -121,14 +106,9 @@ export const subscribeBookshelf = handler => {
   const handleChange = () => {
     handler({ shelfBooks: getShelfBooks(), historyBooks: getHistoryBooks() });
   };
-  const handleStorage = event => {
-    if (event.key === shelfStorageKey || event.key === historyStorageKey) handleChange();
-  };
 
   window.addEventListener(bookshelfChangedEvent, handleChange);
-  window.addEventListener("storage", handleStorage);
   return () => {
     window.removeEventListener(bookshelfChangedEvent, handleChange);
-    window.removeEventListener("storage", handleStorage);
   };
 };

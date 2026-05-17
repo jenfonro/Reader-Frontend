@@ -1,6 +1,7 @@
 import logoUrl from "./assets/reader-logo.svg";
 import { normalizeStartupAssetList, normalizeStartupAssetPath } from "./startup/startupAssets";
 import { runStartupCache } from "./startup/startupCache";
+import { hydrateUserStorage } from "./data/userStorage";
 
 const overlayId = "readerStartupOverlay";
 const styleId = "readerStartupOverlayStyle";
@@ -207,11 +208,14 @@ const start = async () => {
     onProgress: progress => setOverlayProgress(overlay, progress)
   });
 
+  await hydrateUserStorage();
   await loadApplication(versionInfo);
   removeStartupOverlay(overlay);
 };
 
 start().catch(error => {
   console.error(error);
-  fallbackLoadApplication().catch(console.error);
+  hydrateUserStorage()
+    .catch(console.error)
+    .finally(() => fallbackLoadApplication().catch(console.error));
 });

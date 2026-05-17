@@ -231,10 +231,6 @@
           <span>简繁体设置</span>
           <span class="setting-choice-row__value">{{ getChoiceLabel('chineseFont') }} ›</span>
         </button>
-        <button type="button" class="setting-list-button setting-choice-row" @click="openChoicePicker('pageMode')">
-          <span>页面模式</span>
-          <span class="setting-choice-row__value">{{ getChoiceLabel('pageMode') }} ›</span>
-        </button>
         <button type="button" class="setting-list-button setting-choice-row" @click="openChoicePicker('clickAreaMode')">
           <span>点击区域模式</span>
           <span class="setting-choice-row__value">{{ getChoiceLabel('clickAreaMode') }} ›</span>
@@ -346,14 +342,6 @@ const choicePickers = {
     options: [
       { label: "简体", value: "简体" },
       { label: "繁体", value: "繁体" }
-    ]
-  },
-  pageMode: {
-    title: "页面模式",
-    field: "pageMode",
-    options: [
-      { label: "自适应", value: "自适应" },
-      { label: "手机模式", value: "手机模式" }
     ]
   },
   clickAreaMode: {
@@ -534,21 +522,13 @@ const isChoiceSelected = option => {
 const selectChoiceOption = option => {
   const picker = activeChoice.value;
   if (!picker) return;
-  if (picker.field === "pageMode") {
-    setPageMode(option.value);
-  } else {
-    setConfig(picker.field, option.value);
-  }
+  setConfig(picker.field, option.value);
   closeChoicePicker();
 };
 
 const openClickAreaEditor = () => {
   activeChoicePicker.value = "";
   emit("open-click-area-editor");
-};
-
-const setPageMode = pageMode => {
-  setConfig("pageMode", pageMode);
 };
 
 const setReadMethod = readMethod => {

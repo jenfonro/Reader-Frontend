@@ -1,13 +1,12 @@
-const systemSettingsStorageKey = "reader.system.settings";
+import { readPersistentJson, writePersistentJson } from "./persistentStorage";
+import { systemSettingsStorageKey } from "./userStorageKeys";
+
 export const systemSettingsChangedEvent = "reader-system-settings-change";
 
 const defaultSystemSettings = {
   siteName: "开源阅读",
   searchConcurrency: 24
 };
-
-const canUseLocalStorage = () =>
-  typeof window !== "undefined" && Boolean(window.localStorage);
 
 const normalizeSearchConcurrency = value => {
   const parsed = Number(value);
@@ -24,25 +23,12 @@ const normalizeSystemSettings = value => ({
   searchConcurrency: normalizeSearchConcurrency(value && value.searchConcurrency)
 });
 
-export const getSystemSettings = () => {
-  if (!canUseLocalStorage()) return { ...defaultSystemSettings };
-  try {
-    const raw = window.localStorage.getItem(systemSettingsStorageKey);
-    return normalizeSystemSettings(raw ? JSON.parse(raw) : null);
-  } catch (error) {
-    return { ...defaultSystemSettings };
-  }
-};
+export const getSystemSettings = () =>
+  normalizeSystemSettings(readPersistentJson(systemSettingsStorageKey, null));
 
 export const setSystemSettings = settings => {
   const nextSettings = normalizeSystemSettings(settings);
-  if (!canUseLocalStorage()) return nextSettings;
-
-  try {
-    window.localStorage.setItem(systemSettingsStorageKey, JSON.stringify(nextSettings));
-  } catch (error) {
-    return nextSettings;
-  }
+  writePersistentJson(systemSettingsStorageKey, nextSettings);
   window.dispatchEvent(new CustomEvent(systemSettingsChangedEvent, { detail: nextSettings }));
   return nextSettings;
 };
@@ -59,14 +45,9 @@ export const subscribeSystemSettings = handler => {
   const handleChange = event => {
     handler(normalizeSystemSettings(event && event.detail ? event.detail : getSystemSettings()));
   };
-  const handleStorage = event => {
-    if (event.key === systemSettingsStorageKey) handler(getSystemSettings());
-  };
 
   window.addEventListener(systemSettingsChangedEvent, handleChange);
-  window.addEventListener("storage", handleStorage);
   return () => {
     window.removeEventListener(systemSettingsChangedEvent, handleChange);
-    window.removeEventListener("storage", handleStorage);
   };
 };

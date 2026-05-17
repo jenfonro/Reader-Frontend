@@ -4,14 +4,13 @@
     class="reader-text-content"
     :style="containerStyle"
   >
-    <h3 data-pos="0">{{ title }}</h3>
+    <h3 data-pos="0">{{ displayTitle }}</h3>
     <p
       v-for="paragraph in paragraphs"
       :key="paragraph.pos"
       :style="pStyle"
       :data-pos="paragraph.pos"
-      v-html="paragraph.text"
-    ></p>
+    >{{ paragraph.text }}</p>
   </div>
   <div v-else></div>
 </template>
@@ -19,6 +18,7 @@
 <script setup>
 import { computed } from "vue";
 import { getReaderTheme, previewConfig } from "../previewData";
+import { convertChineseText } from "../utils/chinese";
 
 defineOptions({
   name: "Content"
@@ -52,10 +52,26 @@ const resolvedConfig = computed(() => ({
   ...(props.readerConfig || {})
 }));
 
+const readerFontFamilies = {
+  0: '-apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif',
+  1: 'reader-ht, "Microsoft YaHei", "PingFang SC", sans-serif',
+  2: 'reader-kt, Kaiti, "Kaiti SC", serif',
+  3: 'reader-st, "Songti SC", SimSun, serif',
+  4: 'reader-fs, FangSong, serif'
+};
+
 const fontSize = computed(() => {
   const parsedSize = Number(resolvedConfig.value.fontSize);
   return Number.isFinite(parsedSize) ? parsedSize : previewConfig.fontSize;
 });
+
+const fontFamily = computed(() =>
+  readerFontFamilies[resolvedConfig.value.font] || readerFontFamilies[previewConfig.font]
+);
+
+const convertByConfig = text => convertChineseText(text, resolvedConfig.value.chineseFont);
+const displayTitle = computed(() => convertByConfig(props.title));
+const displayContent = computed(() => convertByConfig(props.content));
 
 const getPixelConfig = name => {
   const parsedValue = Number(resolvedConfig.value[name]);
@@ -64,11 +80,13 @@ const getPixelConfig = name => {
 };
 
 const containerStyle = computed(() => ({
+  fontFamily: fontFamily.value,
   fontWeight: resolvedConfig.value.fontWeight || undefined,
   color: resolvedConfig.value.fontColor,
   background: getReaderTheme(resolvedConfig.value.theme).content,
   padding: `${getPixelConfig("pageTopMargin")}px ${getPixelConfig("pageHorizontalMargin")}px ${getPixelConfig("pageBottomMargin")}px`,
-  boxSizing: "border-box"
+  boxSizing: "border-box",
+  fontSynthesis: "none"
 }));
 
 const pStyle = computed(() => ({
@@ -79,8 +97,8 @@ const pStyle = computed(() => ({
 }));
 
 const paragraphs = computed(() => {
-  let wordCount = (props.title || "").length + 2;
-  return String(props.content || "")
+  let wordCount = displayTitle.value.length + 2;
+  return displayContent.value
     .split(/\n+/)
     .map(paragraph => paragraph.replace(/^\s+/g, ""))
     .filter(Boolean)
@@ -98,19 +116,15 @@ p {
   word-wrap: break-word;
   word-break: break-all;
   text-indent: 2em;
+  font-family: inherit;
+  font-weight: inherit;
 }
 h3 {
+  font-family: inherit;
   font-size: 28px;
+  font-weight: inherit;
   line-height: 1.2;
   margin: 1em 0;
   text-align: center;
-}
-</style><style lang="stylus">
-.reader-text-content {
-  img {
-    width: 100%;
-    max-width: 100vw;
-    display: block;
-  }
 }
 </style>

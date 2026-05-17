@@ -209,6 +209,7 @@
           :current-index="chapterIndex"
           :is-night="isNight"
           :loading="catalogLoading"
+          :chinese-font="config.chineseFont"
           @get-content="getContent"
           @refresh="refreshCatalog"
         />
@@ -255,7 +256,7 @@
       :style="chapterTheme"
     >
       <div class="reader-page__top">
-        {{ miniInterface && !isIntroPage ? readerHeaderTitle : "" }}
+        {{ miniInterface && !isIntroPage ? displayReaderHeaderTitle : "" }}
       </div>
       <div class="reader-page__content">
         <div v-if="loadingVisible" class="reader-page-loading" role="status" aria-live="polite">
@@ -268,17 +269,17 @@
           class="reader-page__content-inner"
           :class="contentViewportClass"
           @scroll="handleContentScroll"
-          @wheel="handleReaderWheel"
+          @wheel.passive="handleReaderWheel"
           @mousedown="handleReaderMouseDown"
-          @touchstart="handleReaderTouchStart"
-          @touchmove="handleReaderTouchMove"
-          @touchend="handleReaderTouchEnd"
-          @touchcancel="handleReaderTouchCancel"
         >
           <div
             v-if="isHorizontalPageTurn"
             class="reader-horizontal-stage"
             :class="horizontalStageClass"
+            @touchstart="handleReaderTouchStart"
+            @touchmove="handleReaderTouchMove"
+            @touchend="handleReaderTouchEnd"
+            @touchcancel="handleReaderTouchCancel"
           >
             <div
               v-for="page in horizontalPageWindows"
@@ -446,6 +447,7 @@ import ReaderIntroPanel from "../components/reader/ReaderIntroPanel.vue";
 import { getMiniInterface, getWindowSize } from "../utils/interface";
 import { isHorizontalReadMethod, isVerticalReadMethod, normalizeReadMethod } from "../utils/readMethod";
 import { getReaderTheme, previewConfig } from "../previewData";
+import { convertChineseText } from "../utils/chinese";
 import {
   CLICK_AREA_ACTION_MENU,
   CLICK_AREA_ACTION_NEXT,
@@ -648,6 +650,9 @@ const chapterStreamItemMap = computed(() =>
   new Map(chapterStreamItems.value.map(item => [item.key, item]))
 );
 const readerHeaderTitle = computed(() => activeChapterTitle.value || title.value);
+const displayReaderHeaderTitle = computed(() =>
+  convertChineseText(readerHeaderTitle.value, config.value.chineseFont)
+);
 const introContinuationStyle = computed(() => ({
   minHeight: `${pageHeight.value}px`
 }));
@@ -678,34 +683,9 @@ const getActiveChapterStreamItemByOffset = offset => {
   return chapterStreamItems.value[chapterStreamItems.value.length - 1] || null;
 };
 
-const getActiveChapterStreamItemByViewport = () => {
-  const viewportElement = contentViewportRef.value;
-  if (!viewportElement) return null;
-
-  const itemElements = Array.from(
-    viewportElement.querySelectorAll?.(".reader-chapter-flow__item") || []
-  );
-  if (!itemElements.length) return null;
-
-  const viewportRect = viewportElement.getBoundingClientRect();
-  const focusY = viewportRect.top + viewportRect.height * 0.45;
-  let nearestItem = null;
-
-  for (const itemElement of itemElements) {
-    const item = chapterStreamItemMap.value.get(itemElement.dataset.chapterKey);
-    if (!item) continue;
-
-    const itemRect = itemElement.getBoundingClientRect();
-    if (itemRect.top <= focusY && itemRect.bottom > focusY) return item;
-    if (itemRect.top <= focusY) nearestItem = item;
-  }
-
-  return nearestItem || chapterStreamItems.value[0] || null;
-};
-
 const getActiveChapterStreamItem = offset => {
   if (!isVerticalPageTurn.value || isIntroPage.value) return null;
-  return getActiveChapterStreamItemByViewport() || getActiveChapterStreamItemByOffset(offset);
+  return getActiveChapterStreamItemByOffset(offset);
 };
 
 const syncActiveChapterItem = activeItem => {
@@ -1184,6 +1164,7 @@ const shouldRevealIntroContinuation = () =>
   pageScrollOffset.value >= getIntroContinuationRevealOffset();
 
 const setPageScrollOffset = (value, { syncDom = true } = {}) => {
+  if (syncDom) cancelPendingContentScroll();
   pageScrollOffset.value = clampPageScrollOffset(value);
   syncReaderPageByScrollOffset();
   syncActiveChapterByScrollOffset(pageScrollOffset.value);
@@ -1728,7 +1709,11 @@ const PAGE_TURN_VELOCITY = 0.45;
 let readerDrag = null;
 let pageTurnAnimationTimer = 0;
 let horizontalClickTurnFrame = 0;
-let verticalClickTurnFrame = 0;
+let horizontalOffsetFrame = 0;
+let pendingHorizontalOffset = 0;
+let preparedHorizontalDirection = "";
+let contentScrollFrame = 0;
+let pendingContentScrollTop = 0;
 
 const getPageTurnSize = axis =>
   axis === "horizontal" ? pageWidth.value : pageHeight.value;
@@ -1745,28 +1730,65 @@ const canStartReaderDrag = (source, event) => {
   if (hasBlockingReaderPanel()) return false;
   if (loadingVisible.value || !show.value) return false;
   if (source === "mouse" && event.button !== 0) return false;
-  if (pageTurnAxis.value === "vertical") return source === "mouse" || source === "touch";
+  if (pageTurnAxis.value === "vertical") return source === "mouse";
   return pageTurnAxis.value === "horizontal";
 };
 
 const prepareHorizontalPageFrame = offset => {
   if (!isHorizontalPageTurn.value || Math.abs(offset) < 1) return;
+  const direction = offset < 0 ? "next" : "previous";
+  if (direction === preparedHorizontalDirection) return;
+  preparedHorizontalDirection = direction;
   ensureHorizontalStreamAroundPage({
     forceNext: offset < 0,
     forcePrevious: offset > 0
   });
 };
 
-const setHorizontalPageTurnOffset = offset => {
+const applyHorizontalPageTurnOffset = offset => {
   const nextOffset = Math.max(-pageWidth.value, Math.min(pageWidth.value, offset));
+  if (Math.abs(nextOffset) < 1) preparedHorizontalDirection = "";
   pageTurnDragOffsetX.value = nextOffset;
   prepareHorizontalPageFrame(nextOffset);
+};
+
+const cancelPendingHorizontalOffset = () => {
+  if (!horizontalOffsetFrame) return;
+  window.cancelAnimationFrame(horizontalOffsetFrame);
+  horizontalOffsetFrame = 0;
+};
+
+const setHorizontalPageTurnOffset = offset => {
+  cancelPendingHorizontalOffset();
+  applyHorizontalPageTurnOffset(offset);
+};
+
+const scheduleHorizontalPageTurnOffset = offset => {
+  pendingHorizontalOffset = offset;
+  if (horizontalOffsetFrame) return;
+
+  horizontalOffsetFrame = window.requestAnimationFrame(() => {
+    horizontalOffsetFrame = 0;
+    applyHorizontalPageTurnOffset(pendingHorizontalOffset);
+  });
+};
+
+const flushHorizontalPageTurnOffset = () => {
+  if (!horizontalOffsetFrame) return;
+  cancelPendingHorizontalOffset();
+  applyHorizontalPageTurnOffset(pendingHorizontalOffset);
+};
+
+const cancelPendingContentScroll = () => {
+  if (!contentScrollFrame) return;
+  window.cancelAnimationFrame(contentScrollFrame);
+  contentScrollFrame = 0;
 };
 
 const resetReaderDrag = () => {
   readerDrag = null;
   pageTurnDragActive.value = false;
-  pageTurnDragOffsetX.value = 0;
+  setHorizontalPageTurnOffset(0);
 };
 
 const removeMouseDragListeners = () => {
@@ -1786,7 +1808,7 @@ const resetHorizontalPageTurnAfterAnimation = direction => {
     } else {
       await goPreviousPage();
     }
-    pageTurnDragOffsetX.value = 0;
+    setHorizontalPageTurnOffset(0);
     requestAnimationFrame(() => {
       pageTurnDragActive.value = false;
     });
@@ -1799,18 +1821,9 @@ const cancelPendingHorizontalClickTurn = () => {
   horizontalClickTurnFrame = 0;
 };
 
-const cancelPendingVerticalClickTurn = () => {
-  if (!verticalClickTurnFrame) return;
-  window.cancelAnimationFrame(verticalClickTurnFrame);
-  verticalClickTurnFrame = 0;
-};
-
 const cancelPendingClickPageTurn = () => {
   cancelPendingHorizontalClickTurn();
-  cancelPendingVerticalClickTurn();
 };
-
-const easePageTurnProgress = progress => 1 - Math.pow(1 - progress, 3);
 
 const canCommitHorizontalPageTurn = direction => {
   if (direction === "next") return canTurnToNextReaderPage.value;
@@ -1820,6 +1833,7 @@ const canCommitHorizontalPageTurn = direction => {
 
 const finishHorizontalPageTurn = direction => {
   cancelPendingHorizontalClickTurn();
+  cancelPendingHorizontalOffset();
   pageTurnDragActive.value = false;
   if (!direction || !canCommitHorizontalPageTurn(direction)) {
     setHorizontalPageTurnOffset(0);
@@ -1864,22 +1878,14 @@ const animateVerticalPageTurnTo = targetOffset => {
     return;
   }
 
-  const startTime = performance.now();
-  const tick = now => {
-    const progress = Math.min(1, (now - startTime) / duration);
-    const easedProgress = easePageTurnProgress(progress);
-    setPageScrollOffset(fromOffset + (toOffset - fromOffset) * easedProgress);
-
-    if (progress < 1) {
-      verticalClickTurnFrame = window.requestAnimationFrame(tick);
-      return;
-    }
-
-    verticalClickTurnFrame = 0;
+  const viewportElement = contentViewportRef.value;
+  if (!viewportElement) {
     setPageScrollOffset(toOffset);
-  };
+    return;
+  }
 
-  verticalClickTurnFrame = window.requestAnimationFrame(tick);
+  cancelPendingContentScroll();
+  viewportElement.scrollTo({ top: toOffset, behavior: "smooth" });
 };
 
 const startVerticalPageTurnFromRest = direction => {
@@ -1994,7 +2000,7 @@ const moveReaderDrag = (event, point) => {
   readerDrag.lastTime = now;
 
   if (isHorizontal) {
-    setHorizontalPageTurnOffset(movedDelta);
+    scheduleHorizontalPageTurnOffset(movedDelta);
   } else {
     setPageScrollOffset(readerDrag.startScrollOffset - movedDelta);
   }
@@ -2005,6 +2011,7 @@ const endReaderDrag = event => {
   if (!readerDrag) return;
 
   const { axis, moved, velocity, source, lastDelta } = readerDrag;
+  if (axis === "horizontal") flushHorizontalPageTurnOffset();
   const offset = pageTurnDragOffsetX.value;
   const threshold = Math.max(
     PAGE_TURN_MIN_DISTANCE,
@@ -2081,8 +2088,14 @@ const handleReaderWheel = event => {
 
 const handleContentScroll = event => {
   if (!isVerticalPageTurn.value) return;
-  setPageScrollOffset(event.currentTarget.scrollTop, { syncDom: false });
-  if (shouldRevealIntroContinuation()) revealIntroContinuation();
+  pendingContentScrollTop = event.currentTarget.scrollTop;
+  if (Math.abs(pendingContentScrollTop - pageScrollOffset.value) <= 1) return;
+  if (contentScrollFrame) return;
+
+  contentScrollFrame = window.requestAnimationFrame(() => {
+    contentScrollFrame = 0;
+    setPageScrollOffset(pendingContentScrollTop, { syncDom: false });
+  });
 };
 
 const getContent = note => {
@@ -2232,7 +2245,7 @@ watch(
 watch(
   chapterStream,
   () => scheduleReaderPagination({ keepPage: true }),
-  { deep: true, flush: "post" }
+  { flush: "post" }
 );
 
 watch(
@@ -2244,6 +2257,7 @@ watch(
     () => config.value.pageHorizontalMargin,
     () => config.value.pageTopMargin,
     () => config.value.pageBottomMargin,
+    () => config.value.chineseFont,
     () => config.value.theme,
     () => config.value.readMethod,
     readWidthConfig,
@@ -2264,6 +2278,8 @@ onBeforeUnmount(() => {
   if (paginationFrame) cancelAnimationFrame(paginationFrame);
   if (paginationTimer) clearTimeout(paginationTimer);
   if (pageTurnAnimationTimer) window.clearTimeout(pageTurnAnimationTimer);
+  if (horizontalOffsetFrame) window.cancelAnimationFrame(horizontalOffsetFrame);
+  cancelPendingContentScroll();
   removeMouseDragListeners();
   window.removeEventListener("resize", syncInterface);
 });
@@ -2727,6 +2743,7 @@ onBeforeUnmount(() => {
         padding-bottom: 0;
         overflow: hidden;
         box-sizing: border-box;
+        contain: layout paint style;
       }
 
       .reader-page__content-inner--paged {
@@ -2748,8 +2765,8 @@ onBeforeUnmount(() => {
         width: 100%;
         height: 100%;
         overflow: hidden;
-        perspective: 1200px;
-        transform-style: preserve-3d;
+        contain: layout paint style;
+        transform: translateZ(0);
       }
 
       .reader-page-frame {
@@ -2759,9 +2776,9 @@ onBeforeUnmount(() => {
         height: 100%;
         overflow: hidden;
         background: var(--reader-content-background);
+        contain: layout paint style;
         will-change: transform, opacity;
         backface-visibility: hidden;
-        transform-style: preserve-3d;
       }
 
       .reader-page-frame__placeholder {
@@ -2803,10 +2820,6 @@ onBeforeUnmount(() => {
         background: rgba(86, 72, 48, 0.28);
         box-shadow: -8px 0 16px rgba(86, 72, 48, 0.1);
         opacity: calc(0.24 + var(--reader-turn-progress) * 0.36);
-      }
-
-      .reader-text-flow {
-        will-change: transform;
       }
 
       .reader-chapter-flow {

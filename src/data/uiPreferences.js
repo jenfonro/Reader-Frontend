@@ -1,12 +1,11 @@
-const uiPreferencesStorageKey = "reader.ui.preferences";
+import { readPersistentJson, writePersistentJson } from "./persistentStorage";
+import { uiPreferencesStorageKey } from "./userStorageKeys";
+
 export const uiPreferencesChangedEvent = "reader-ui-preferences-change";
 
 const defaultUiPreferences = {
   fullscreenMode: false
 };
-
-const canUseLocalStorage = () =>
-  typeof window !== "undefined" && Boolean(window.localStorage);
 
 const normalizeUiPreferences = value => ({
   ...defaultUiPreferences,
@@ -14,25 +13,12 @@ const normalizeUiPreferences = value => ({
   fullscreenMode: Boolean(value && value.fullscreenMode)
 });
 
-export const getUiPreferences = () => {
-  if (!canUseLocalStorage()) return { ...defaultUiPreferences };
-  try {
-    const raw = window.localStorage.getItem(uiPreferencesStorageKey);
-    return normalizeUiPreferences(raw ? JSON.parse(raw) : null);
-  } catch (error) {
-    return { ...defaultUiPreferences };
-  }
-};
+export const getUiPreferences = () =>
+  normalizeUiPreferences(readPersistentJson(uiPreferencesStorageKey, null));
 
 export const setUiPreferences = preferences => {
   const nextPreferences = normalizeUiPreferences(preferences);
-  if (!canUseLocalStorage()) return nextPreferences;
-
-  try {
-    window.localStorage.setItem(uiPreferencesStorageKey, JSON.stringify(nextPreferences));
-  } catch (error) {
-    return nextPreferences;
-  }
+  writePersistentJson(uiPreferencesStorageKey, nextPreferences);
   window.dispatchEvent(new CustomEvent(uiPreferencesChangedEvent, { detail: nextPreferences }));
   return nextPreferences;
 };
@@ -49,14 +35,9 @@ export const subscribeUiPreferences = handler => {
   const handleChange = event => {
     handler(normalizeUiPreferences(event && event.detail ? event.detail : getUiPreferences()));
   };
-  const handleStorage = event => {
-    if (event.key === uiPreferencesStorageKey) handler(getUiPreferences());
-  };
 
   window.addEventListener(uiPreferencesChangedEvent, handleChange);
-  window.addEventListener("storage", handleStorage);
   return () => {
     window.removeEventListener(uiPreferencesChangedEvent, handleChange);
-    window.removeEventListener("storage", handleStorage);
   };
 };
