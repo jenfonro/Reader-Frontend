@@ -68,9 +68,17 @@ import "element-plus/es/components/icon/style/css.mjs";
 import "element-plus/es/components/select/style/css.mjs";
 import { Loading } from "@element-plus/icons-vue";
 import { readSearchableSources, searchBooksBySources } from "../search/bookSourceSearch.js";
+import { isSameBookIdentity, needsAuthorIdentityEnrichment } from "../search/bookIdentity.js";
+import {
+  enrichBookCatalogSummary,
+  enrichBookLatestChapter,
+  getBookLatestChapterTitle
+} from "../search/bookSourceLatest.js";
 import "../styles/reader-popup.css";
 
 const FIRST_PAGE = 1;
+const CATALOG_SUMMARY_CONCURRENCY = 4;
+const IDENTITY_ENRICH_CONCURRENCY = 4;
 
 const props = defineProps({
   visible: {
@@ -90,10 +98,20 @@ const bookSourceGroup = ref("");
 const sourceList = ref([]);
 const loading = ref(false);
 const loadingMore = ref(false);
+const identityLoading = ref(false);
 const searched = ref(false);
 const searchError = ref("");
 const page = ref(FIRST_PAGE);
 let searchController = null;
+let catalogSummaryController = null;
+let catalogSummaryRunning = 0;
+let catalogSummarySession = 0;
+const catalogSummaryQueue = [];
+let identityController = null;
+let identityRunning = 0;
+let identitySession = 0;
+const identityQueue = [];
+const identityPendingBooks = new Map();
 
 const searchRunning = computed(() => loading.value || loadingMore.value);
 const keyword = computed(() => String(props.book?.name || props.book?.title || "").trim());
@@ -118,7 +136,7 @@ const filteredBookSources = computed(() => {
 });
 const statusText = computed(() => {
   if (searchError.value) return searchError.value;
-  if (loading.value && !bookSource.value.length) return "正在搜索可用来源...";
+  if ((loading.value || identityLoading.value) && !bookSource.value.length) return "正在搜索同作者来源...";
   if (searched.value && !bookSource.value.length) return "没有搜索到可切换来源";
   if (searched.value && bookSource.value.length && !filteredBookSources.value.length) return "当前分组没有可切换来源";
   return "";
@@ -141,25 +159,186 @@ const resetSources = () => {
   }
 };
 
+const cancelCatalogSummary = () => {
+  catalogSummarySession += 1;
+  catalogSummaryQueue.length = 0;
+  catalogSummaryRunning = 0;
+  if (catalogSummaryController) {
+    catalogSummaryController.abort();
+    catalogSummaryController = null;
+  }
+};
+
+const cancelIdentityEnrichment = () => {
+  identitySession += 1;
+  identityQueue.length = 0;
+  identityPendingBooks.clear();
+  identityRunning = 0;
+  if (identityController) {
+    identityController.abort();
+    identityController = null;
+  }
+  syncIdentityLoading();
+};
+
 const cancelSearch = () => {
   if (searchController) {
     searchController.abort();
     searchController = null;
   }
+  cancelCatalogSummary();
+  cancelIdentityEnrichment();
   loading.value = false;
   loadingMore.value = false;
 };
 
+const ensureCatalogSummaryController = () => {
+  if (!catalogSummaryController || catalogSummaryController.signal.aborted) {
+    catalogSummaryController = new AbortController();
+  }
+  return catalogSummaryController;
+};
+
+const ensureIdentityController = () => {
+  if (!identityController || identityController.signal.aborted) identityController = new AbortController();
+  return identityController;
+};
+
+const syncIdentityLoading = () => {
+  identityLoading.value = identityRunning > 0 || identityQueue.length > 0;
+};
+
+const appendVerifiedBook = (book, key = getResultKey(book)) => {
+  if (!key || bookSource.value.some(item => item.key === key)) return;
+  const nextBook = { ...book, key };
+  bookSource.value = [...bookSource.value, nextBook];
+  enqueueCatalogSummary([nextBook]);
+};
+
+const removeSearchBook = key => {
+  bookSource.value = bookSource.value.filter(item => item.key !== key);
+};
+
+const updateSearchBookCatalogSummary = (key, enrichedBook) => {
+  const latestChapter = getBookLatestChapterTitle(enrichedBook);
+
+  bookSource.value = bookSource.value.map(item => {
+    if (item.key !== key) return item;
+    return {
+      ...item,
+      ...enrichedBook,
+      key: item.key,
+      time: item.time,
+      sourceKey: item.sourceKey || enrichedBook.sourceKey,
+      ...(latestChapter
+        ? {
+            latestChapterTitle: latestChapter,
+            latestChapter,
+            lastChapter: latestChapter
+          }
+        : {})
+    };
+  });
+};
+
+const runCatalogSummaryQueue = () => {
+  const controller = ensureCatalogSummaryController();
+  const session = catalogSummarySession;
+
+  while (catalogSummaryRunning < CATALOG_SUMMARY_CONCURRENCY && catalogSummaryQueue.length) {
+    const key = catalogSummaryQueue.shift();
+    const currentBook = bookSource.value.find(item => item.key === key);
+    if (!currentBook) continue;
+
+    catalogSummaryRunning += 1;
+    enrichBookCatalogSummary({ book: currentBook, signal: controller.signal })
+      .then(enrichedBook => {
+        if (catalogSummarySession !== session || controller.signal.aborted) return;
+        if (!isSameBookIdentity(enrichedBook, props.book)) {
+          removeSearchBook(key);
+          return;
+        }
+        updateSearchBookCatalogSummary(key, enrichedBook);
+      })
+      .catch(error => {
+        if (error?.name !== "AbortError") return;
+      })
+      .finally(() => {
+        if (catalogSummarySession !== session) return;
+        catalogSummaryRunning = Math.max(0, catalogSummaryRunning - 1);
+        runCatalogSummaryQueue();
+      });
+  }
+};
+
+const enqueueCatalogSummary = books => {
+  const keys = books
+    .map(getResultKey)
+    .filter(key => key && !catalogSummaryQueue.includes(key));
+  if (!keys.length) return;
+
+  catalogSummaryQueue.push(...keys);
+  runCatalogSummaryQueue();
+};
+
+const runIdentityEnrichmentQueue = () => {
+  const controller = ensureIdentityController();
+  const session = identitySession;
+
+  while (identityRunning < IDENTITY_ENRICH_CONCURRENCY && identityQueue.length) {
+    const key = identityQueue.shift();
+    syncIdentityLoading();
+    const currentBook = identityPendingBooks.get(key);
+    identityPendingBooks.delete(key);
+    if (!currentBook || bookSource.value.some(item => item.key === key)) continue;
+
+    identityRunning += 1;
+    syncIdentityLoading();
+    enrichBookLatestChapter({ book: currentBook, signal: controller.signal })
+      .then(enrichedBook => {
+        if (identitySession !== session || controller.signal.aborted) return;
+        if (isSameBookIdentity(enrichedBook, props.book)) appendVerifiedBook(enrichedBook, key);
+      })
+      .catch(error => {
+        if (error?.name !== "AbortError") return;
+      })
+      .finally(() => {
+        if (identitySession !== session) return;
+        identityRunning = Math.max(0, identityRunning - 1);
+        syncIdentityLoading();
+        runIdentityEnrichmentQueue();
+      });
+  }
+};
+
+const enqueueIdentityEnrichment = (book, key) => {
+  if (!key || identityPendingBooks.has(key) || identityQueue.includes(key)) return;
+  identityPendingBooks.set(key, { ...book, key });
+  identityQueue.push(key);
+  syncIdentityLoading();
+  runIdentityEnrichmentQueue();
+};
+
 const appendSearchBooks = books => {
-  const existingKeys = new Set(bookSource.value.map(getResultKey));
-  const nextBooks = [];
+  const existingKeys = new Set([
+    ...bookSource.value.map(getResultKey),
+    ...identityPendingBooks.keys(),
+    ...identityQueue
+  ]);
+
   books.forEach(book => {
     const key = getResultKey(book);
     if (existingKeys.has(key)) return;
     existingKeys.add(key);
-    nextBooks.push({ ...book, key });
+
+    const nextBook = { ...book, key };
+    if (isSameBookIdentity(nextBook, props.book)) {
+      appendVerifiedBook(nextBook, key);
+      return;
+    }
+
+    if (needsAuthorIdentityEnrichment(nextBook, props.book)) enqueueIdentityEnrichment(nextBook, key);
   });
-  if (nextBooks.length) bookSource.value = [...bookSource.value, ...nextBooks];
 };
 
 const runSearch = async ({ append = false } = {}) => {
@@ -176,6 +355,8 @@ const runSearch = async ({ append = false } = {}) => {
   searchError.value = "";
   searched.value = false;
   if (!append) {
+    cancelCatalogSummary();
+    cancelIdentityEnrichment();
     page.value = FIRST_PAGE;
     bookSource.value = [];
   }
@@ -244,14 +425,9 @@ const formatResponseTime = time => {
   return Number.isFinite(value) && value > 0 ? `⏱ ${Math.round(value)}ms` : "";
 };
 
-const formatBookSummary = searchBook => {
-  const parts = [
-    searchBook.name,
-    searchBook.author ? `作者：${searchBook.author}` : "",
-    searchBook.latestChapterTitle || searchBook.latestChapter || "无最新章节"
-  ].filter(Boolean);
-  return parts.join(" · ");
-};
+const getLatestChapterText = searchBook => getBookLatestChapterTitle(searchBook);
+
+const formatBookSummary = searchBook => getLatestChapterText(searchBook);
 
 const changeBookSource = searchBook => {
   if (isSelected(searchBook)) return;
