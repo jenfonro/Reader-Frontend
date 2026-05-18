@@ -35,6 +35,38 @@ const parseHtml = value => {
   return new DOMParser().parseFromString(toText(value), "text/html");
 };
 
+const decodeHtmlEntities = value =>
+  toText(value).replace(/&(#x?[0-9a-f]+|[a-z]+);/gi, (match, entity) => {
+    const normalizedEntity = entity.toLowerCase();
+    const namedEntities = {
+      amp: "&",
+      lt: "<",
+      gt: ">",
+      quot: '"',
+      apos: "'",
+      nbsp: " "
+    };
+    if (Object.prototype.hasOwnProperty.call(namedEntities, normalizedEntity)) {
+      return namedEntities[normalizedEntity];
+    }
+    if (normalizedEntity.startsWith("#x")) {
+      const codePoint = Number.parseInt(normalizedEntity.slice(2), 16);
+      return Number.isFinite(codePoint) ? String.fromCodePoint(codePoint) : match;
+    }
+    if (normalizedEntity.startsWith("#")) {
+      const codePoint = Number.parseInt(normalizedEntity.slice(1), 10);
+      return Number.isFinite(codePoint) ? String.fromCodePoint(codePoint) : match;
+    }
+    return match;
+  });
+
+const stripHtmlToText = value => decodeHtmlEntities(
+  toText(value)
+    .replace(/<br\s*\/?\s*>/gi, "\n")
+    .replace(/<\/(p|div|section|article|li|h[1-6])>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+).replace(/\n{3,}/g, "\n\n").trim();
+
 const compact = values => values.filter(value => value !== null && value !== undefined && value !== "");
 
 const splitByOperators = rule => {
@@ -256,12 +288,13 @@ export const getString = (rule, content, context = {}, options = {}) => {
   }
 
   const replaced = applyReplacement("", rawRule);
+  const hasTemplateRule = replaced.rule.includes("{{");
   const ruleText = expandTemplateRule(replaced.rule, content, context).trim();
   let values;
   if (ruleText.startsWith("$") && parseJson(content) !== null) {
     values = readJsonPath(content, ruleText);
-  } else if (ruleText.includes("{{")) {
-    values = [expandTemplateRule(ruleText, content, context)];
+  } else if (hasTemplateRule) {
+    values = [ruleText];
   } else if (/^https?:\/\//i.test(ruleText) || ruleText.startsWith("/")) {
     values = [ruleText];
   } else {
@@ -282,7 +315,12 @@ export const getString = (rule, content, context = {}, options = {}) => {
 
 export const formatBookName = value => toText(value).replace(/[《》]/g, "").trim();
 export const formatAuthor = value => toText(value).replace(/^作者[:：\s]*/, "").trim();
-export const htmlToText = value => parseHtml(value).body.textContent.trim();
+export const htmlToText = value => {
+  const text = toText(value);
+  if (!text) return "";
+  if (typeof DOMParser === "undefined") return stripHtmlToText(text);
+  return parseHtml(text).body.textContent.trim();
+};
 
 export const analyzeSearchBooks = ({ body, source, requestUrl, keyword, page = 1, variables }) => {
   const rule = parseRuleObject(source.ruleSearch);

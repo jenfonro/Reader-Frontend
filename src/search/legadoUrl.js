@@ -156,6 +156,18 @@ export const buildSearchRequest = ({ source, keyword, page = 1 }) =>
     variables: new Map()
   });
 
+const normalizeResponseUrl = (response, fallbackUrl) => {
+  const proxyFinalUrl = toText(response.headers.get("x-proxy-final-url")).trim();
+  const responseUrl = toText(response.url).trim();
+  const nextUrl = proxyFinalUrl || responseUrl || fallbackUrl;
+
+  try {
+    return new URL(nextUrl, fallbackUrl).toString();
+  } catch (error) {
+    return fallbackUrl;
+  }
+};
+
 export const fetchLegadoResponse = async (request, signal) => {
   let response;
   try {
@@ -175,7 +187,8 @@ export const fetchLegadoResponse = async (request, signal) => {
     throw createFetchFailureError(request.url, error);
   }
 
-  if (!response.ok) throw createHttpError(response);
+  request.responseUrl = normalizeResponseUrl(response, request.url);
+  if (!response.ok) throw createHttpError(response, request.responseUrl);
 
   const buffer = await response.arrayBuffer();
   const contentType = response.headers.get("content-type") || "";

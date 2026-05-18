@@ -1,5 +1,4 @@
 const DB_NAME = "reader-frontend-user-data";
-const DB_VERSION = 1;
 const STORE_NAME = "keyValue";
 
 const memoryStore = new Map();
@@ -37,7 +36,7 @@ const openDatabase = () => {
   if (dbPromise) return dbPromise;
 
   dbPromise = new Promise(resolve => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    const request = indexedDB.open(DB_NAME);
 
     request.onupgradeneeded = () => {
       const database = request.result;

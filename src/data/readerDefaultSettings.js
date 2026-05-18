@@ -1,0 +1,30 @@
+import { createDefaultClickAreaActions } from "../utils/clickArea";
+
+export const defaultReaderSettings = {
+  name: "内置白天",
+  theme: 0,
+  font: 0,
+  chineseFont: "简体",
+  fontSize: 22,
+  fontWeight: 600,
+  fontColor: "#262626",
+  bodyColor: "#eadfca",
+  contentColor: "#fff",
+  popupColor: "#ede7da",
+  themeType: "day",
+  readMethod: "上下",
+  brightness: 100,
+  eyeCare: true,
+  clickAreaMode: "three-zone",
+  clickAreaActions: createDefaultClickAreaActions(),
+  animateMSTime: 300,
+  readWidth: 800,
+  lineHeight: 3,
+  paragraphSpace: 0,
+  pageHorizontalMargin: 20,
+  pageTopMargin: 0,
+  pageBottomMargin: 0,
+  contentBGImg: "",
+  customBGImgList: [],
+  customFontsMap: {}
+};

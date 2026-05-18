@@ -25,8 +25,13 @@
         <p>{{ bookIntro }}</p>
       </section>
 
-      <button type="button" class="reader-intro-panel__bookshelf" @click="emit('add-bookshelf')">
-        加入书架
+      <button
+        type="button"
+        class="reader-intro-panel__bookshelf"
+        :class="{ 'is-danger': inBookshelf }"
+        @click="emit('toggle-bookshelf')"
+      >
+        {{ bookshelfActionText }}
       </button>
     </section>
   </div>
@@ -44,10 +49,11 @@ import {
 } from "./readerIntroData";
 
 const props = defineProps({
-  book: { type: Object, default: () => ({}) }
+  book: { type: Object, default: () => ({}) },
+  inBookshelf: { type: Boolean, default: false }
 });
 
-const emit = defineEmits(["close", "add-bookshelf"]);
+const emit = defineEmits(["close", "toggle-bookshelf"]);
 
 const bookTitle = computed(() => getReaderBookTitle(props.book));
 const bookAuthor = computed(() => getReaderBookAuthor(props.book));
@@ -55,6 +61,7 @@ const bookIntro = computed(() => getReaderBookIntro(props.book));
 const latestChapter = computed(() => getReaderBookLatestChapter(props.book));
 const bookTags = computed(() => getReaderBookTags(props.book));
 const coverText = computed(() => getReaderBookCoverText(props.book));
+const bookshelfActionText = computed(() => (props.inBookshelf ? "移出书架" : "加入书架"));
 </script>
 
 <style scoped>
@@ -212,6 +219,11 @@ const coverText = computed(() => getReaderBookCoverText(props.book));
   font-size: 14px;
   line-height: 1;
   font-weight: 650;
+}
+
+.reader-intro-panel__bookshelf.is-danger {
+  background: rgba(255, 59, 48, 0.12);
+  color: #ff3b30;
 }
 
 .reader-intro-panel__close:active,

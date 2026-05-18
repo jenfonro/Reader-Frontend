@@ -1,5 +1,5 @@
 <template>
-  <div class="reader-content reader-page" :class="rootClass">
+  <div class="reader-content reader-page-layout" :class="rootClass">
     <header class="reader-page-header" :class="headerClass">
       <slot name="header"></slot>
     </header>

@@ -133,9 +133,9 @@ const emit = defineEmits(["change", "decrease", "increase"]);
   margin: 0;
 }
 
-:global(.night) .setting-pill,
-:global(.night) .setting-subpanel-value,
-:global(.night) .setting-subpanel-number {
+:global(.reading-settings.night) .setting-pill,
+:global(.reading-settings.night) .setting-subpanel-value,
+:global(.reading-settings.night) .setting-subpanel-number {
   background: rgba(255, 255, 255, 0.08);
 }
 

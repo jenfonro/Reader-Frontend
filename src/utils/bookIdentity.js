@@ -1,4 +1,4 @@
-import { toText } from "./legadoCommon.js";
+const toText = value => (value === null || value === undefined ? "" : String(value));
 
 const UNKNOWN_AUTHOR_PATTERN = /^(未知|佚名|无|匿名|null|undefined)$/i;
 

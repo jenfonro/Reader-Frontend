@@ -50,7 +50,7 @@ const fetchRuntimeBody = async ({ source, ruleUrl, baseUrl, book, chapter, varia
     chapter
   });
   const body = await fetchLegadoResponse(request, signal);
-  return { body, requestUrl: request.url, variables: request.variables };
+  return { body, requestUrl: request.responseUrl || request.url, variables: request.variables };
 };
 
 export const loadBookInfo = async ({ source, book, signal }) => {

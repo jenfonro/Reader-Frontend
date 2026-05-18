@@ -5,7 +5,7 @@
   margin: 0;
 }
 
-.reader-page {
+.reader-page-layout {
   --reader-page-topbar-row-height: 52px;
   --reader-page-topbar-space: calc(var(--reader-page-topbar-row-height) + env(safe-area-inset-top));
   --reader-page-footer-space: 0px;

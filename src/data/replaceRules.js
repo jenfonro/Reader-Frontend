@@ -10,10 +10,10 @@ const toNullableText = value => {
   const text = toText(value);
   return text ? text : null;
 };
-const toBoolean = (value, fallback) => (typeof value === "boolean" ? value : fallback);
-const toNumber = (value, fallback = 0) => {
+const toBoolean = (value, defaultValue) => (typeof value === "boolean" ? value : defaultValue);
+const toNumber = (value, defaultValue = 0) => {
   const number = Number(value);
-  return Number.isFinite(number) ? number : fallback;
+  return Number.isFinite(number) ? number : defaultValue;
 };
 
 const createRuleId = () => Date.now();

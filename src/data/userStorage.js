@@ -1,4 +1,8 @@
 import { hydratePersistentStorage } from "./persistentStorage";
 import { userDataStorageKeys } from "./userStorageKeys";
+import { syncUiPreferencesToDocument } from "./uiPreferences";
 
-export const hydrateUserStorage = () => hydratePersistentStorage(userDataStorageKeys);
+export const hydrateUserStorage = async () => {
+  await hydratePersistentStorage(userDataStorageKeys);
+  syncUiPreferencesToDocument();
+};

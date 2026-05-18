@@ -1,0 +1,184 @@
+.home-view {
+  --reader-blue: var(--reader-app-accent);
+  --reader-line: var(--reader-app-line);
+  --reader-sidebar-text: var(--reader-app-text);
+  --reader-sidebar-item: #1f2937;
+  --reader-sidebar-muted: #6e6e73;
+  --reader-sidebar-hover: rgba(0, 122, 255, 0.08);
+  --reader-sidebar-active: rgba(0, 122, 255, 0.12);
+  --reader-card-solid: #fff;
+  --reader-radius-card: 22px;
+  --reader-shadow-card: 0 10px 30px rgba(0, 0, 0, 0.035);
+  --reader-page-content-x: 24px;
+  --reader-page-body-gap: 10px;
+  --reader-mobile-content-x: 14px;
+  --reader-mobile-nav-bottom: var(--reader-ui-mobile-nav-bottom, calc(16px + env(safe-area-inset-bottom)));
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  overflow-x: hidden;
+  background: var(--reader-app-bg);
+  container: reader-shell / inline-size;
+
+  .home-sidebar {
+    width: 260px;
+    min-width: 260px;
+    height: 100%;
+    box-sizing: border-box;
+    background: var(--reader-app-bg);
+    border-right: 1px solid var(--reader-line);
+    position: relative;
+    padding-top: 0;
+    padding-top: constant(safe-area-inset-top) !important;
+    padding-top: env(safe-area-inset-top) !important;
+
+    .home-sidebar__inner {
+      padding: 0 0 66px;
+      height: 100%;
+      overflow-y: auto;
+      box-sizing: border-box;
+    }
+
+    .reader-sidebar__brand {
+      min-height: 75px;
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      padding: 0 22px;
+      box-sizing: border-box;
+    }
+
+    .reader-sidebar__brand-logo {
+      width: 32px;
+      height: 32px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 32px;
+      border-radius: 11px;
+      color: #fff;
+      background: var(--reader-blue);
+      box-shadow: 0 8px 18px rgba(0, 122, 255, 0.22);
+    }
+
+    .reader-sidebar__brand-name {
+      min-width: 0;
+      overflow: hidden;
+      color: var(--reader-sidebar-text);
+      font-size: 19px;
+      line-height: 1;
+      font-weight: 700;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .reader-sidebar__nav {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 22px 18px 0;
+    }
+
+    .reader-sidebar__item {
+      min-height: 40px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      padding: 0 14px;
+      border: 0;
+      border-radius: 13px;
+      appearance: none;
+      background: transparent;
+      color: var(--reader-sidebar-item);
+      font: inherit;
+      font-size: 14px;
+      font-weight: 500;
+      text-align: left;
+      cursor: pointer;
+      transition: color 0.16s ease, background 0.16s ease;
+    }
+
+    .reader-sidebar__item svg {
+      flex: 0 0 auto;
+      color: var(--reader-sidebar-muted);
+    }
+
+    .reader-sidebar__item.is-active {
+      color: var(--reader-blue);
+      background: var(--reader-sidebar-active);
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      .reader-sidebar__item:hover {
+        color: var(--reader-blue);
+        background: var(--reader-sidebar-hover);
+      }
+    }
+
+    .reader-sidebar__item.is-active svg {
+      color: var(--reader-blue);
+    }
+
+    .reader-sidebar__item--separated {
+      margin-top: 22px;
+      position: relative;
+    }
+
+    .reader-sidebar__item--separated::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: -14px;
+      height: 1px;
+      background: var(--reader-line);
+    }
+  }
+
+  .home-content {
+    height: 100%;
+    max-height: 100%;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    position: relative;
+    background: var(--reader-app-bg);
+    box-sizing: border-box;
+    overflow: hidden;
+    overscroll-behavior: contain;
+  }
+}
+
+
+.night {
+  --reader-app-bg: #222;
+  --reader-app-bg-rgb: 34, 34, 34;
+  --reader-app-text: #bbb;
+  --reader-line: rgba(255, 255, 255, 0.12);
+  --reader-sidebar-text: #e5e7eb;
+  --reader-sidebar-item: #d1d5db;
+  --reader-sidebar-muted: #8e8e93;
+  --reader-sidebar-hover: rgba(10, 132, 255, 0.14);
+  --reader-sidebar-active: rgba(10, 132, 255, 0.2);
+  --reader-card-solid: #2c2c2e;
+
+  :deep(.home-header) {
+    color: #bbb;
+  }
+}
+
+.home-sidebar__inner::-webkit-scrollbar {
+  width: 0 !important;
+}
+
+@container reader-shell (max-width: 750px) {
+  .home-sidebar {
+    display: none;
+  }
+
+  .home-view {
+    --reader-page-content-x: var(--reader-mobile-content-x);
+  }
+}

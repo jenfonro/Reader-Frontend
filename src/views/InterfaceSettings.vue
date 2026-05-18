@@ -36,8 +36,7 @@ const unsubscribePreferences = subscribeUiPreferences(preferences => {
 });
 
 const toggleFullscreenMode = () => {
-  fullscreenMode.value = !fullscreenMode.value;
-  setUiPreference("fullscreenMode", fullscreenMode.value);
+  fullscreenMode.value = setUiPreference("fullscreenMode", !fullscreenMode.value).fullscreenMode;
 };
 
 onBeforeUnmount(() => {

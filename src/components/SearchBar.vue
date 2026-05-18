@@ -1,5 +1,10 @@
 <template>
-  <form class="reader-search-bar" role="search" @submit.prevent="submitSearch">
+  <form
+    class="reader-search-bar"
+    :class="{ 'reader-search-bar--input-only': !showButton }"
+    role="search"
+    @submit.prevent="submitSearch"
+  >
     <label class="reader-search reader-search-bar__input">
       <Icon name="search" :size="20" />
       <input
@@ -17,7 +22,11 @@
         @click="clearSearch"
       >×</button>
     </label>
-    <button class="reader-search-bar__button" type="submit">{{ buttonLabel }}</button>
+    <button
+      v-if="showButton"
+      class="reader-search-bar__button"
+      type="submit"
+    >{{ buttonLabel }}</button>
   </form>
 </template>
 
@@ -31,7 +40,8 @@ defineOptions({
 const props = defineProps({
   modelValue: { type: String, default: "" },
   placeholder: { type: String, default: "搜索书名、作者、关键词..." },
-  buttonLabel: { type: String, default: "搜索" }
+  buttonLabel: { type: String, default: "搜索" },
+  showButton: { type: Boolean, default: true }
 });
 
 const emit = defineEmits(["update:modelValue", "submit", "clear"]);
@@ -46,6 +56,7 @@ const clearSearch = () => {
 };
 
 const submitSearch = () => {
+  if (!props.showButton) return;
   emit("submit", props.modelValue.trim());
 };
 </script>
@@ -57,6 +68,10 @@ const submitSearch = () => {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--reader-search-bar-gap, 10px);
+}
+
+.reader-search-bar--input-only {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .reader-search-bar__input.reader-search {

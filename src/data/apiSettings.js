@@ -41,6 +41,8 @@ export const subscribeApiSettings = handler => {
   };
 
   window.addEventListener(apiSettingsChangedEvent, handleChange);
+  handler(getApiSettings());
+
   return () => {
     window.removeEventListener(apiSettingsChangedEvent, handleChange);
   };

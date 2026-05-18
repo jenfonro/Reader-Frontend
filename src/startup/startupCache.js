@@ -113,7 +113,7 @@ const ensureServiceWorkerControlledPage = async () => {
 };
 
 const registerServiceWorker = async () => {
-  if (!import.meta.env.PROD || !("serviceWorker" in navigator)) {
+  if (!("serviceWorker" in navigator)) {
     return null;
   }
 

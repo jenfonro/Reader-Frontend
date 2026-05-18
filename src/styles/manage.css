@@ -567,6 +567,17 @@
   pointer-events: auto;
 }
 
+.reader-manage-row-menu-layer--fixed {
+  position: fixed;
+  z-index: 80;
+}
+
+.reader-manage-row-menu--fixed {
+  position: fixed;
+  top: auto;
+  right: auto;
+}
+
 .reader-manage-row-menu .reader-manage-menu__button.is-danger {
   color: #ff3b30;
 }

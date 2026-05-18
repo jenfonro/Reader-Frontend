@@ -46,12 +46,12 @@ const describeHttpStatus = status => {
   return "HTTP 请求失败";
 };
 
-export const createHttpError = response => {
+export const createHttpError = (response, url = response.url) => {
   const status = response.status;
   const statusText = response.statusText || "";
   return new SearchRequestError({
     type: "http",
-    url: response.url,
+    url,
     status,
     statusText,
     message: `HTTP ${status}${statusText ? ` ${statusText}` : ""}：${describeHttpStatus(status)}`

@@ -53,9 +53,9 @@ const assignRuleFields = (form, rule, mapping) => {
   });
 };
 
-const toNumber = (value, fallback = 0) => {
+const toNumber = (value, defaultValue = 0) => {
   const number = Number(value);
-  return Number.isFinite(number) ? number : fallback;
+  return Number.isFinite(number) ? number : defaultValue;
 };
 
 const createDefaultSourceMeta = () => ({

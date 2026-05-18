@@ -17,7 +17,8 @@
 
 <script setup>
 import { computed } from "vue";
-import { getReaderTheme, previewConfig } from "../previewData";
+import { getReaderTheme } from "../previewData";
+import { normalizeReaderSettings } from "../data/readerSettings";
 import { convertChineseText } from "../utils/chinese";
 
 defineOptions({
@@ -47,10 +48,7 @@ const props = defineProps({
   }
 });
 
-const resolvedConfig = computed(() => ({
-  ...previewConfig,
-  ...(props.readerConfig || {})
-}));
+const resolvedConfig = computed(() => normalizeReaderSettings(props.readerConfig));
 
 const readerFontFamilies = {
   0: '-apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif',
@@ -60,24 +58,17 @@ const readerFontFamilies = {
   4: 'reader-fs, FangSong, serif'
 };
 
-const fontSize = computed(() => {
-  const parsedSize = Number(resolvedConfig.value.fontSize);
-  return Number.isFinite(parsedSize) ? parsedSize : previewConfig.fontSize;
-});
+const fontSize = computed(() => resolvedConfig.value.fontSize);
 
 const fontFamily = computed(() =>
-  readerFontFamilies[resolvedConfig.value.font] || readerFontFamilies[previewConfig.font]
+  readerFontFamilies[resolvedConfig.value.font] || readerFontFamilies[0]
 );
 
 const convertByConfig = text => convertChineseText(text, resolvedConfig.value.chineseFont);
 const displayTitle = computed(() => convertByConfig(props.title));
 const displayContent = computed(() => convertByConfig(props.content));
 
-const getPixelConfig = name => {
-  const parsedValue = Number(resolvedConfig.value[name]);
-  const fallbackValue = Number(previewConfig[name]) || 0;
-  return Math.max(0, Number.isFinite(parsedValue) ? parsedValue : fallbackValue);
-};
+const getPixelConfig = name => Math.max(0, Number(resolvedConfig.value[name]) || 0);
 
 const containerStyle = computed(() => ({
   fontFamily: fontFamily.value,

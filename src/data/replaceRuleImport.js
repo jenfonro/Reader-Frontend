@@ -7,7 +7,7 @@ import {
 
 const isObject = value => value !== null && typeof value === "object" && !Array.isArray(value);
 const toText = value => (value === null || value === undefined ? "" : String(value));
-const toBoolean = (value, fallback) => (typeof value === "boolean" ? value : fallback);
+const toBoolean = (value, defaultValue) => (typeof value === "boolean" ? value : defaultValue);
 
 const isValidReplaceRule = rule => {
   if (!toText(rule.pattern).trim()) return false;

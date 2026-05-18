@@ -26,7 +26,13 @@
     </div>
 
     <div class="reader-intro-page__actions" @click.stop @mousedown.stop @touchstart.stop>
-      <button type="button" @click="emit('add-bookshelf')">加入书架</button>
+      <button
+        type="button"
+        :class="{ 'is-danger': inBookshelf }"
+        @click="emit('toggle-bookshelf')"
+      >
+        {{ bookshelfActionText }}
+      </button>
       <button type="button" class="is-primary" @click="emit('start-reading')">开始阅读</button>
     </div>
   </section>
@@ -49,10 +55,11 @@ defineOptions({
 
 const props = defineProps({
   book: { type: Object, default: () => ({}) },
-  loading: { type: Boolean, default: false }
+  loading: { type: Boolean, default: false },
+  inBookshelf: { type: Boolean, default: false }
 });
 
-const emit = defineEmits(["add-bookshelf", "start-reading"]);
+const emit = defineEmits(["toggle-bookshelf", "start-reading"]);
 
 const bookTitle = computed(() => getReaderBookTitle(props.book));
 const bookAuthor = computed(() => getReaderBookAuthor(props.book));
@@ -62,6 +69,7 @@ const showLoading = computed(() => props.loading && !hasBookIntro.value);
 const latestChapter = computed(() => getReaderBookLatestChapter(props.book));
 const bookTags = computed(() => getReaderBookTags(props.book));
 const coverText = computed(() => getReaderBookCoverText(props.book));
+const bookshelfActionText = computed(() => (props.inBookshelf ? "移出书架" : "加入书架"));
 </script>
 
 <style scoped>
@@ -212,6 +220,11 @@ const coverText = computed(() => getReaderBookCoverText(props.book));
 .reader-intro-page__actions .is-primary {
   background: var(--reader-font-color, rgba(46, 38, 29, 0.84));
   color: #fff7e7;
+}
+
+.reader-intro-page__actions .is-danger {
+  background: rgba(255, 59, 48, 0.12);
+  color: #ff3b30;
 }
 
 .reader-intro-page__actions button:active {

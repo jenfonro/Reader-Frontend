@@ -47,6 +47,8 @@ export const subscribeSystemSettings = handler => {
   };
 
   window.addEventListener(systemSettingsChangedEvent, handleChange);
+  handler(getSystemSettings());
+
   return () => {
     window.removeEventListener(systemSettingsChangedEvent, handleChange);
   };

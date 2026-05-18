@@ -8,7 +8,7 @@ const styleId = "readerStartupOverlayStyle";
 const loadedStyleLinks = new Set();
 const loadedScriptLinks = new Set();
 
-const fallbackLoadApplication = () => import("./main.js");
+const loadBundledApplication = () => import("./main.js");
 
 const createStartupStyle = () => {
   if (document.getElementById(styleId)) return;
@@ -198,7 +198,7 @@ const loadApplication = async versionInfo => {
     return;
   }
 
-  await fallbackLoadApplication();
+  await loadBundledApplication();
 };
 
 const start = async () => {
@@ -217,5 +217,5 @@ start().catch(error => {
   console.error(error);
   hydrateUserStorage()
     .catch(console.error)
-    .finally(() => fallbackLoadApplication().catch(console.error));
+    .finally(() => loadBundledApplication().catch(console.error));
 });

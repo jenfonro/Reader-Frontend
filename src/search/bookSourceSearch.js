@@ -26,7 +26,7 @@ export const searchBookSource = async ({ source, keyword, page = 1, signal }) =>
   return analyzeSearchBooks({
     body,
     source,
-    requestUrl: request.url,
+    requestUrl: request.responseUrl || request.url,
     keyword,
     page,
     variables: request.variables
