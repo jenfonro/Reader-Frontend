@@ -108,7 +108,7 @@ const createStartupOverlay = () => {
       <img class="startup-overlay__logo" src="${logoUrl}" alt="阅读" />
       <div class="startup-overlay__loading">
         <div class="startup-overlay__spinner" aria-hidden="true"></div>
-        <span>加载中</span>
+        <span>正在加载</span>
       </div>
       <div class="startup-overlay__progress" aria-hidden="true">
         <div class="startup-overlay__progress-bar"></div>

@@ -31,7 +31,7 @@ export const useReaderAppearance = ({ config, miniInterface, pageTurnDragActive,
     isVerticalReadMethod(effectiveReadMethod.value) ? "vertical" : "horizontal"
   );
   const isVerticalReadMode = computed(() => readAxis.value === "vertical");
-  const isHorizontalPageTurn = computed(() => isHorizontalReadMethod(effectiveReadMethod.value));
+  const isPagedReadMode = computed(() => isHorizontalReadMethod(effectiveReadMethod.value));
   const readWidthConfig = computed(() => {
     let width = config.value.readWidth;
     while (width > windowSize.value.width - READ_WIDTH_SIDE_SPACE) {
@@ -48,7 +48,7 @@ export const useReaderAppearance = ({ config, miniInterface, pageTurnDragActive,
   const chapterClass = computed(() => ({
     "reader-page--page-turn": true,
     "reader-page--vertical-read": isVerticalReadMode.value,
-    "reader-page--horizontal-turn": isHorizontalPageTurn.value,
+    "reader-page--horizontal-turn": isPagedReadMode.value,
     "reader-page--dragging": pageTurnDragActive.value
   }));
   const chapterTheme = computed(() => ({
@@ -106,7 +106,7 @@ export const useReaderAppearance = ({ config, miniInterface, pageTurnDragActive,
     effectiveReadMethod,
     getPageTurnDuration,
     getPageTurnTransition,
-    isHorizontalPageTurn,
+    isPagedReadMode,
     isNight,
     isVerticalReadMode,
     menuPopperOptions,

@@ -232,14 +232,14 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["close-reader"]);
-const READER_LOADING_PAGE_MIN_DURATION = 2000;
+const READER_STREAM_LOADING_MIN_DURATION = 2000;
 
 const wait = duration => new Promise(resolve => {
   window.setTimeout(resolve, Math.max(0, duration));
 });
 
 const waitRemainingTime = startedAt =>
-  wait(READER_LOADING_PAGE_MIN_DURATION - (performance.now() - startedAt));
+  wait(READER_STREAM_LOADING_MIN_DURATION - (performance.now() - startedAt));
 
 const VERTICAL_STREAM_LOAD_THRESHOLD = 240;
 const VERTICAL_CLICK_SCROLL_RATIO = 0.92;
@@ -332,7 +332,7 @@ const {
   effectiveReadMethod,
   getPageTurnDuration,
   getPageTurnTransition,
-  isHorizontalPageTurn,
+  isPagedReadMode,
   isNight,
   isVerticalReadMode,
   menuPopperOptions,
@@ -348,7 +348,6 @@ const {
   pageTurnDragActive,
   windowSize
 });
-const isPagedReadMode = computed(() => isHorizontalPageTurn.value);
 const getPageContentTransformStyle = offset => ({
   transform: `translate3d(0, ${-offset}px, 0)`
 });
@@ -1034,12 +1033,12 @@ const loadReaderStreamChapter = async direction => {
   if (!hasAdjacentStreamChapter(direction)) return false;
 
   streamChapterLoadTasks[direction] = (async () => {
-    const loadingPageStartedAt = performance.now();
+    const loadingStartedAt = performance.now();
     const shouldShowVerticalNextLoading = isVerticalReadMode.value && direction === "next";
     if (shouldShowVerticalNextLoading) verticalStreamNextLoading.value = true;
     try {
       const item = await loadAdjacentChapterStreamItem(direction);
-      await waitRemainingTime(loadingPageStartedAt);
+      await waitRemainingTime(loadingStartedAt);
       if (!item) return false;
 
       insertChapterStreamItem(item, direction);
