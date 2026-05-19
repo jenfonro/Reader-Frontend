@@ -13,32 +13,23 @@
         :ref="setContentViewportRef"
         class="reader-page__content-inner"
         :class="contentViewportClass"
-        @scroll="emit('content-scroll', $event)"
         @wheel.passive="emit('reader-wheel', $event)"
-        @touchstart.passive="emit('content-touch-start', $event)"
-        @touchmove.passive="emit('content-touch-move', $event)"
-        @touchend.passive="emit('content-touch-end', $event)"
-        @touchcancel.passive="emit('content-touch-end', $event)"
         @mousedown="emit('reader-mouse-down', $event)"
       >
         <div
-          v-if="isHorizontalPageTurn"
-          class="reader-horizontal-stage"
-          :class="horizontalStageClass"
-          @touchstart="emit('reader-touch-start', $event)"
-          @touchmove="emit('reader-touch-move', $event)"
-          @touchend="emit('reader-touch-end', $event)"
-          @touchcancel="emit('reader-touch-cancel', $event)"
+          v-if="isVerticalReadMode"
+          :ref="setVerticalStreamRef"
+          class="reader-vertical-stream"
+          @scroll="emit('vertical-scroll', $event)"
         >
-          <div
-            v-for="page in horizontalPageWindows"
-            :key="page.key"
-            class="reader-page-frame"
-            :class="getHorizontalPageFrameClass(page)"
-            :style="getHorizontalPageFrameStyle(page)"
+          <section
+            v-for="item in chapterStreamItems"
+            :key="item.key"
+            class="reader-vertical-stream__item"
+            :data-chapter-key="item.key"
           >
             <ReaderIntroPage
-              v-if="page.type === 'chapter' && isIntroStreamItem(page.item)"
+              v-if="isIntroStreamItem(item)"
               class="reader-readable-content reader-page__intro"
               :book="readingBook"
               :loading="introLoading"
@@ -47,27 +38,8 @@
               @start-reading="emit('start-reading')"
             />
             <Content
-              v-else-if="page.type === 'chapter'"
-              class="reader-text-flow reader-readable-content"
-              :title="getHorizontalFrameTitle(page)"
-              :content="getHorizontalFrameContent(page)"
-              :show-content="show"
-              :error="error"
-              :style="[contentStyle, getHorizontalFrameContentStyle(page)]"
-              :reader-config="config"
-            />
-            <ReaderLoadingBlock
-              v-else-if="page.type === 'loading'"
-              class="reader-page-frame__loading"
-            />
-            <div v-else class="reader-page-frame__placeholder" aria-hidden="true"></div>
-          </div>
-          <div class="reader-horizontal-measure" aria-hidden="true">
-            <Content
-              v-for="item in measuredChapterStreamItems"
-              :key="item.key"
-              class="reader-readable-content reader-horizontal-measure__content"
-              :data-chapter-key="item.key"
+              v-else
+              class="reader-readable-content reader-text-flow"
               :title="item.title"
               :content="item.content"
               :show-content="show"
@@ -75,55 +47,57 @@
               :style="contentStyle"
               :reader-config="config"
             />
-          </div>
+          </section>
+          <ReaderLoadingBlock
+            v-if="verticalStreamNextLoading"
+            class="reader-vertical-stream__loading"
+            variant="compact"
+            text="正在加载"
+          />
         </div>
         <div
-          v-else-if="isVerticalPageTurn"
-          class="reader-readable-content reader-chapter-flow"
+          v-else-if="isPagedReadMode"
+          class="reader-page-stage"
+          :class="pageStageClass"
+          @touchstart="emit('reader-touch-start', $event)"
+          @touchmove="emit('reader-touch-move', $event)"
+          @touchend="emit('reader-touch-end', $event)"
+          @touchcancel="emit('reader-touch-cancel', $event)"
         >
-          <section
-            v-if="isPreviousVerticalEdgeLoadingVisible"
-            class="reader-chapter-flow__loading reader-chapter-flow__loading--previous"
-            :style="verticalEdgeLoadingStyle"
-          >
-            <ReaderLoadingBlock inline />
-          </section>
-          <section
-            v-for="item in chapterStreamItems"
+          <ReaderPageFrame
+            v-for="page in pageWindows"
+            :key="page.key"
+            :class="getPageFrameClass(page)"
+            :style="getPageFrameStyle(page)"
+            :config="config"
+            :content-style="contentStyle"
+            :error="error"
+            :get-page-frame-content="getPageFrameContent"
+            :get-page-frame-content-style="getPageFrameContentStyle"
+            :get-page-frame-title="getPageFrameTitle"
+            :intro-loading="introLoading"
+            :is-intro-stream-item="isIntroStreamItem"
+            :is-reading-book-in-shelf="isReadingBookInShelf"
+            :page="page"
+            :reading-book="readingBook"
+            :show="show"
+            @toggle-bookshelf="emit('toggle-bookshelf')"
+            @start-reading="emit('start-reading')"
+          />
+        </div>
+        <div class="reader-page-measure" aria-hidden="true">
+          <Content
+            v-for="item in measuredChapterStreamItems"
             :key="item.key"
-            class="reader-chapter-flow__item"
-            :class="getChapterFlowItemClass(item)"
+            class="reader-readable-content reader-page-measure__content"
             :data-chapter-key="item.key"
-          >
-            <div class="reader-chapter-flow__item-content">
-              <ReaderIntroPage
-                v-if="isIntroStreamItem(item)"
-                class="reader-page__intro"
-                :book="readingBook"
-                :loading="introLoading"
-                :in-bookshelf="isReadingBookInShelf"
-                @toggle-bookshelf="emit('toggle-bookshelf')"
-                @start-reading="emit('start-reading')"
-              />
-              <Content
-                v-else
-                class="reader-text-flow"
-                :title="item.title"
-                :content="item.content"
-                :show-content="show"
-                :error="error"
-                :style="contentStyle"
-                :reader-config="config"
-              />
-            </div>
-          </section>
-          <section
-            v-if="isNextVerticalEdgeLoadingVisible"
-            class="reader-chapter-flow__loading reader-chapter-flow__loading--next"
-            :style="verticalEdgeLoadingStyle"
-          >
-            <ReaderLoadingBlock inline />
-          </section>
+            :title="item.title"
+            :content="item.content"
+            :show-content="show"
+            :error="error"
+            :style="contentStyle"
+            :reader-config="config"
+          />
         </div>
       </div>
     </div>
@@ -135,6 +109,7 @@
 import Content from "../Content.vue";
 import ReaderIntroPage from "./ReaderIntroPage.vue";
 import ReaderLoadingBlock from "./ReaderLoadingBlock.vue";
+import ReaderPageFrame from "./ReaderPageFrame.vue";
 
 defineProps({
   chapterClass: { type: [String, Array, Object], default: "" },
@@ -145,39 +120,33 @@ defineProps({
   contentViewportClass: { type: Object, default: () => ({}) },
   displayReaderHeaderTitle: { type: String, default: "" },
   error: { type: Boolean, default: false },
-  getChapterFlowItemClass: { type: Function, default: () => {} },
-  getHorizontalFrameContent: { type: Function, default: () => "" },
-  getHorizontalFrameContentStyle: { type: Function, default: () => ({}) },
-  getHorizontalFrameTitle: { type: Function, default: () => "" },
-  getHorizontalPageFrameClass: { type: Function, default: () => {} },
-  getHorizontalPageFrameStyle: { type: Function, default: () => ({}) },
+  getPageFrameContent: { type: Function, default: () => "" },
+  getPageFrameContentStyle: { type: Function, default: () => ({}) },
+  getPageFrameTitle: { type: Function, default: () => "" },
+  getPageFrameClass: { type: Function, default: () => {} },
+  getPageFrameStyle: { type: Function, default: () => ({}) },
   hasReaderContent: { type: Boolean, default: false },
-  horizontalPageWindows: { type: Array, default: () => [] },
-  horizontalStageClass: { type: Object, default: () => ({}) },
+  pageWindows: { type: Array, default: () => [] },
+  pageStageClass: { type: Object, default: () => ({}) },
   introLoading: { type: Boolean, default: false },
   isActiveIntroStreamItem: { type: Boolean, default: false },
-  isHorizontalPageTurn: { type: Boolean, default: false },
+  isPagedReadMode: { type: Boolean, default: false },
   isIntroStreamItem: { type: Function, default: () => false },
-  isNextVerticalEdgeLoadingVisible: { type: Boolean, default: false },
-  isPreviousVerticalEdgeLoadingVisible: { type: Boolean, default: false },
+  isVerticalReadMode: { type: Boolean, default: false },
   isReaderLoadingVisible: { type: Boolean, default: false },
   isReaderPositioning: { type: Boolean, default: false },
   isReadingBookInShelf: { type: Boolean, default: false },
-  isVerticalPageTurn: { type: Boolean, default: false },
   measuredChapterStreamItems: { type: Array, default: () => [] },
   miniInterface: { type: Boolean, default: false },
   readerLoadingText: { type: String, default: "正在加载" },
   readingBook: { type: Object, required: true },
+  verticalStreamNextLoading: { type: Boolean, default: false },
   setContentViewportRef: { type: Function, default: () => {} },
-  show: { type: Boolean, default: false },
-  verticalEdgeLoadingStyle: { type: Object, default: () => ({}) }
+  setVerticalStreamRef: { type: Function, default: () => {} },
+  show: { type: Boolean, default: false }
 });
 
 const emit = defineEmits([
-  "content-scroll",
-  "content-touch-end",
-  "content-touch-move",
-  "content-touch-start",
   "reader-mouse-down",
   "reader-touch-cancel",
   "reader-touch-end",
@@ -185,6 +154,7 @@ const emit = defineEmits([
   "reader-touch-start",
   "reader-wheel",
   "start-reading",
-  "toggle-bookshelf"
+  "toggle-bookshelf",
+  "vertical-scroll"
 ]);
 </script>

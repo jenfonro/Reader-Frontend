@@ -7,12 +7,10 @@ const HISTORY_PERSIST_DELAY = 180;
 export const useReadingHistoryPersistence = ({
   activeChapterKey,
   captureReadingHistoryAnchor,
-  currentPage,
+  positionSources = [],
   findChapterStreamItemByAnchor,
-  flushContentScrollState,
   isReaderPositioning,
   loadingVisible,
-  pageScrollOffset,
   readingBook
 }) => {
   let historyPersistTimer = 0;
@@ -49,9 +47,6 @@ export const useReadingHistoryPersistence = ({
   const persistReadingHistory = () => {
     if (!canPersistReadingHistory()) return;
 
-    flushContentScrollState();
-    if (!canPersistReadingHistory()) return;
-
     const historyBook = buildReadingHistoryBook();
     if (historyBook) addHistoryBook(historyBook);
   };
@@ -65,7 +60,7 @@ export const useReadingHistoryPersistence = ({
   };
 
   const stopReadingHistoryWatch = watch(
-    [readingBook, currentPage, pageScrollOffset, activeChapterKey],
+    [readingBook, activeChapterKey, ...positionSources],
     scheduleReadingHistoryPersist,
     { deep: true }
   );

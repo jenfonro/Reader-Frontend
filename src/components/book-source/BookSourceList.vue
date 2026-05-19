@@ -1,6 +1,6 @@
 <template>
   <div class="reader-manage-list-card">
-    <div v-if="loading" class="reader-manage-empty">正在加载书源...</div>
+    <div v-if="loading" class="reader-manage-empty">正在加载</div>
     <div v-else-if="!sources.length" class="reader-manage-empty">
       {{ total ? "没有匹配的书源" : "暂无书源，请先导入" }}
     </div>

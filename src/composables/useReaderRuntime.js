@@ -392,9 +392,9 @@ export const useReaderRuntime = () => {
     const controller = startReaderTask();
 
     error.value = false;
-    loadingText.value = "正在换源";
+    loadingText.value = "正在加载";
     loadingVisible.value = true;
-    title.value = candidateBook.name || "正在换源...";
+    title.value = candidateBook.name || "正在加载";
     chapterContent.value = "";
 
     try {

@@ -21,13 +21,13 @@
           <el-icon v-if="loading" class="is-loading">
             <Loading />
           </el-icon>
-          {{ loading ? "刷新中..." : "刷新" }}
+          {{ loading ? "正在加载" : "刷新" }}
         </span>
         <span :class="{ loading: loadingMore }" @click="loadMoreBookSources">
           <el-icon v-if="loadingMore" class="is-loading">
             <Loading />
           </el-icon>
-          {{ loadingMore ? "加载中..." : "加载更多" }}
+          {{ loadingMore ? "正在加载" : "加载更多" }}
         </span>
       </div>
     </div>

@@ -27,7 +27,7 @@
           <el-icon v-if="refreshLoading" class="is-loading">
             <Loading />
           </el-icon>
-          {{ refreshLoading ? "刷新中..." : "刷新" }}
+          {{ refreshLoading ? "正在加载" : "刷新" }}
         </span>
       </div>
     </div>

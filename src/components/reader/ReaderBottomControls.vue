@@ -6,13 +6,13 @@
       </button>
       <div class="reader-control-progress">
         <el-slider
-          :model-value="page"
+          :model-value="progress"
           :min="1"
-          :max="totalPages"
+          :max="progressMax"
           :show-tooltip="false"
           :step="1"
-          @update:model-value="emit('update:page', $event)"
-          @change="emit('change-page', $event)"
+          @update:model-value="emit('update:progress', $event)"
+          @change="emit('change-progress', $event)"
         />
       </div>
       <button type="button" class="reader-control-text" @click="emit('next-chapter')">
@@ -50,14 +50,14 @@ defineOptions({
 });
 
 defineProps({
-  page: { type: Number, default: 1 },
-  totalPages: { type: Number, default: 1 },
+  progress: { type: Number, default: 1 },
+  progressMax: { type: Number, default: 1 },
   theme: { type: Object, default: () => ({}) }
 });
 
 const emit = defineEmits([
-  "update:page",
-  "change-page",
+  "update:progress",
+  "change-progress",
   "previous-chapter",
   "next-chapter",
   "toggle-catalog",

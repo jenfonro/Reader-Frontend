@@ -64,10 +64,10 @@
     />
 
     <ReaderBottomControls
-      v-model:page="currentPage"
-      :total-pages="totalPages"
+      v-model:progress="bottomProgressValue"
+      :progress-max="bottomProgressMax"
       :theme="bottomBarTheme"
-      @change-page="showPage"
+      @change-progress="showProgress"
       @previous-chapter="goPreviousChapterAction"
       @next-chapter="goNextChapterAction"
       @toggle-catalog="toggleCatalogPanel"
@@ -139,36 +139,30 @@
       :content-viewport-class="contentViewportClass"
       :display-reader-header-title="displayReaderHeaderTitle"
       :error="error"
-      :get-chapter-flow-item-class="getChapterFlowItemClass"
-      :get-horizontal-frame-content="getHorizontalFrameContent"
-      :get-horizontal-frame-content-style="getHorizontalFrameContentStyle"
-      :get-horizontal-frame-title="getHorizontalFrameTitle"
-      :get-horizontal-page-frame-class="getHorizontalPageFrameClass"
-      :get-horizontal-page-frame-style="getHorizontalPageFrameStyle"
+      :get-page-frame-content="getPageFrameContent"
+      :get-page-frame-content-style="getPageFrameContentStyle"
+      :get-page-frame-title="getPageFrameTitle"
+      :get-page-frame-class="getPageFrameClass"
+      :get-page-frame-style="getPageFrameStyle"
       :has-reader-content="hasReaderContent"
-      :horizontal-page-windows="horizontalPageWindows"
-      :horizontal-stage-class="horizontalStageClass"
+      :page-windows="pageWindows"
+      :page-stage-class="pageStageClass"
       :intro-loading="introLoading"
       :is-active-intro-stream-item="isActiveIntroStreamItem"
-      :is-horizontal-page-turn="isHorizontalPageTurn"
+      :is-paged-read-mode="isPagedReadMode"
       :is-intro-stream-item="isIntroStreamItem"
-      :is-next-vertical-edge-loading-visible="isNextVerticalEdgeLoadingVisible"
-      :is-previous-vertical-edge-loading-visible="isPreviousVerticalEdgeLoadingVisible"
+      :is-vertical-read-mode="isVerticalReadMode"
       :is-reader-loading-visible="isReaderLoadingVisible"
       :is-reader-positioning="isReaderPositioning"
       :is-reading-book-in-shelf="isReadingBookInShelf"
-      :is-vertical-page-turn="isVerticalPageTurn"
       :measured-chapter-stream-items="measuredChapterStreamItems"
       :mini-interface="miniInterface"
       :reader-loading-text="readerLoadingText"
       :reading-book="readingBook"
+      :vertical-stream-next-loading="verticalStreamNextLoading"
       :set-content-viewport-ref="setContentViewportRef"
+      :set-vertical-stream-ref="setVerticalStreamRef"
       :show="show"
-      :vertical-edge-loading-style="verticalEdgeLoadingStyle"
-      @content-scroll="handleContentScroll"
-      @content-touch-end="handleContentTouchEnd"
-      @content-touch-move="handleContentTouchMove"
-      @content-touch-start="handleContentTouchStart"
       @reader-mouse-down="handleReaderMouseDown"
       @reader-touch-cancel="handleReaderTouchCancel"
       @reader-touch-end="handleReaderTouchEnd"
@@ -177,13 +171,14 @@
       @reader-wheel="handleReaderWheel"
       @start-reading="startReading"
       @toggle-bookshelf="toggleReadingBookshelf"
+      @vertical-scroll="handleVerticalScroll"
     />
   </div>
 </template>
 
 
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { ElMessage } from "element-plus/es/components/message/index.mjs";
 import "element-plus/es/components/message/style/css.mjs";
 import BookSource from "../components/BookSource.vue";
@@ -221,8 +216,7 @@ import { useReaderRuntime } from "../composables/useReaderRuntime.js";
 import { useReaderAppearance } from "../composables/useReaderAppearance.js";
 import { useReadingHistoryPersistence } from "../composables/useReadingHistoryPersistence.js";
 import { useReaderViewState } from "../composables/useReaderViewState.js";
-import { useReaderPaginationScheduler } from "../composables/useReaderPaginationScheduler.js";
-import { useReaderVerticalBoundaryTouch } from "../composables/useReaderVerticalBoundaryTouch.js";
+import { useReaderLayoutScheduler } from "../composables/useReaderLayoutScheduler.js";
 import { useReaderBookshelf } from "../composables/useReaderBookshelf.js";
 import { useAnimationFrameValue } from "../composables/useAnimationFrameValue.js";
 
@@ -246,6 +240,11 @@ const wait = duration => new Promise(resolve => {
 
 const waitRemainingTime = startedAt =>
   wait(READER_LOADING_PAGE_MIN_DURATION - (performance.now() - startedAt));
+
+const VERTICAL_STREAM_LOAD_THRESHOLD = 240;
+const VERTICAL_CLICK_SCROLL_RATIO = 0.92;
+const VERTICAL_PROGRESS_MAX = 1000;
+const verticalStreamNextLoading = ref(false);
 
 const {
   title,
@@ -302,27 +301,25 @@ const {
   activeChapterIndex,
   activeChapterKey,
   activeChapterTitle,
-  chapterFlowBlockHeights,
   config,
   contentViewportRef,
   currentPage,
-  horizontalChapterPageCounts,
+  chapterPageMetrics,
   miniInterface,
   pageHeight,
-  pageMaxScrollOffset,
-  pageScrollOffset,
+  verticalStreamRef,
   pageTurnDragActive,
-  pageTurnDragOffsetX,
+  pageTurnDragOffset,
   pageWidth,
+  verticalProgress,
   pendingHistoryRestoreAnchor,
   pendingReadMethodSwitchAnchor,
   setContentViewportRef,
+  setVerticalStreamRef,
   show,
   suppressNextReaderClick,
   syncInterface,
   totalPages,
-  verticalEdgeLoading,
-  verticalStreamLoading,
   windowSize
 } = useReaderViewState();
 const {
@@ -337,10 +334,10 @@ const {
   getPageTurnTransition,
   isHorizontalPageTurn,
   isNight,
-  isVerticalPageTurn,
+  isVerticalReadMode,
   menuPopperOptions,
   menuSheetTheme,
-  pageTurnAxis,
+  readAxis,
   readWidthConfig,
   sideActionStyle,
   sidePanelTheme,
@@ -351,13 +348,13 @@ const {
   pageTurnDragActive,
   windowSize
 });
-const getPageTranslateY = page => -(page - 1) * pageHeight.value;
-const getPagedContentStyle = page => ({
-  transform: `translate3d(0, ${getPageTranslateY(page)}px, 0)`
+const isPagedReadMode = computed(() => isHorizontalPageTurn.value);
+const getPageContentTransformStyle = offset => ({
+  transform: `translate3d(0, ${-offset}px, 0)`
 });
 const chapterStreamItems = computed(() => chapterStream.value);
 const measuredChapterStreamItems = computed(() =>
-  chapterStreamItems.value.filter(item => !isIntroStreamItem(item))
+  isPagedReadMode.value ? chapterStreamItems.value.filter(item => !isIntroStreamItem(item)) : []
 );
 const chapterStreamItemMap = computed(() =>
   new Map(chapterStreamItems.value.map(item => [item.key, item]))
@@ -380,106 +377,20 @@ const isReaderContentStaging = computed(() => isReaderPositioning.value);
 const isReaderLoadingVisible = computed(() =>
   loadingVisible.value && !hasReaderContent.value
 );
-const getVerticalEdgeLoadingHeight = direction =>
-  verticalEdgeLoading.value[direction] ? Math.max(1, pageHeight.value) : 0;
-const isPreviousVerticalEdgeLoadingVisible = computed(() =>
-  isVerticalPageTurn.value && hasReaderContent.value && verticalEdgeLoading.value.previous
-);
-const isNextVerticalEdgeLoadingVisible = computed(() =>
-  isVerticalPageTurn.value && hasReaderContent.value && verticalEdgeLoading.value.next
-);
-const verticalEdgeLoadingStyle = computed(() => ({
-  height: `${Math.round(Math.max(1, pageHeight.value))}px`
-}));
-const getVerticalLeadingFlowHeight = () => getVerticalEdgeLoadingHeight("previous");
-const getVerticalTrailingFlowHeight = () => getVerticalEdgeLoadingHeight("next");
 const readerLoadingText = computed(() => loadingText.value);
-const getChapterFlowItemClass = item => ({
-  "reader-chapter-flow__item--current": item.key === activeChapterKey.value
-});
-
-const getChapterFlowOffsetByKey = (targetKey, align = "start") => {
-  let offset = getVerticalLeadingFlowHeight();
-  for (const item of chapterStreamItems.value) {
-    const itemHeight = chapterFlowBlockHeights.value[item.key] || pageHeight.value;
-    if (item.key === targetKey) {
-      return align === "end" ? Math.max(0, offset + itemHeight - pageHeight.value) : offset;
+const bottomProgressMax = computed(() =>
+  isVerticalReadMode.value ? VERTICAL_PROGRESS_MAX : totalPages.value
+);
+const bottomProgressValue = computed({
+  get: () => isVerticalReadMode.value ? verticalProgress.value : currentPage.value,
+  set: value => {
+    if (isVerticalReadMode.value) {
+      setVerticalProgress(value);
+      return;
     }
-    offset += itemHeight;
+    setReaderPage(value);
   }
-  return align === "end" ? Math.max(0, offset - pageHeight.value) : offset;
-};
-
-const getChapterFlowItemAtOffset = offset => {
-  let itemOffset = getVerticalLeadingFlowHeight();
-  if (offset < itemOffset) {
-    const firstItem = chapterStreamItems.value[0] || null;
-    return firstItem ? { item: firstItem, itemOffset, itemHeight: pageHeight.value } : null;
-  }
-
-  let lastMatch = null;
-  for (const item of chapterStreamItems.value) {
-    const itemHeight = chapterFlowBlockHeights.value[item.key] || pageHeight.value;
-    lastMatch = { item, itemOffset, itemHeight };
-    if (offset < itemOffset + itemHeight) return lastMatch;
-    itemOffset += itemHeight;
-  }
-
-  return lastMatch;
-};
-
-const getActiveChapterStreamItemByOffset = offset => {
-  const match = getChapterFlowItemAtOffset(offset + pageHeight.value * 0.45);
-  return match?.item || null;
-};
-
-const getActiveChapterStreamItem = offset => {
-  if (!isVerticalPageTurn.value) return null;
-  return getActiveChapterStreamItemByOffset(offset);
-};
-
-let verticalFlowCommitDepth = 0;
-
-const captureVerticalFlowMetrics = () => {
-  const viewportElement = contentViewportRef.value;
-  return {
-    scrollHeight: Math.max(0, viewportElement?.scrollHeight || 0),
-    scrollTop: Math.max(0, viewportElement?.scrollTop ?? pageScrollOffset.value),
-    viewportHeight: Math.max(1, pageHeight.value)
-  };
-};
-
-const getVerticalFlowHeightDelta = beforeMetrics =>
-  captureVerticalFlowMetrics().scrollHeight - Math.max(0, beforeMetrics?.scrollHeight || 0);
-
-const getVerticalCurrentOffset = ({ before }) => before.scrollTop;
-
-const getVerticalPrependPreserveOffset = ({ before, heightDelta }) =>
-  before.scrollTop + heightDelta;
-
-const getVerticalPreviousPageOffset = ({ before, heightDelta }) =>
-  before.scrollTop + heightDelta - before.viewportHeight;
-
-const getVerticalNextPageOffset = ({ before }) =>
-  before.scrollTop + before.viewportHeight;
-
-const commitVerticalFlowMutation = async ({ mutate, getTargetOffset }) => {
-  const before = captureVerticalFlowMetrics();
-  cancelPendingContentScroll();
-  verticalFlowCommitDepth += 1;
-
-  try {
-    mutate();
-    await nextTick();
-    const metrics = syncReaderLayoutMetrics();
-    const heightDelta = getVerticalFlowHeightDelta(before);
-    const targetOffset = getTargetOffset({ before, heightDelta, metrics });
-    setPageScrollOffset(targetOffset, { ensureStream: false });
-    return metrics;
-  } finally {
-    verticalFlowCommitDepth -= 1;
-  }
-};
+});
 
 const syncActiveChapterItem = activeItem => {
   if (!activeItem) return;
@@ -499,40 +410,41 @@ const syncActiveChapterItem = activeItem => {
   syncReadingProgress(activeItem);
 };
 
-const syncActiveChapterByScrollOffset = offset => {
-  syncActiveChapterItem(getActiveChapterStreamItem(offset));
-};
 const contentViewportClass = computed(() => ({
-  "reader-page__content-inner--paged": !isVerticalPageTurn.value,
-  "reader-page__content-inner--scroll": isVerticalPageTurn.value,
+  "reader-page__content-inner--paged": isPagedReadMode.value,
+  "reader-page__content-inner--vertical-scroll": isVerticalReadMode.value,
   "reader-page__content-inner--positioning": isReaderContentStaging.value
 }));
-const horizontalTurnMode = computed(() => {
+const pageTurnMode = computed(() => {
   if (effectiveReadMethod.value === "覆盖") return "cover";
   return "slide";
 });
-const horizontalTurnDirection = computed(() => {
-  if (pageTurnDragOffsetX.value < 0) return "next";
-  if (pageTurnDragOffsetX.value > 0) return "previous";
+const pageTurnDirection = computed(() => {
+  if (pageTurnDragOffset.value < 0) return "next";
+  if (pageTurnDragOffset.value > 0) return "previous";
   return "";
 });
-const horizontalTurnProgress = computed(() => {
-  const width = Math.max(1, pageWidth.value);
-  return Math.min(1, Math.abs(pageTurnDragOffsetX.value) / width);
+const pageTurnProgress = computed(() => {
+  const size = getPageTurnSize(readAxis.value);
+  return Math.min(1, Math.abs(pageTurnDragOffset.value) / size);
 });
-const horizontalTurnActive = computed(() => horizontalTurnProgress.value > 0.001);
-const horizontalMovingFrameRole = computed(() => {
-  if (!horizontalTurnDirection.value) return "current";
-  if (horizontalTurnMode.value === "slide") return "current";
-  return horizontalTurnDirection.value === "next" ? "current" : "previous";
+const pageTurnActive = computed(() => pageTurnProgress.value > 0.001);
+const movingFrameRole = computed(() => {
+  if (!pageTurnDirection.value) return "current";
+  if (pageTurnMode.value === "slide") return "current";
+  return pageTurnDirection.value === "next" ? "current" : "previous";
 });
-const horizontalStageClass = computed(() => ({
-  [`reader-horizontal-stage--${horizontalTurnMode.value}`]: true,
-  [`reader-horizontal-stage--${horizontalTurnDirection.value}`]: Boolean(horizontalTurnDirection.value),
-  "reader-horizontal-stage--turning": horizontalTurnActive.value
+const pageStageClass = computed(() => ({
+  [`reader-page-stage--${pageTurnMode.value}`]: true,
+  [`reader-page-stage--${readAxis.value}`]: true,
+  [`reader-page-stage--${pageTurnDirection.value}`]: Boolean(pageTurnDirection.value),
+  "reader-page-stage--turning": pageTurnActive.value
 }));
-const getRuntimeChapterKey = chapter =>
-  String(chapter?.chapterUrl || chapter?.url || (chapter?.index ?? chapter?.title ?? chapter?.name ?? ""));
+
+const getPageFrameTransform = offset =>
+  readAxis.value === "horizontal"
+    ? `translate3d(${offset}px, 0, 0)`
+    : `translate3d(0, ${offset}px, 0)`;
 const createReaderPageFrame = ({ role, type = "empty", number = 0, item = null }) => ({
   key: `${role}-${type}-${item?.key || "empty"}-${number || "none"}`,
   role,
@@ -541,7 +453,7 @@ const createReaderPageFrame = ({ role, type = "empty", number = 0, item = null }
   item
 });
 
-const getCurrentHorizontalChapterItem = () => {
+const getCurrentPageChapterItem = () => {
   const activeItem = chapterStreamItemMap.value.get(activeChapterKey.value);
   if (activeItem) return activeItem;
 
@@ -549,26 +461,28 @@ const getCurrentHorizontalChapterItem = () => {
     chapterStreamItems.value[0] ||
     null;
 };
-const getHorizontalChapterItemIndex = item => {
+const getPageChapterItemIndex = item => {
   if (!item) return -1;
   return chapterStreamItems.value.findIndex(chapterItem => chapterItem.key === item.key);
 };
-const getHorizontalSiblingChapterItem = direction => {
-  const currentItem = getCurrentHorizontalChapterItem();
-  const currentIndex = getHorizontalChapterItemIndex(currentItem);
+const getSiblingPageChapterItem = direction => {
+  const currentItem = getCurrentPageChapterItem();
+  const currentIndex = getPageChapterItemIndex(currentItem);
   if (currentIndex < 0) return null;
   return chapterStreamItems.value[currentIndex + (direction === "previous" ? -1 : 1)] || null;
 };
-const getHorizontalChapterPageCount = item => {
+const getChapterPageMetric = item => chapterPageMetrics.value[item?.key] || null;
+
+const getChapterPageCount = item => {
   if (isIntroStreamItem(item)) return 1;
 
-  const measuredCount = Number(horizontalChapterPageCounts.value[item?.key]);
-  if (Number.isFinite(measuredCount) && measuredCount > 0) return Math.trunc(measuredCount);
-  if (item?.key === getCurrentHorizontalChapterItem()?.key) return Math.max(1, totalPages.value);
+  const pageCount = Number(getChapterPageMetric(item)?.pageCount);
+  if (Number.isFinite(pageCount) && pageCount > 0) return Math.trunc(pageCount);
+  if (item?.key === getCurrentPageChapterItem()?.key) return Math.max(1, totalPages.value);
   return 1;
 };
-const getCurrentHorizontalPageTotal = () =>
-  getHorizontalChapterPageCount(getCurrentHorizontalChapterItem());
+const getCurrentPageTotal = () =>
+  getChapterPageCount(getCurrentPageChapterItem());
 
 const getBookHistoryProgress = book => {
   const progress = Number(book?.durChapterProgress);
@@ -595,35 +509,15 @@ const findChapterStreamItemByAnchor = anchor => {
     null;
 };
 
-const getChapterFlowOffsetByHeightMap = (targetKey, heightMap = {}, defaultHeight = pageHeight.value) => {
-  let offset = getVerticalLeadingFlowHeight();
-  for (const item of chapterStreamItems.value) {
-    if (item.key === targetKey) return offset;
-    offset += Math.max(1, heightMap[item.key] || defaultHeight || 1);
-  }
-  return offset;
+const getCurrentReadingRatio = () => {
+  if (isVerticalReadMode.value) return getVerticalProgressRatio();
+  return getPageRatio(currentPage.value, getCurrentPageTotal());
 };
-
-const getChapterFlowItemMetrics = (
-  targetKey,
-  heightMap = chapterFlowBlockHeights.value,
-  viewportHeight = pageHeight.value
-) => {
-  const itemOffset = getChapterFlowOffsetByHeightMap(targetKey, heightMap, viewportHeight);
-  const itemHeight = Math.max(1, heightMap[targetKey] || viewportHeight || 1);
-  const maxItemOffset = Math.max(0, itemHeight - Math.max(1, viewportHeight || 1));
-  return { itemOffset, itemHeight, maxItemOffset };
-};
-
-const getReaderFocusOffset = viewportHeight =>
-  Math.max(1, viewportHeight || pageHeight.value || 1) * 0.45;
 
 const captureReadMethodSwitchAnchor = () => {
   if (loadingVisible.value || !show.value) return null;
 
-  const activeItem = isVerticalPageTurn.value
-    ? getActiveChapterStreamItem(pageScrollOffset.value) || chapterStreamItemMap.value.get(activeChapterKey.value)
-    : getCurrentHorizontalChapterItem();
+  const activeItem = getCurrentPageChapterItem();
   if (!activeItem) return null;
 
   if (isIntroStreamItem(activeItem)) {
@@ -634,23 +528,11 @@ const captureReadMethodSwitchAnchor = () => {
     };
   }
 
-  if (isVerticalPageTurn.value) {
-    const { itemOffset, itemHeight, maxItemOffset } = getChapterFlowItemMetrics(activeItem.key);
-    const focusOffset = pageScrollOffset.value + getReaderFocusOffset(pageHeight.value);
-    const localOffset = Math.max(0, Math.min(itemHeight, focusOffset - itemOffset));
-    return {
-      type: "chapter",
-      key: activeItem.key,
-      index: activeItem.index,
-      ratio: maxItemOffset ? clampProgressRatio(localOffset / maxItemOffset) : 0
-    };
-  }
-
   return {
     type: "chapter",
     key: activeItem.key,
     index: activeItem.index,
-    ratio: getPageRatio(currentPage.value, getCurrentHorizontalPageTotal())
+    ratio: getCurrentReadingRatio()
   };
 };
 
@@ -662,7 +544,7 @@ const captureReadingHistoryAnchor = () => {
   return item && !isIntroStreamItem(item) ? anchor : null;
 };
 
-const applyReadMethodSwitchAnchor = (anchor, { viewportHeight, chapterFlowHeights, measuredHorizontalPageCounts }) => {
+const applyReadMethodSwitchAnchor = (anchor, { measuredPageMetrics }) => {
   if (!anchor) return false;
 
   if (anchor.type === "intro") {
@@ -670,139 +552,138 @@ const applyReadMethodSwitchAnchor = (anchor, { viewportHeight, chapterFlowHeight
     if (!introItem) return false;
 
     syncActiveChapterItem(introItem);
-    if (isVerticalPageTurn.value) setPageScrollOffset(0);
+    if (isVerticalReadMode.value) setVerticalProgress(1);
     else setReaderPage(1);
     return true;
   }
 
-  if (isVerticalPageTurn.value) {
-    const targetItem = findChapterStreamItemByAnchor(anchor);
-    if (!targetItem) return false;
+  const targetItem = findChapterStreamItemByAnchor(anchor);
+  if (!targetItem) return false;
 
-    const heightMap = chapterFlowHeights && Object.keys(chapterFlowHeights).length
-      ? chapterFlowHeights
-      : chapterFlowBlockHeights.value;
-    const { itemOffset, maxItemOffset } = getChapterFlowItemMetrics(
-      targetItem.key,
-      heightMap,
-      viewportHeight
-    );
-    const localOffset = Math.round(
-      maxItemOffset * clampProgressRatio(anchor.ratio)
-    );
-    const targetOffset = itemOffset + localOffset - getReaderFocusOffset(viewportHeight);
-    syncActiveChapterItem(targetItem);
-    setPageScrollOffset(targetOffset);
+  syncActiveChapterItem(targetItem);
+  if (isVerticalReadMode.value) {
+    setVerticalProgressByRatio(anchor.ratio);
     return true;
   }
 
-  if (isHorizontalPageTurn.value) {
-    const targetItem = findChapterStreamItemByAnchor(anchor);
-    if (!targetItem) return false;
-
-    syncActiveChapterItem(targetItem);
-    const pageTotal = Math.max(1, measuredHorizontalPageCounts[targetItem.key] || getHorizontalChapterPageCount(targetItem));
-    totalPages.value = pageTotal;
-    setReaderPage(getPageByRatio(anchor.ratio, pageTotal));
-    return true;
-  }
-
-  return false;
+  const pageTotal = Math.max(1, measuredPageMetrics[targetItem.key]?.pageCount || getChapterPageCount(targetItem));
+  totalPages.value = pageTotal;
+  setReaderPage(getPageByRatio(anchor.ratio, pageTotal));
+  return true;
 };
 
-const hasHorizontalBoundaryLoadingPage = direction =>
-  !getHorizontalSiblingChapterItem(direction) && hasAdjacentStreamChapter(direction);
+const hasBoundaryLoadingPage = direction =>
+  !getSiblingPageChapterItem(direction) && hasAdjacentStreamChapter(direction);
 
 const canTurnToPreviousReaderPage = computed(() =>
   currentPage.value > 1 ||
-  Boolean(getHorizontalSiblingChapterItem("previous")) ||
+  Boolean(getSiblingPageChapterItem("previous")) ||
   hasAdjacentStreamChapter("previous")
 );
 const canTurnToNextReaderPage = computed(() =>
-  currentPage.value < getCurrentHorizontalPageTotal() ||
-  Boolean(getHorizontalSiblingChapterItem("next")) ||
+  currentPage.value < getCurrentPageTotal() ||
+  Boolean(getSiblingPageChapterItem("next")) ||
   hasAdjacentStreamChapter("next")
 );
 
-const getPreviousHorizontalPageFrame = () => {
-  const currentItem = getCurrentHorizontalChapterItem();
+const getPreviousPageFrame = () => {
+  const currentItem = getCurrentPageChapterItem();
   if (currentPage.value > 1) {
-    return createReaderPageFrame({ role: "previous", type: "chapter", number: currentPage.value - 1, item: currentItem });
+    return createReaderPageFrame({
+      role: "previous",
+      type: "chapter",
+      number: currentPage.value - 1,
+      item: currentItem
+    });
   }
 
-  const previousItem = getHorizontalSiblingChapterItem("previous");
+  const previousItem = getSiblingPageChapterItem("previous");
   if (previousItem) {
     return createReaderPageFrame({
       role: "previous",
       type: "chapter",
-      number: getHorizontalChapterPageCount(previousItem),
+      number: getChapterPageCount(previousItem),
       item: previousItem
     });
   }
 
-  if (hasHorizontalBoundaryLoadingPage("previous")) {
+  if (hasBoundaryLoadingPage("previous")) {
     return createReaderPageFrame({ role: "previous", type: "loading" });
   }
 
   return createReaderPageFrame({ role: "previous" });
 };
 
-const getCurrentHorizontalPageFrame = () => {
+const getCurrentPageFrame = () => {
   return createReaderPageFrame({
     role: "current",
     type: "chapter",
     number: currentPage.value,
-    item: getCurrentHorizontalChapterItem()
+    item: getCurrentPageChapterItem()
   });
 };
 
-const getNextHorizontalPageFrame = () => {
-  const currentItem = getCurrentHorizontalChapterItem();
-  const currentPageTotal = getHorizontalChapterPageCount(currentItem);
+const getNextPageFrame = () => {
+  const currentItem = getCurrentPageChapterItem();
+  const currentPageTotal = getChapterPageCount(currentItem);
   if (currentPage.value < currentPageTotal) {
-    return createReaderPageFrame({ role: "next", type: "chapter", number: currentPage.value + 1, item: currentItem });
+    return createReaderPageFrame({
+      role: "next",
+      type: "chapter",
+      number: currentPage.value + 1,
+      item: currentItem
+    });
   }
 
-  const nextItem = getHorizontalSiblingChapterItem("next");
+  const nextItem = getSiblingPageChapterItem("next");
   if (nextItem) {
-    return createReaderPageFrame({ role: "next", type: "chapter", number: 1, item: nextItem });
+    return createReaderPageFrame({
+      role: "next",
+      type: "chapter",
+      number: 1,
+      item: nextItem
+    });
   }
 
-  if (hasHorizontalBoundaryLoadingPage("next")) {
+  if (hasBoundaryLoadingPage("next")) {
     return createReaderPageFrame({ role: "next", type: "loading" });
   }
 
   return createReaderPageFrame({ role: "next" });
 };
 
-const horizontalPageWindows = computed(() => [
-  getPreviousHorizontalPageFrame(),
-  getCurrentHorizontalPageFrame(),
-  getNextHorizontalPageFrame()
-]);
-const horizontalFrameState = computed(() => {
-  const width = Math.max(1, pageWidth.value);
-  const offset = pageTurnDragOffsetX.value;
-  const progress = horizontalTurnProgress.value;
+const pageWindows = computed(() => {
+  if (!isPagedReadMode.value) return [];
+
+  return [
+    getPreviousPageFrame(),
+    getCurrentPageFrame(),
+    getNextPageFrame()
+  ];
+});
+const pageFrameState = computed(() => {
+  const size = getPageTurnSize(readAxis.value);
+  const offset = pageTurnDragOffset.value;
+  const progress = pageTurnProgress.value;
   const transition = getPageTurnTransition();
-  const mode = horizontalTurnMode.value;
+  const mode = pageTurnMode.value;
 
   const state = {
-    previous: { transform: `translate3d(${-width}px, 0, 0)`, opacity: 0, zIndex: 1 },
-    current: { transform: "translate3d(0, 0, 0)", opacity: 1, zIndex: 3 },
-    next: { transform: `translate3d(${width}px, 0, 0)`, opacity: 0, zIndex: 1 }
+    previous: { transform: getPageFrameTransform(-size), opacity: 0, zIndex: 1 },
+    current: { transform: getPageFrameTransform(0), opacity: 1, zIndex: 3 },
+    next: { transform: getPageFrameTransform(size), opacity: 0, zIndex: 1 }
   };
 
   if (mode === "slide") {
-    state.previous = { transform: `translate3d(${-width + offset}px, 0, 0)`, opacity: 1, zIndex: 2 };
-    state.current = { transform: `translate3d(${offset}px, 0, 0)`, opacity: 1, zIndex: 3 };
-    state.next = { transform: `translate3d(${width + offset}px, 0, 0)`, opacity: 1, zIndex: 2 };
+    state.previous = { transform: getPageFrameTransform(-size + offset), opacity: 1, zIndex: 2 };
+    state.current = { transform: getPageFrameTransform(offset), opacity: 1, zIndex: 3 };
+    state.next = { transform: getPageFrameTransform(size + offset), opacity: 1, zIndex: 2 };
   } else if (mode === "cover" && offset < 0) {
-    state.current = { transform: `translate3d(${offset}px, 0, 0)`, opacity: 1, zIndex: 3 };
-    state.next = { transform: "translate3d(0, 0, 0)", opacity: 1, zIndex: 2 };
+    state.current = { transform: getPageFrameTransform(offset), opacity: 1, zIndex: 3 };
+    state.next = { transform: getPageFrameTransform(0), opacity: 1, zIndex: 2 };
   } else if (mode === "cover" && offset > 0) {
-    state.previous = { transform: `translate3d(${-width + offset}px, 0, 0)`, opacity: 1, zIndex: 3 };
-    state.current = { transform: "translate3d(0, 0, 0)", opacity: 1, zIndex: 2 };
+    state.previous = { transform: getPageFrameTransform(-size + offset), opacity: 1, zIndex: 3 };
+    state.current = { transform: getPageFrameTransform(0), opacity: 1, zIndex: 2 };
   }
 
   return Object.fromEntries(
@@ -816,30 +697,34 @@ const horizontalFrameState = computed(() => {
     ])
   );
 });
-const getHorizontalPageFrameStyle = page => horizontalFrameState.value[page.role];
-const getHorizontalPageFrameClass = page => ({
+const getPageFrameStyle = page => pageFrameState.value[page.role];
+const getPageFrameClass = page => ({
   [`reader-page-frame--${page.role}`]: true,
   [`reader-page-frame--${page.type}`]: true,
-  "reader-page-frame--active": horizontalTurnActive.value && page.role === horizontalMovingFrameRole.value
+  "reader-page-frame--active": pageTurnActive.value && page.role === movingFrameRole.value
 });
-const getHorizontalFrameTitle = page => page.item?.title || title.value;
-const getHorizontalFrameContent = page => page.item?.content || chapterContent.value;
-const getHorizontalFrameContentStyle = page => getPagedContentStyle(page.number || 1);
+const getPageFrameTitle = page => page.item?.title || title.value;
+const getPageFrameContent = page => page.item?.content || chapterContent.value;
+
+const getForwardPageOffset = pageNumber => (pageNumber - 1) * pageHeight.value;
+
+const getPageFrameContentStyle = page => {
+  const pageNumber = Math.max(1, Math.min(page.number || 1, getChapterPageCount(page.item)));
+  return getPageContentTransformStyle(getForwardPageOffset(pageNumber));
+};
 
 const toShelf = () => {
   emit("close-reader");
 };
 
 const resetReaderRuntimeViewState = () => {
-  chapterFlowBlockHeights.value = {};
-  horizontalChapterPageCounts.value = {};
-  verticalStreamLoading.value = { previous: false, next: false };
-  verticalEdgeLoading.value = { previous: false, next: false };
+  chapterPageMetrics.value = {};
   activeChapterKey.value = "";
   activeChapterTitle.value = "";
   activeChapterIndex.value = 0;
   currentPage.value = 1;
-  pageScrollOffset.value = 0;
+  totalPages.value = 1;
+  verticalProgress.value = 1;
 };
 
 const changeBookSource = async searchBook => {
@@ -854,7 +739,7 @@ const changeBookSource = async searchBook => {
     if (switched) {
       resetReaderRuntimeViewState();
       pendingReadMethodSwitchAnchor.value = sourceSwitchAnchor;
-      scheduleReaderPagination({ keepPage: false });
+      scheduleReaderLayout({ keepPosition: false });
       return;
     }
     ElMessage.error("换源失败，请稍后再试");
@@ -875,45 +760,39 @@ const clampReaderPage = value => {
   return Math.min(totalPages.value, Math.max(1, nextValue));
 };
 
-const getMaxPageScrollOffset = () => pageMaxScrollOffset.value;
-
-const clampPageScrollOffset = value => {
-  const parsedValue = Number(value);
-  const nextValue = Number.isFinite(parsedValue) ? parsedValue : 0;
-  return Math.min(getMaxPageScrollOffset(), Math.max(0, nextValue));
-};
-
-const getPageByScrollOffset = value => {
-  const page = Math.floor(clampPageScrollOffset(value) / Math.max(1, pageHeight.value)) + 1;
-  return Math.min(totalPages.value, Math.max(1, page));
-};
-
-const syncReaderPageByScrollOffset = () => {
-  const nextPage = getPageByScrollOffset(pageScrollOffset.value);
-  currentPage.value = nextPage;
-};
-
-const syncContentScrollTop = () => {
-  if (!isVerticalPageTurn.value) return;
-  const viewportElement = contentViewportRef.value;
-  if (!viewportElement) return;
-  if (Math.abs(viewportElement.scrollTop - pageScrollOffset.value) > 1) {
-    viewportElement.scrollTop = pageScrollOffset.value;
-  }
-};
-
 const setReaderPage = value => {
   currentPage.value = clampReaderPage(value);
 };
 
-const setPageScrollOffset = (value, { syncDom = true, ensureStream = true } = {}) => {
-  const nextOffset = clampPageScrollOffset(value);
-  pageScrollOffset.value = nextOffset;
-  syncReaderPageByScrollOffset();
-  syncActiveChapterByScrollOffset(nextOffset);
-  if (syncDom) syncContentScrollTop();
-  if (ensureStream) ensureVerticalStreamAroundViewport();
+const clampVerticalProgress = value => {
+  const parsedValue = Number(value);
+  const nextValue = Number.isFinite(parsedValue) ? Math.trunc(parsedValue) : 1;
+  return Math.min(VERTICAL_PROGRESS_MAX, Math.max(1, nextValue));
 };
+
+const setVerticalProgress = value => {
+  verticalProgress.value = clampVerticalProgress(value);
+};
+
+const getVerticalProgressByRatio = ratio => {
+  if (VERTICAL_PROGRESS_MAX <= 1) return 1;
+  return Math.min(
+    VERTICAL_PROGRESS_MAX,
+    Math.max(1, Math.round(clampProgressRatio(ratio) * (VERTICAL_PROGRESS_MAX - 1)) + 1)
+  );
+};
+
+const setVerticalProgressByRatio = ratio => {
+  setVerticalProgress(getVerticalProgressByRatio(ratio));
+};
+
+const getVerticalProgressRatio = () => {
+  if (VERTICAL_PROGRESS_MAX <= 1) return 0;
+  return clampProgressRatio((verticalProgress.value - 1) / (VERTICAL_PROGRESS_MAX - 1));
+};
+
+const getVerticalPlacementProgress = placement =>
+  placement === "last" ? VERTICAL_PROGRESS_MAX : 1;
 
 const getContentViewportSize = () => {
   const viewportElement = contentViewportRef.value;
@@ -923,29 +802,21 @@ const getContentViewportSize = () => {
   };
 };
 
-const measureChapterFlowHeights = viewportHeight => {
+const measureChapterPageMetrics = viewportHeight => {
   const viewportElement = contentViewportRef.value;
   if (!viewportElement) return {};
 
-  return Array.from(viewportElement.querySelectorAll(".reader-chapter-flow__item")).reduce(
-    (heightMap, element) => {
+  return Array.from(viewportElement.querySelectorAll(".reader-page-measure__content")).reduce(
+    (pageMetricMap, element) => {
       const key = element.dataset.chapterKey;
-      if (key) heightMap[key] = Math.max(1, element.offsetHeight || element.scrollHeight || viewportHeight);
-      return heightMap;
-    },
-    {}
-  );
-};
-
-const measureHorizontalPageCounts = viewportHeight => {
-  const viewportElement = contentViewportRef.value;
-  if (!viewportElement) return {};
-
-  return Array.from(viewportElement.querySelectorAll(".reader-horizontal-measure__content")).reduce(
-    (pageCountMap, element) => {
-      const key = element.dataset.chapterKey;
-      if (key) pageCountMap[key] = Math.max(1, Math.ceil((element.scrollHeight || viewportHeight) / viewportHeight));
-      return pageCountMap;
+      const contentHeight = Math.max(1, element.scrollHeight || viewportHeight);
+      if (key) {
+        pageMetricMap[key] = {
+          contentHeight,
+          pageCount: Math.max(1, Math.ceil(contentHeight / viewportHeight))
+        };
+      }
+      return pageMetricMap;
     },
     {}
   );
@@ -956,23 +827,113 @@ const syncReaderLayoutMetrics = () => {
   pageHeight.value = height;
   pageWidth.value = width;
 
-  if (isVerticalPageTurn.value) {
-    const heightMap = measureChapterFlowHeights(height);
-    chapterFlowBlockHeights.value = heightMap;
-    const totalHeight = chapterStreamItems.value.reduce(
-      (sum, item) => sum + Math.max(1, heightMap[item.key] || height),
-      getVerticalLeadingFlowHeight() + getVerticalTrailingFlowHeight()
+  const pageMetricMap = isPagedReadMode.value ? measureChapterPageMetrics(height) : {};
+  chapterPageMetrics.value = pageMetricMap;
+  if (isPagedReadMode.value) {
+    totalPages.value = Math.max(
+      1,
+      pageMetricMap[getCurrentPageChapterItem()?.key]?.pageCount || getCurrentPageTotal()
     );
-    pageMaxScrollOffset.value = Math.max(0, totalHeight - height);
-    totalPages.value = Math.max(1, Math.ceil(Math.max(totalHeight, height) / height));
-    return { height, width, heightMap, pageCountMap: {} };
   }
+  return { height, width, pageMetricMap };
+};
 
-  const pageCountMap = measureHorizontalPageCounts(height);
-  horizontalChapterPageCounts.value = pageCountMap;
-  pageMaxScrollOffset.value = 0;
-  totalPages.value = Math.max(1, pageCountMap[getCurrentHorizontalChapterItem()?.key] || getCurrentHorizontalPageTotal());
-  return { height, width, heightMap: {}, pageCountMap };
+const getVerticalStreamSections = element =>
+  Array.from(element?.querySelectorAll(".reader-vertical-stream__item") || []);
+
+const getVerticalStreamSectionItem = section =>
+  chapterStreamItemMap.value.get(section?.dataset?.chapterKey) || null;
+
+const getVerticalReadingLine = element => {
+  const rect = element.getBoundingClientRect();
+  return rect.top + Math.min(180, Math.max(48, element.clientHeight * 0.35));
+};
+
+const getVisibleVerticalStreamSection = element => {
+  const readingLine = getVerticalReadingLine(element);
+  return getVerticalStreamSections(element).find(section => {
+    const rect = section.getBoundingClientRect();
+    return rect.top <= readingLine && rect.bottom > readingLine;
+  }) || getVerticalStreamSections(element)[0] || null;
+};
+
+const getVerticalSectionProgress = (element, section) => {
+  const sectionTop = section.offsetTop;
+  const sectionScrollableHeight = Math.max(1, section.scrollHeight - element.clientHeight);
+  return clampProgressRatio((element.scrollTop - sectionTop) / sectionScrollableHeight);
+};
+
+const updateVerticalReadingPosition = element => {
+  if (!element || !isVerticalReadMode.value) return;
+
+  const section = getVisibleVerticalStreamSection(element);
+  const item = getVerticalStreamSectionItem(section);
+  if (!section || !item) return;
+
+  setVerticalProgressByRatio(getVerticalSectionProgress(element, section));
+  syncActiveChapterItem(item);
+};
+
+const requestVerticalStreamBoundary = element => {
+  if (!element || loadingVisible.value || hasBlockingReaderPanel()) return;
+
+  const remainingScroll = element.scrollHeight - element.clientHeight - element.scrollTop;
+  if (remainingScroll <= VERTICAL_STREAM_LOAD_THRESHOLD) loadReaderStreamChapter("next");
+};
+
+const getVerticalStreamSectionByItem = item => {
+  if (!item) return null;
+  return getVerticalStreamSections(verticalStreamRef.value)
+    .find(section => section.dataset.chapterKey === item.key) || null;
+};
+
+const scrollVerticalToStreamItem = async (item, placement = "first") => {
+  if (!isVerticalReadMode.value) return;
+
+  await nextTick();
+  const section = getVerticalStreamSectionByItem(item);
+  if (!section) return;
+
+  section.scrollIntoView({
+    block: placement === "last" ? "end" : "start",
+    behavior: "auto"
+  });
+  updateVerticalReadingPosition(verticalStreamRef.value);
+};
+
+const scrollVerticalToCurrentProgress = async () => {
+  if (!isVerticalReadMode.value) return;
+
+  await nextTick();
+  const element = verticalStreamRef.value;
+  const section = getVerticalStreamSectionByItem(getCurrentPageChapterItem());
+  if (!element || !section) return;
+
+  const sectionScrollableHeight = Math.max(0, section.scrollHeight - element.clientHeight);
+  element.scrollTo({
+    top: section.offsetTop + getVerticalProgressRatio() * sectionScrollableHeight,
+    behavior: "auto"
+  });
+  updateVerticalReadingPosition(element);
+};
+
+const scrollVerticalPageByDirection = direction => {
+  const element = verticalStreamRef.value;
+  if (!element || !direction) return;
+
+  element.scrollBy({
+    top: (direction === "next" ? 1 : -1) * pageHeight.value * VERTICAL_CLICK_SCROLL_RATIO,
+    behavior: "smooth"
+  });
+  requestVerticalStreamBoundary(element);
+};
+
+const handleVerticalScroll = event => {
+  if (!isVerticalReadMode.value) return;
+
+  const element = event.target;
+  updateVerticalReadingPosition(element);
+  requestVerticalStreamBoundary(element);
 };
 
 const getPendingReaderAnchor = () => {
@@ -991,9 +952,7 @@ const applyPendingReaderAnchor = metrics => {
   if (!anchor) return false;
 
   const applied = applyReadMethodSwitchAnchor(anchor, {
-    viewportHeight: metrics.height,
-    chapterFlowHeights: metrics.heightMap,
-    measuredHorizontalPageCounts: metrics.pageCountMap
+    measuredPageMetrics: metrics.pageMetricMap
   });
   if (!applied) return false;
 
@@ -1001,161 +960,55 @@ const applyPendingReaderAnchor = metrics => {
   return true;
 };
 
-const applyVerticalPagination = (metrics, keepPage) => {
-  if (applyPendingReaderAnchor(metrics)) return;
-
-  setPageScrollOffset(keepPage ? pageScrollOffset.value : 0);
-};
-
-const applyHorizontalPagination = (metrics, keepPage) => {
-  if (applyPendingReaderAnchor(metrics)) return;
-
-  setReaderPage(keepPage ? currentPage.value : 1);
-};
-
-const applyReaderPagination = ({ keepPage }) => {
-  if (!show.value) return;
-
-  const metrics = syncReaderLayoutMetrics();
-  if (isVerticalPageTurn.value) {
-    applyVerticalPagination(metrics, keepPage);
+const applyReaderLayoutPosition = async (metrics, keepPosition) => {
+  const appliedAnchor = applyPendingReaderAnchor(metrics);
+  if (appliedAnchor) {
+    if (isVerticalReadMode.value) await scrollVerticalToCurrentProgress();
     return;
   }
 
-  applyHorizontalPagination(metrics, keepPage);
+  if (isVerticalReadMode.value) {
+    if (!keepPosition) {
+      setVerticalProgress(1);
+      await scrollVerticalToCurrentProgress();
+    }
+    return;
+  }
+
+  setReaderPage(keepPosition ? currentPage.value : 1);
+};
+
+const requestVisibleVerticalStreamBoundary = async () => {
+  if (!isVerticalReadMode.value) return;
+
+  await nextTick();
+  requestVerticalStreamBoundary(verticalStreamRef.value);
+};
+
+const applyReaderLayout = async ({ keepPosition }) => {
+  if (!show.value) return;
+
+  await applyReaderLayoutPosition(syncReaderLayoutMetrics(), keepPosition);
+  await requestVisibleVerticalStreamBoundary();
 };
 
 const {
-  cleanupPaginationScheduler,
-  schedulePagination: scheduleReaderPagination
-} = useReaderPaginationScheduler({
-  applyPagination: applyReaderPagination
+  cleanupLayoutScheduler,
+  scheduleLayout: scheduleReaderLayout
+} = useReaderLayoutScheduler({
+  applyLayout: applyReaderLayout
 });
 
-const getVerticalStreamPreloadDistance = () => Math.max(pageHeight.value * 1.5, 480);
-
-const setVerticalStreamLoading = (direction, value) => {
-  verticalStreamLoading.value = {
-    ...verticalStreamLoading.value,
-    [direction]: value
-  };
-};
-
-const isVerticalStreamLoading = direction => Boolean(verticalStreamLoading.value[direction]);
-
-const showVerticalEdgeLoading = direction => {
-  if (verticalEdgeLoading.value[direction]) return;
-
-  verticalEdgeLoading.value = {
-    ...verticalEdgeLoading.value,
-    [direction]: true
-  };
-};
-
-const clearVerticalEdgeLoading = direction => {
-  if (!direction) {
-    verticalEdgeLoading.value = { previous: false, next: false };
+const showProgress = value => {
+  if (isVerticalReadMode.value) {
+    setVerticalProgress(value || verticalProgress.value);
+    scrollVerticalToCurrentProgress();
     return;
   }
 
-  if (!verticalEdgeLoading.value[direction]) return;
-  verticalEdgeLoading.value = {
-    ...verticalEdgeLoading.value,
-    [direction]: false
-  };
+  setReaderPage(value || currentPage.value);
 };
 
-const beginVerticalStreamLoading = direction => {
-  if (isVerticalStreamLoading(direction)) return false;
-
-  setVerticalStreamLoading(direction, true);
-  return true;
-};
-
-const finishVerticalStreamLoading = direction => {
-  setVerticalStreamLoading(direction, false);
-};
-
-const fetchVerticalStreamChapter = direction => loadAdjacentChapterStreamItem(direction);
-
-const getVerticalInsertTargetOffset = (direction, advancePage = false) => {
-  if (advancePage) {
-    return direction === "previous" ? getVerticalPreviousPageOffset : getVerticalNextPageOffset;
-  }
-
-  return direction === "previous" ? getVerticalPrependPreserveOffset : getVerticalCurrentOffset;
-};
-
-const commitVerticalLoadingPage = direction =>
-  commitVerticalFlowMutation({
-    mutate: () => showVerticalEdgeLoading(direction),
-    getTargetOffset: direction === "previous" ? getVerticalPreviousPageOffset : getVerticalNextPageOffset
-  });
-
-const clearVerticalLoadingPage = direction => {
-  if (!verticalEdgeLoading.value[direction]) return Promise.resolve(false);
-
-  return commitVerticalFlowMutation({
-    mutate: () => clearVerticalEdgeLoading(direction),
-    getTargetOffset: direction === "previous" ? getVerticalPrependPreserveOffset : getVerticalCurrentOffset
-  });
-};
-
-const commitVerticalChapterInsertion = (item, direction, { advancePage = false, replaceLoading = false } = {}) =>
-  commitVerticalFlowMutation({
-    mutate: () => {
-      insertChapterStreamItem(item, direction);
-      if (replaceLoading) clearVerticalEdgeLoading(direction);
-    },
-    getTargetOffset: replaceLoading
-      ? getVerticalInsertTargetOffset(direction, false)
-      : getVerticalInsertTargetOffset(direction, advancePage)
-  });
-
-const loadVerticalStreamChapter = async direction => {
-  if (!isVerticalPageTurn.value || loadingVisible.value || !show.value) return false;
-  if (!hasAdjacentStreamChapter(direction)) return false;
-  if (!beginVerticalStreamLoading(direction)) return false;
-
-  try {
-    const item = await fetchVerticalStreamChapter(direction);
-    if (!item) return false;
-
-    await commitVerticalChapterInsertion(item, direction);
-    return item;
-  } finally {
-    finishVerticalStreamLoading(direction);
-  }
-};
-
-function ensureVerticalStreamAroundViewport({ forceNext = false, forcePrevious = false } = {}) {
-  if (!isVerticalPageTurn.value || loadingVisible.value || !show.value) return;
-
-  const preloadDistance = getVerticalStreamPreloadDistance();
-  const maxOffset = getMaxPageScrollOffset();
-  if (forcePrevious) {
-    loadVerticalStreamChapter("previous");
-  }
-  if (forceNext || maxOffset - pageScrollOffset.value <= preloadDistance) {
-    loadVerticalStreamChapter("next");
-  }
-}
-
-const showPage = value => {
-  const targetPage = value || currentPage.value;
-  if (isVerticalPageTurn.value) {
-    setPageScrollOffset((targetPage - 1) * pageHeight.value);
-    return;
-  }
-
-  setReaderPage(targetPage);
-};
-
-const getActiveChapterFlowIndex = () => {
-  const activeKey = activeChapterKey.value;
-  const index = chapterStreamItems.value.findIndex(item => item.key === activeKey);
-  return index >= 0 ? index : 0;
-};
 
 const getChapterStreamBoundaryIndex = direction => {
   const indexes = chapterStreamItems.value.map(item => Number(item.index)).filter(Number.isFinite);
@@ -1173,15 +1026,17 @@ const hasAdjacentStreamChapter = direction => {
   return Boolean(catalog.value[boundaryIndex + chapterOffset]);
 };
 
-const horizontalStreamLoadTasks = { previous: null, next: null };
+const streamChapterLoadTasks = { previous: null, next: null };
 
-const loadHorizontalStreamChapter = async direction => {
-  if (!isHorizontalPageTurn.value) return false;
-  if (horizontalStreamLoadTasks[direction]) return horizontalStreamLoadTasks[direction];
+const loadReaderStreamChapter = async direction => {
+  if (!isPagedReadMode.value && !isVerticalReadMode.value) return false;
+  if (streamChapterLoadTasks[direction]) return streamChapterLoadTasks[direction];
   if (!hasAdjacentStreamChapter(direction)) return false;
 
-  horizontalStreamLoadTasks[direction] = (async () => {
+  streamChapterLoadTasks[direction] = (async () => {
     const loadingPageStartedAt = performance.now();
+    const shouldShowVerticalNextLoading = isVerticalReadMode.value && direction === "next";
+    if (shouldShowVerticalNextLoading) verticalStreamNextLoading.value = true;
     try {
       const item = await loadAdjacentChapterStreamItem(direction);
       await waitRemainingTime(loadingPageStartedAt);
@@ -1192,44 +1047,44 @@ const loadHorizontalStreamChapter = async direction => {
       syncReaderLayoutMetrics();
       return item;
     } finally {
-      horizontalStreamLoadTasks[direction] = null;
+      if (shouldShowVerticalNextLoading) verticalStreamNextLoading.value = false;
+      streamChapterLoadTasks[direction] = null;
     }
   })();
 
-  return horizontalStreamLoadTasks[direction];
+  return streamChapterLoadTasks[direction];
 };
 
-const ensureHorizontalStreamAroundPage = ({ forceNext = false, forcePrevious = false } = {}) => {
-  if (!isHorizontalPageTurn.value || loadingVisible.value || !show.value) return;
+const ensurePageWindowStreamAroundFrame = ({ forceNext = false, forcePrevious = false } = {}) => {
+  if (!isPagedReadMode.value || loadingVisible.value || !show.value) return;
 
-  const currentPageTotal = getCurrentHorizontalPageTotal();
-  if (forcePrevious) loadHorizontalStreamChapter("previous");
-  if (forceNext || currentPage.value >= currentPageTotal - 1) loadHorizontalStreamChapter("next");
+  const currentPageTotal = getCurrentPageTotal();
+  if (forcePrevious) loadReaderStreamChapter("previous");
+  if (forceNext || currentPage.value >= currentPageTotal - 1) loadReaderStreamChapter("next");
 };
 
-const getHorizontalPlacementPage = (item, placement) => {
-  if (placement === "last") return getHorizontalChapterPageCount(item);
+const getChapterPlacementPage = (item, placement) => {
+  if (placement === "last") return getChapterPageCount(item);
   if (Number.isFinite(Number(placement))) return Number(placement);
   return 1;
 };
 
-const setHorizontalActiveChapterItem = async (item, placement = "first") => {
+const setActiveChapterItem = async (item, placement = "first") => {
   if (!item) return false;
 
   insertChapterStreamItem(item, item.index < activeChapterIndex.value ? "previous" : "next");
   syncActiveChapterItem(item);
   await nextTick();
   const metrics = syncReaderLayoutMetrics();
-  const pageTotal = Math.max(1, metrics.pageCountMap[item.key] || getHorizontalChapterPageCount(item));
-  totalPages.value = pageTotal;
-  setReaderPage(Math.min(pageTotal, Math.max(1, getHorizontalPlacementPage(item, placement))));
-  return true;
-};
+  if (isVerticalReadMode.value) {
+    setVerticalProgress(getVerticalPlacementProgress(placement));
+    await scrollVerticalToStreamItem(item, placement);
+    return true;
+  }
 
-const scrollToChapterFlowItem = (item, align = "start") => {
-  if (!item) return false;
-  syncReaderLayoutMetrics();
-  setPageScrollOffset(getChapterFlowOffsetByKey(item.key, align));
+  const pageTotal = Math.max(1, metrics.pageMetricMap[item.key]?.pageCount || getChapterPageCount(item));
+  totalPages.value = pageTotal;
+  setReaderPage(Math.min(pageTotal, Math.max(1, getChapterPlacementPage(item, placement))));
   return true;
 };
 
@@ -1237,111 +1092,66 @@ const startReading = async () => {
   const item = await prepareStartReading();
   if (!item) return;
 
-  if (isHorizontalPageTurn.value) {
-    await setHorizontalActiveChapterItem(item, "first");
-    return;
+  if (isPagedReadMode.value || isVerticalReadMode.value) {
+    await setActiveChapterItem(item, "first");
   }
-
-  insertChapterStreamItem(item, item.index < activeChapterIndex.value ? "previous" : "next");
-  pendingReadMethodSwitchAnchor.value = null;
-  syncActiveChapterItem(item);
-  await nextTick();
-  syncReaderLayoutMetrics();
-  scrollToChapterFlowItem(item, "start");
 };
 
 const goNextChapterAction = async () => {
-  if (isHorizontalPageTurn.value) {
-    const nextItem = getHorizontalSiblingChapterItem("next") || await loadHorizontalStreamChapter("next");
-    if (nextItem) await setHorizontalActiveChapterItem(nextItem, "first");
-    return;
-  }
+  if (!isPagedReadMode.value && !isVerticalReadMode.value) return;
 
-  if (!isVerticalPageTurn.value) return;
-  await turnToVerticalAdjacentChapter("next");
+  const nextItem = getSiblingPageChapterItem("next") || await loadReaderStreamChapter("next");
+  if (nextItem) await setActiveChapterItem(nextItem, "first");
 };
 
 const goPreviousChapterAction = async () => {
-  if (isHorizontalPageTurn.value) {
-    const previousItem = getHorizontalSiblingChapterItem("previous") || await loadHorizontalStreamChapter("previous");
-    if (previousItem) {
-      await setHorizontalActiveChapterItem(previousItem, "last");
-      return;
-    }
-    return;
-  }
+  if (!isPagedReadMode.value && !isVerticalReadMode.value) return;
 
-  if (!isVerticalPageTurn.value) return;
-  await turnToVerticalAdjacentChapter("previous");
+  const previousItem = getSiblingPageChapterItem("previous") || await loadReaderStreamChapter("previous");
+  if (previousItem) await setActiveChapterItem(previousItem, "last");
 };
 
-const getHorizontalAdjacentChapterPlacement = direction =>
+const getAdjacentChapterPlacement = direction =>
   direction === "previous" ? "last" : "first";
 
-const turnToHorizontalAdjacentChapter = async direction => {
-  const item = getHorizontalSiblingChapterItem(direction) || await loadHorizontalStreamChapter(direction);
+const turnToAdjacentChapter = async direction => {
+  const item = getSiblingPageChapterItem(direction) || await loadReaderStreamChapter(direction);
   if (!item) return false;
 
-  return setHorizontalActiveChapterItem(item, getHorizontalAdjacentChapterPlacement(direction));
+  return setActiveChapterItem(item, getAdjacentChapterPlacement(direction));
 };
 
-const goNextHorizontalPage = async () => {
-  const currentPageTotal = getCurrentHorizontalPageTotal();
+const goNextPageWindow = async () => {
+  const currentPageTotal = getCurrentPageTotal();
   if (currentPage.value < currentPageTotal) {
     setReaderPage(currentPage.value + 1);
     return;
   }
 
-  await turnToHorizontalAdjacentChapter("next");
+  await turnToAdjacentChapter("next");
 };
 
-const goPreviousHorizontalPage = async () => {
+const goPreviousPageWindow = async () => {
   if (currentPage.value > 1) {
     setReaderPage(currentPage.value - 1);
     return;
   }
 
-  await turnToHorizontalAdjacentChapter("previous");
+  await turnToAdjacentChapter("previous");
 };
 
 const goNextPage = async () => {
-  if (isHorizontalPageTurn.value) {
-    await goNextHorizontalPage();
-    return;
-  }
-
-  if (isVerticalPageTurn.value) {
-    const nextOffset = pageScrollOffset.value + pageHeight.value;
-    if (nextOffset <= getMaxPageScrollOffset()) {
-      setPageScrollOffset(nextOffset);
-      return;
-    }
-    await turnToVerticalAdjacentChapter("next");
-    return;
-  }
+  if (isPagedReadMode.value) await goNextPageWindow();
 };
 
 const goPreviousPage = async () => {
-  if (isHorizontalPageTurn.value) {
-    await goPreviousHorizontalPage();
-    return;
-  }
-
-  if (isVerticalPageTurn.value) {
-    const nextOffset = pageScrollOffset.value - pageHeight.value;
-    if (nextOffset >= 0) {
-      setPageScrollOffset(nextOffset);
-      return;
-    }
-    await turnToVerticalAdjacentChapter("previous");
-    return;
-  }
+  if (isPagedReadMode.value) await goPreviousPageWindow();
 };
 
 let readerDrag = null;
 let pageTurnAnimationTimer = 0;
-let horizontalClickTurnFrame = 0;
-let preparedHorizontalDirection = "";
+let clickPageTurnFrame = 0;
+let preparedPageTurnDirection = "";
 
 const getPageTurnSize = axis =>
   axis === "horizontal" ? pageWidth.value : pageHeight.value;
@@ -1358,61 +1168,43 @@ const canStartReaderDrag = (source, event) => {
   if (hasBlockingReaderPanel()) return false;
   if (loadingVisible.value || !show.value) return false;
   if (pageTurnAnimationTimer) return false;
+  if (isVerticalReadMode.value) return false;
   if (source === "mouse" && event.button !== 0) return false;
-  if (pageTurnAxis.value === "vertical") return source === "mouse";
-  return pageTurnAxis.value === "horizontal";
+  return isPagedReadMode.value;
 };
 
-const prepareHorizontalPageFrame = offset => {
-  if (!isHorizontalPageTurn.value || Math.abs(offset) < 1) return;
+const preparePageFrame = offset => {
+  if (!isPagedReadMode.value || Math.abs(offset) < 1) return;
   const direction = offset < 0 ? "next" : "previous";
-  if (direction === preparedHorizontalDirection) return;
-  preparedHorizontalDirection = direction;
-  ensureHorizontalStreamAroundPage({
+  if (direction === preparedPageTurnDirection) return;
+  preparedPageTurnDirection = direction;
+  ensurePageWindowStreamAroundFrame({
     forceNext: offset < 0,
     forcePrevious: offset > 0
   });
 };
 
-const applyHorizontalPageTurnOffset = offset => {
-  const nextOffset = Math.max(-pageWidth.value, Math.min(pageWidth.value, offset));
-  if (Math.abs(nextOffset) < 1) preparedHorizontalDirection = "";
-  pageTurnDragOffsetX.value = nextOffset;
-  prepareHorizontalPageFrame(nextOffset);
+const applyPageTurnOffset = offset => {
+  const size = getPageTurnSize(readAxis.value);
+  const nextOffset = Math.max(-size, Math.min(size, offset));
+  if (Math.abs(nextOffset) < 1) preparedPageTurnDirection = "";
+  pageTurnDragOffset.value = nextOffset;
+  preparePageFrame(nextOffset);
 };
 
 const {
-  cancel: cancelPendingHorizontalOffset,
-  flush: flushHorizontalPageTurnOffset,
-  schedule: scheduleHorizontalPageTurnOffset,
-  set: setHorizontalPageTurnOffset
+  cancel: cancelPendingPageTurnOffset,
+  flush: flushPageTurnOffset,
+  schedule: schedulePageTurnOffset,
+  set: setPageTurnOffset
 } = useAnimationFrameValue({
-  apply: applyHorizontalPageTurnOffset
+  apply: applyPageTurnOffset
 });
-
-const {
-  cancel: cancelPendingContentScroll,
-  schedule: scheduleContentScrollOffset
-} = useAnimationFrameValue({
-  apply: value => setPageScrollOffset(value, { syncDom: false })
-});
-
-const flushContentScrollState = () => {
-  if (!isVerticalPageTurn.value) return;
-  const viewportElement = contentViewportRef.value;
-  if (!viewportElement) return;
-
-  cancelPendingContentScroll();
-  const nextOffset = viewportElement.scrollTop;
-  if (Math.abs(nextOffset - pageScrollOffset.value) > 1) {
-    setPageScrollOffset(nextOffset, { syncDom: false });
-  }
-};
 
 const resetReaderDrag = () => {
   readerDrag = null;
   pageTurnDragActive.value = false;
-  setHorizontalPageTurnOffset(0);
+  setPageTurnOffset(0);
 };
 
 const removeMouseDragListeners = () => {
@@ -1420,10 +1212,10 @@ const removeMouseDragListeners = () => {
   window.removeEventListener("mouseup", handleReaderMouseUp);
 };
 
-const getHorizontalPageTurnCommitDelay = () =>
+const getPageTurnCommitDelay = () =>
   effectiveReadMethod.value === "无动画" ? 0 : getPageTurnDuration();
 
-const resetHorizontalPageTurnAfterAnimation = direction => {
+const resetPageTurnAfterAnimation = direction => {
   window.clearTimeout(pageTurnAnimationTimer);
   pageTurnAnimationTimer = window.setTimeout(async () => {
     pageTurnAnimationTimer = 0;
@@ -1433,197 +1225,76 @@ const resetHorizontalPageTurnAfterAnimation = direction => {
     } else {
       await goPreviousPage();
     }
-    setHorizontalPageTurnOffset(0);
+    setPageTurnOffset(0);
     requestAnimationFrame(() => {
       pageTurnDragActive.value = false;
     });
-  }, getHorizontalPageTurnCommitDelay());
+  }, getPageTurnCommitDelay());
 };
 
-const cancelPendingHorizontalClickTurn = () => {
-  if (!horizontalClickTurnFrame) return;
-  window.cancelAnimationFrame(horizontalClickTurnFrame);
-  horizontalClickTurnFrame = 0;
+const cancelPendingClickTurnFrame = () => {
+  if (!clickPageTurnFrame) return;
+  window.cancelAnimationFrame(clickPageTurnFrame);
+  clickPageTurnFrame = 0;
 };
 
 const cancelPendingClickPageTurn = () => {
-  cancelPendingHorizontalClickTurn();
+  cancelPendingClickTurnFrame();
 };
 
-const canCommitHorizontalPageTurn = direction => {
+const canCommitPageTurn = direction => {
   if (direction === "next") return canTurnToNextReaderPage.value;
   if (direction === "previous") return canTurnToPreviousReaderPage.value;
   return false;
 };
 
-const finishHorizontalPageTurn = direction => {
-  cancelPendingHorizontalClickTurn();
-  cancelPendingHorizontalOffset();
+const finishPageTurn = direction => {
+  cancelPendingClickTurnFrame();
+  cancelPendingPageTurnOffset();
   pageTurnDragActive.value = false;
-  if (!direction || !canCommitHorizontalPageTurn(direction)) {
-    setHorizontalPageTurnOffset(0);
+  if (!direction || !canCommitPageTurn(direction)) {
+    setPageTurnOffset(0);
     return;
   }
 
-  const targetOffset = direction === "next" ? -pageWidth.value : pageWidth.value;
-  setHorizontalPageTurnOffset(targetOffset);
-  resetHorizontalPageTurnAfterAnimation(direction);
+  const targetOffset = direction === "next"
+    ? -getPageTurnSize(readAxis.value)
+    : getPageTurnSize(readAxis.value);
+  setPageTurnOffset(targetOffset);
+  resetPageTurnAfterAnimation(direction);
 };
 
-const startHorizontalPageTurnFromRest = direction => {
+const startPageTurnFromRest = direction => {
   cancelPendingClickPageTurn();
-  if (!direction || !canCommitHorizontalPageTurn(direction)) return;
+  if (!direction || !canCommitPageTurn(direction)) return;
 
   if (effectiveReadMethod.value === "无动画") {
     direction === "next" ? goNextPage() : goPreviousPage();
     return;
   }
 
-  const targetOffset = direction === "next" ? -pageWidth.value : pageWidth.value;
+  const targetOffset = direction === "next"
+    ? -getPageTurnSize(readAxis.value)
+    : getPageTurnSize(readAxis.value);
   pageTurnDragActive.value = true;
-  setHorizontalPageTurnOffset(0);
-  horizontalClickTurnFrame = window.requestAnimationFrame(() => {
+  setPageTurnOffset(0);
+  clickPageTurnFrame = window.requestAnimationFrame(() => {
     pageTurnDragActive.value = false;
-    horizontalClickTurnFrame = window.requestAnimationFrame(() => {
-      horizontalClickTurnFrame = 0;
-      setHorizontalPageTurnOffset(targetOffset);
-      resetHorizontalPageTurnAfterAnimation(direction);
+    clickPageTurnFrame = window.requestAnimationFrame(() => {
+      clickPageTurnFrame = 0;
+      setPageTurnOffset(targetOffset);
+      resetPageTurnAfterAnimation(direction);
     });
   });
 };
 
-const animateVerticalPageTurnTo = targetOffset => {
-  cancelPendingClickPageTurn();
-  const fromOffset = pageScrollOffset.value;
-  const toOffset = clampPageScrollOffset(targetOffset);
-  const duration = getPageTurnDuration();
-
-  if (duration <= 0 || Math.abs(toOffset - fromOffset) < 1) {
-    setPageScrollOffset(toOffset);
-    return;
-  }
-
-  const viewportElement = contentViewportRef.value;
-  if (!viewportElement) {
-    setPageScrollOffset(toOffset);
-    return;
-  }
-
-  cancelPendingContentScroll();
-  viewportElement.scrollTo({ top: toOffset, behavior: "smooth" });
-};
-
-const startVerticalPageTurnFromRest = direction => {
-  const targetOffset = pageScrollOffset.value + (direction === "next" ? pageHeight.value : -pageHeight.value);
-  const boundedTargetOffset = clampPageScrollOffset(targetOffset);
-
-  if (boundedTargetOffset !== pageScrollOffset.value) {
-    animateVerticalPageTurnTo(boundedTargetOffset);
-    return;
-  }
-
-  if (direction === "next") {
-    goNextPage();
-    return;
-  }
-
-  if (direction === "previous") goPreviousPage();
-};
-
-const isReaderAtScrollStart = () => pageScrollOffset.value <= 1;
-const isReaderAtScrollEnd = () => pageScrollOffset.value >= getMaxPageScrollOffset() - 1;
-
-const getVerticalPageTurnOffset = direction =>
-  pageScrollOffset.value + (direction === "previous" ? -pageHeight.value : pageHeight.value);
-
-const moveVerticalPageByOffset = direction => {
-  const targetOffset = getVerticalPageTurnOffset(direction);
-  const nextOffset = clampPageScrollOffset(targetOffset);
-  if (nextOffset === pageScrollOffset.value) return false;
-
-  setPageScrollOffset(nextOffset);
-  return true;
-};
-
-const turnToVerticalAdjacentChapter = async direction => {
-  if (moveVerticalPageByOffset(direction)) return true;
-  if (!hasAdjacentStreamChapter(direction)) return false;
-  if (!beginVerticalStreamLoading(direction)) return false;
-
-  let loadingPageCommitted = false;
-  let loadingPageStartedAt = 0;
-  try {
-    await commitVerticalLoadingPage(direction);
-    loadingPageCommitted = true;
-    loadingPageStartedAt = performance.now();
-
-    const item = await fetchVerticalStreamChapter(direction);
-    await waitRemainingTime(loadingPageStartedAt);
-    if (!item) {
-      await clearVerticalLoadingPage(direction);
-      return false;
-    }
-
-    await commitVerticalChapterInsertion(item, direction, { replaceLoading: true });
-    return true;
-  } finally {
-    finishVerticalStreamLoading(direction);
-    if (loadingPageCommitted && verticalEdgeLoading.value[direction]) {
-      if (loadingPageStartedAt) await waitRemainingTime(loadingPageStartedAt);
-      await clearVerticalLoadingPage(direction);
-    }
-  }
-};
-
-const loadVerticalAdjacentChapterAtBoundary = async direction => {
-  if (!isVerticalPageTurn.value || loadingVisible.value || !show.value) return false;
-
-  return turnToVerticalAdjacentChapter(direction);
-};
-
-const requestPreviousVerticalStreamAtBoundary = () => {
-  if (!isVerticalPageTurn.value || loadingVisible.value || hasBlockingReaderPanel()) return;
-  if (!isReaderAtScrollStart() || !canTurnToPreviousReaderPage.value) return;
-
-  loadVerticalAdjacentChapterAtBoundary("previous");
-};
-
-const requestNextVerticalStreamAtBoundary = () => {
-  if (!isVerticalPageTurn.value || loadingVisible.value || hasBlockingReaderPanel()) return;
-  if (!isReaderAtScrollEnd() || !canTurnToNextReaderPage.value) return;
-
-  loadVerticalAdjacentChapterAtBoundary("next");
-};
-
-const {
-  handleContentTouchEnd,
-  handleContentTouchMove,
-  handleContentTouchStart
-} = useReaderVerticalBoundaryTouch({
-  hasBlockingReaderPanel,
-  isReaderAtScrollEnd,
-  isReaderAtScrollStart,
-  isVerticalPageTurn,
-  loadingVisible,
-  requestNext: requestNextVerticalStreamAtBoundary,
-  requestPrevious: requestPreviousVerticalStreamAtBoundary
-});
-
-const finishVerticalPageTurnDrag = ({ delta, velocity, threshold }) => {
-  pageTurnDragActive.value = false;
-  const direction = getCommittedPageTurnDirection({ delta, velocity, threshold });
-
-  if (direction === "next") requestNextVerticalStreamAtBoundary();
-  if (direction === "previous") requestPreviousVerticalStreamAtBoundary();
-};
-
 const turnReaderPageByCurrentMethod = direction => {
-  if (isHorizontalPageTurn.value) {
-    startHorizontalPageTurnFromRest(direction);
+  if (isVerticalReadMode.value) {
+    scrollVerticalPageByDirection(direction);
     return;
   }
 
-  if (isVerticalPageTurn.value) startVerticalPageTurnFromRest(direction);
+  if (isPagedReadMode.value) startPageTurnFromRest(direction);
 };
 
 const getTouchPoint = event => {
@@ -1637,19 +1308,17 @@ const startReaderDrag = (source, event, point) => {
   window.clearTimeout(pageTurnAnimationTimer);
   cancelPendingClickPageTurn();
   readerDrag = {
-    axis: pageTurnAxis.value,
+    axis: readAxis.value,
     source,
     startX: point.x,
     startY: point.y,
-    startScrollOffset: pageScrollOffset.value,
-    lastPoint: pageTurnAxis.value === "horizontal" ? point.x : point.y,
+    lastPoint: readAxis.value === "horizontal" ? point.x : point.y,
     lastTime: performance.now(),
     velocity: 0,
-    lastDelta: 0,
     moved: false
   };
   pageTurnDragActive.value = true;
-  setHorizontalPageTurnOffset(0);
+  setPageTurnOffset(0);
 
   if (source === "mouse") {
     window.addEventListener("mousemove", handleReaderMouseMove);
@@ -1686,26 +1355,21 @@ const moveReaderDrag = (event, point) => {
   }
 
   const movedDelta = isHorizontal ? point.x - readerDrag.startX : point.y - readerDrag.startY;
-  readerDrag.lastDelta = movedDelta;
   const elapsed = Math.max(1, now - readerDrag.lastTime);
   readerDrag.velocity = (primaryPoint - readerDrag.lastPoint) / elapsed;
   readerDrag.lastPoint = primaryPoint;
   readerDrag.lastTime = now;
 
-  if (isHorizontal) {
-    scheduleHorizontalPageTurnOffset(movedDelta);
-  } else {
-    setPageScrollOffset(readerDrag.startScrollOffset - movedDelta);
-  }
+  schedulePageTurnOffset(movedDelta);
   event.preventDefault();
 };
 
 const endReaderDrag = event => {
   if (!readerDrag) return;
 
-  const { axis, moved, velocity, source, lastDelta } = readerDrag;
-  if (axis === "horizontal") flushHorizontalPageTurnOffset();
-  const offset = pageTurnDragOffsetX.value;
+  const { axis, moved, velocity, source } = readerDrag;
+  flushPageTurnOffset();
+  const offset = pageTurnDragOffset.value;
   const threshold = Math.max(
     PAGE_TURN_MIN_DISTANCE,
     getPageTurnSize(axis) * PAGE_TURN_DISTANCE_RATIO
@@ -1715,17 +1379,13 @@ const endReaderDrag = event => {
 
   if (!moved) {
     pageTurnDragActive.value = false;
-    setHorizontalPageTurnOffset(0);
+    setPageTurnOffset(0);
     return;
   }
 
   suppressNextReaderClick.value = true;
   event?.preventDefault?.();
-  if (axis === "vertical") {
-    finishVerticalPageTurnDrag({ delta: lastDelta, velocity, threshold });
-    return;
-  }
-  finishHorizontalPageTurn(getCommittedPageTurnDirection({
+  finishPageTurn(getCommittedPageTurnDirection({
     delta: offset,
     velocity,
     threshold
@@ -1761,22 +1421,14 @@ const handleReaderTouchCancel = () => {
 };
 
 const handleReaderWheel = event => {
-  if (!isVerticalPageTurn.value || loadingVisible.value || hasBlockingReaderPanel()) return;
+  if (!isPagedReadMode.value || loadingVisible.value || hasBlockingReaderPanel()) return;
+  if (isVerticalReadMode.value) return;
 
   if (event.deltaY > 0) {
-    requestNextVerticalStreamAtBoundary();
+    turnReaderPageByCurrentMethod("next");
     return;
   }
-  if (event.deltaY < 0) requestPreviousVerticalStreamAtBoundary();
-};
-
-const handleContentScroll = event => {
-  if (!isVerticalPageTurn.value || verticalFlowCommitDepth > 0) return;
-
-  const nextOffset = event.currentTarget.scrollTop;
-  if (Math.abs(nextOffset - pageScrollOffset.value) <= 1) return;
-
-  scheduleContentScrollOffset(nextOffset);
+  if (event.deltaY < 0) turnReaderPageByCurrentMethod("previous");
 };
 
 const getContent = async note => {
@@ -1784,15 +1436,7 @@ const getContent = async note => {
   const item = await openChapter(note);
   if (!item) return;
 
-  if (isHorizontalPageTurn.value) {
-    await setHorizontalActiveChapterItem(item, "first");
-    return;
-  }
-
-  syncActiveChapterItem(item);
-  await nextTick();
-  syncReaderLayoutMetrics();
-  setPageScrollOffset(getChapterFlowOffsetByKey(item.key, "start"));
+  if (isPagedReadMode.value || isVerticalReadMode.value) await setActiveChapterItem(item, "first");
 };
 
 const refreshCatalog = () => {
@@ -1888,19 +1532,17 @@ watch(
 const { cleanupReadingHistoryPersistence } = useReadingHistoryPersistence({
   activeChapterKey,
   captureReadingHistoryAnchor,
-  currentPage,
+  positionSources: [currentPage, verticalProgress],
   findChapterStreamItemByAnchor,
-  flushContentScrollState,
   isReaderPositioning,
   loadingVisible,
-  pageScrollOffset,
   readingBook
 });
 
 watch(
   chapterStream,
   () => {
-    scheduleReaderPagination({ keepPage: true });
+    scheduleReaderLayout({ keepPosition: true });
   },
   { flush: "post" }
 );
@@ -1922,22 +1564,21 @@ watch(
     windowSize,
     miniInterface
   ],
-  () => scheduleReaderPagination({ keepPage: true }),
+  () => scheduleReaderLayout({ keepPosition: true }),
   { flush: "post" }
 );
 
 onMounted(() => {
-  scheduleReaderPagination({ keepPage: false });
+  scheduleReaderLayout({ keepPosition: false });
   window.addEventListener("resize", syncInterface);
 });
 
 onBeforeUnmount(() => {
   abortReaderTask();
-  cleanupPaginationScheduler();
+  cleanupLayoutScheduler();
   if (pageTurnAnimationTimer) window.clearTimeout(pageTurnAnimationTimer);
-  cancelPendingHorizontalOffset();
+  cancelPendingPageTurnOffset();
   cleanupReadingHistoryPersistence();
-  cancelPendingContentScroll();
   removeMouseDragListeners();
   window.removeEventListener("resize", syncInterface);
   cleanupReaderBookshelf();

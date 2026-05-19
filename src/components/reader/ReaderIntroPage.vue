@@ -22,7 +22,7 @@
 
     <div v-if="showLoading" class="reader-intro-page__loading" role="status" aria-live="polite">
       <span class="reader-intro-page__spinner" aria-hidden="true"></span>
-      <span>正在加载简介</span>
+      <span>正在加载</span>
     </div>
 
     <div class="reader-intro-page__actions" @click.stop @mousedown.stop @touchstart.stop>

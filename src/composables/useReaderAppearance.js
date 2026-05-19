@@ -27,10 +27,10 @@ export const useReaderAppearance = ({ config, miniInterface, pageTurnDragActive,
     "--reader-font-color": config.value.fontColor
   }));
   const effectiveReadMethod = computed(() => normalizeReadMethod(config.value.readMethod));
-  const pageTurnAxis = computed(() =>
+  const readAxis = computed(() =>
     isVerticalReadMethod(effectiveReadMethod.value) ? "vertical" : "horizontal"
   );
-  const isVerticalPageTurn = computed(() => pageTurnAxis.value === "vertical");
+  const isVerticalReadMode = computed(() => readAxis.value === "vertical");
   const isHorizontalPageTurn = computed(() => isHorizontalReadMethod(effectiveReadMethod.value));
   const readWidthConfig = computed(() => {
     let width = config.value.readWidth;
@@ -47,7 +47,7 @@ export const useReaderAppearance = ({ config, miniInterface, pageTurnDragActive,
   });
   const chapterClass = computed(() => ({
     "reader-page--page-turn": true,
-    "reader-page--vertical-turn": isVerticalPageTurn.value,
+    "reader-page--vertical-read": isVerticalReadMode.value,
     "reader-page--horizontal-turn": isHorizontalPageTurn.value,
     "reader-page--dragging": pageTurnDragActive.value
   }));
@@ -108,10 +108,10 @@ export const useReaderAppearance = ({ config, miniInterface, pageTurnDragActive,
     getPageTurnTransition,
     isHorizontalPageTurn,
     isNight,
-    isVerticalPageTurn,
+    isVerticalReadMode,
     menuPopperOptions,
     menuSheetTheme,
-    pageTurnAxis,
+    readAxis,
     readWidthConfig,
     sideActionStyle,
     sidePanelTheme,

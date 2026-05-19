@@ -1,6 +1,6 @@
 <template>
   <div class="reader-manage-list-card">
-    <div v-if="loading" class="reader-manage-empty">正在加载替换规则...</div>
+    <div v-if="loading" class="reader-manage-empty">正在加载</div>
     <div v-else-if="!rules.length" class="reader-manage-empty">
       {{ total ? "没有匹配的替换规则" : "暂无替换规则，请先新建" }}
     </div>

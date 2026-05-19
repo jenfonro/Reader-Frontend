@@ -9,11 +9,16 @@
 import { computed } from "vue";
 
 const props = defineProps({
-  inline: { type: Boolean, default: false },
-  text: { type: String, default: "正在加载正文" }
+  text: { type: String, default: "正在加载" },
+  variant: {
+    type: String,
+    default: "page",
+    validator: value => ["page", "compact"].includes(value)
+  }
 });
 
-const rootClass = computed(() =>
-  props.inline ? "reader-chapter-flow__loading-body" : "reader-page-loading"
-);
+const rootClass = computed(() => [
+  "reader-page-loading",
+  `reader-page-loading--${props.variant}`
+]);
 </script>

@@ -55,7 +55,7 @@ export const useBookSourceSwitcher = ({ props, emit }) => {
   });
   const statusText = computed(() => {
     if (searchError.value) return searchError.value;
-    if ((loading.value || identityLoading.value) && !bookSource.value.length) return "正在搜索同作者来源...";
+    if ((loading.value || identityLoading.value) && !bookSource.value.length) return "正在加载";
     if (searched.value && !bookSource.value.length) return "没有搜索到可切换来源";
     if (searched.value && bookSource.value.length && !filteredBookSources.value.length) return "当前分组没有可切换来源";
     return "";
