@@ -488,6 +488,7 @@
       }
 
       .reader-page__content-inner--vertical-scroll {
+        position: relative;
         touch-action: pan-y;
         cursor: default;
       }
@@ -514,8 +515,47 @@
         overflow-x: hidden;
         overflow-y: auto;
         overscroll-behavior: contain;
+        overflow-anchor: none;
         scrollbar-width: none;
         -webkit-overflow-scrolling: touch;
+      }
+
+      .reader-vertical-stream--previous-loading {
+        overflow-anchor: none;
+      }
+
+      .reader-vertical-stream__previous-loading {
+        width: 100%;
+        min-height: 0;
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        color: #8a8a8a;
+        font-size: 14px;
+        line-height: 20px;
+        background: var(--reader-content-background);
+        overflow-anchor: none;
+        overflow: hidden;
+        opacity: 0;
+        transition: none;
+      }
+
+      .reader-vertical-stream__previous-loading--visible {
+        opacity: 1;
+      }
+
+      .reader-vertical-stream__previous-loading-spinner {
+        width: 24px;
+        height: 24px;
+        border: 2px solid rgba(138, 138, 138, 0.18);
+        border-top-color: rgba(138, 138, 138, 0.86);
+        border-radius: 50%;
+        animation: reader-page-loading-spin 0.85s linear infinite;
       }
 
       .reader-vertical-stream::-webkit-scrollbar {

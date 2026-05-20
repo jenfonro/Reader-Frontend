@@ -16,45 +16,61 @@
         @wheel.passive="emit('reader-wheel', $event)"
         @mousedown="emit('reader-mouse-down', $event)"
       >
-        <div
-          v-if="isVerticalReadMode"
-          :ref="setVerticalStreamRef"
-          class="reader-vertical-stream"
-          @scroll="emit('vertical-scroll', $event)"
-        >
-          <section
-            v-for="item in chapterStreamItems"
-            :key="item.key"
-            class="reader-vertical-stream__item"
-            :data-chapter-key="item.key"
+        <template v-if="isVerticalReadMode">
+          <div
+            :ref="setVerticalStreamRef"
+            class="reader-vertical-stream"
+            :class="{ 'reader-vertical-stream--previous-loading': verticalStreamPreviousLoadingHeight > 0 }"
+            @scroll="emit('vertical-scroll', $event)"
+            @touchcancel.passive="emit('vertical-touch-cancel', $event)"
+            @touchend.passive="emit('vertical-touch-end', $event)"
+            @touchstart.passive="emit('vertical-touch-start', $event)"
+            @touchmove="emit('vertical-touch-move', $event)"
           >
-            <ReaderIntroPage
-              v-if="isIntroStreamItem(item)"
-              class="reader-readable-content reader-page__intro"
-              :book="readingBook"
-              :loading="introLoading"
-              :in-bookshelf="isReadingBookInShelf"
-              @toggle-bookshelf="emit('toggle-bookshelf')"
-              @start-reading="emit('start-reading')"
+            <div
+              class="reader-vertical-stream__previous-loading"
+              :class="{ 'reader-vertical-stream__previous-loading--visible': verticalStreamPreviousLoadingHeight > 0 }"
+              :style="{ height: `${verticalStreamPreviousLoadingHeight}px` }"
+              role="status"
+              aria-live="polite"
+            >
+              <span class="reader-vertical-stream__previous-loading-spinner" aria-hidden="true"></span>
+              <span class="reader-vertical-stream__previous-loading-text">正在加载</span>
+            </div>
+            <section
+              v-for="item in chapterStreamItems"
+              :key="item.key"
+              class="reader-vertical-stream__item"
+              :data-chapter-key="item.key"
+            >
+              <ReaderIntroPage
+                v-if="isIntroStreamItem(item)"
+                class="reader-readable-content reader-page__intro"
+                :book="readingBook"
+                :loading="introLoading"
+                :in-bookshelf="isReadingBookInShelf"
+                @toggle-bookshelf="emit('toggle-bookshelf')"
+                @start-reading="emit('start-reading')"
+              />
+              <Content
+                v-else
+                class="reader-readable-content reader-text-flow"
+                :title="item.title"
+                :content="item.content"
+                :show-content="show"
+                :error="error"
+                :style="contentStyle"
+                :reader-config="config"
+              />
+            </section>
+            <ReaderLoadingBlock
+              v-if="verticalStreamNextLoading"
+              class="reader-vertical-stream__loading"
+              variant="compact"
+              text="正在加载"
             />
-            <Content
-              v-else
-              class="reader-readable-content reader-text-flow"
-              :title="item.title"
-              :content="item.content"
-              :show-content="show"
-              :error="error"
-              :style="contentStyle"
-              :reader-config="config"
-            />
-          </section>
-          <ReaderLoadingBlock
-            v-if="verticalStreamNextLoading"
-            class="reader-vertical-stream__loading"
-            variant="compact"
-            text="正在加载"
-          />
-        </div>
+          </div>
+        </template>
         <div
           v-else-if="isPagedReadMode"
           class="reader-page-stage"
@@ -141,6 +157,7 @@ defineProps({
   readerLoadingText: { type: String, default: "正在加载" },
   readingBook: { type: Object, required: true },
   verticalStreamNextLoading: { type: Boolean, default: false },
+  verticalStreamPreviousLoadingHeight: { type: Number, default: 0 },
   setContentViewportRef: { type: Function, default: () => {} },
   setVerticalStreamRef: { type: Function, default: () => {} },
   show: { type: Boolean, default: false }
@@ -155,6 +172,10 @@ const emit = defineEmits([
   "reader-wheel",
   "start-reading",
   "toggle-bookshelf",
-  "vertical-scroll"
+  "vertical-scroll",
+  "vertical-touch-cancel",
+  "vertical-touch-end",
+  "vertical-touch-move",
+  "vertical-touch-start"
 ]);
 </script>

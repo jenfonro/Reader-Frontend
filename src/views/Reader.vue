@@ -160,6 +160,7 @@
       :reader-loading-text="readerLoadingText"
       :reading-book="readingBook"
       :vertical-stream-next-loading="verticalStreamNextLoading"
+      :vertical-stream-previous-loading-height="verticalStreamPreviousLoadingHeight"
       :set-content-viewport-ref="setContentViewportRef"
       :set-vertical-stream-ref="setVerticalStreamRef"
       :show="show"
@@ -172,6 +173,10 @@
       @start-reading="startReading"
       @toggle-bookshelf="toggleReadingBookshelf"
       @vertical-scroll="handleVerticalScroll"
+      @vertical-touch-cancel="handleVerticalTouchCancel"
+      @vertical-touch-end="handleVerticalTouchEnd"
+      @vertical-touch-move="handleVerticalTouchMove"
+      @vertical-touch-start="handleVerticalTouchStart"
     />
   </div>
 </template>
@@ -242,9 +247,19 @@ const waitRemainingTime = startedAt =>
   wait(READER_STREAM_LOADING_MIN_DURATION - (performance.now() - startedAt));
 
 const VERTICAL_STREAM_LOAD_THRESHOLD = 240;
+const VERTICAL_STREAM_PREVIOUS_LOAD_THRESHOLD = 24;
+const VERTICAL_STREAM_PREVIOUS_PULL_MAX = 140;
+const VERTICAL_STREAM_PREVIOUS_PULL_TRIGGER = 100;
+const VERTICAL_STREAM_PREVIOUS_PULL_DAMPING = 0.65;
 const VERTICAL_CLICK_SCROLL_RATIO = 0.92;
 const VERTICAL_PROGRESS_MAX = 1000;
 const verticalStreamNextLoading = ref(false);
+const verticalStreamPreviousLoading = ref(false);
+const verticalStreamPreviousPullHeight = ref(0);
+let verticalTouchStartY = 0;
+let verticalTouchStartScrollTop = 0;
+let verticalBoundaryRequestsSuppressed = false;
+let verticalBoundarySuppressTimer = 0;
 
 const {
   title,
@@ -377,6 +392,11 @@ const isReaderLoadingVisible = computed(() =>
   loadingVisible.value && !hasReaderContent.value
 );
 const readerLoadingText = computed(() => loadingText.value);
+const verticalStreamPreviousLoadingHeight = computed(() =>
+  verticalStreamPreviousLoading.value
+    ? VERTICAL_STREAM_PREVIOUS_PULL_MAX
+    : verticalStreamPreviousPullHeight.value
+);
 const bottomProgressMax = computed(() =>
   isVerticalReadMode.value ? VERTICAL_PROGRESS_MAX : totalPages.value
 );
@@ -856,6 +876,35 @@ const getVisibleVerticalStreamSection = element => {
   }) || getVerticalStreamSections(element)[0] || null;
 };
 
+const captureVerticalStreamAnchor = () => {
+  const element = verticalStreamRef.value;
+  if (!element || !isVerticalReadMode.value) return null;
+
+  const section = getVisibleVerticalStreamSection(element);
+  const key = section?.dataset?.chapterKey;
+  if (!section || !key) return null;
+
+  return {
+    key,
+    top: section.getBoundingClientRect().top
+  };
+};
+
+const restoreVerticalStreamAnchor = anchor => {
+  const element = verticalStreamRef.value;
+  if (!element || !anchor || !isVerticalReadMode.value) return;
+
+  const section = getVerticalStreamSections(element)
+    .find(section => section.dataset.chapterKey === anchor.key);
+  if (!section) return;
+
+  const offset = section.getBoundingClientRect().top - anchor.top;
+  if (Math.abs(offset) < 1) return;
+
+  suppressVerticalStreamBoundaryRequests();
+  element.scrollTop += offset;
+};
+
 const getVerticalSectionProgress = (element, section) => {
   const sectionTop = section.offsetTop;
   const sectionScrollableHeight = Math.max(1, section.scrollHeight - element.clientHeight);
@@ -873,11 +922,46 @@ const updateVerticalReadingPosition = element => {
   syncActiveChapterItem(item);
 };
 
-const requestVerticalStreamBoundary = element => {
+const requestVerticalStreamBoundary = (element, { includePrevious = true, includeNext = true } = {}) => {
   if (!element || loadingVisible.value || hasBlockingReaderPanel()) return;
 
-  const remainingScroll = element.scrollHeight - element.clientHeight - element.scrollTop;
-  if (remainingScroll <= VERTICAL_STREAM_LOAD_THRESHOLD) loadReaderStreamChapter("next");
+  if (includePrevious && element.scrollTop <= VERTICAL_STREAM_PREVIOUS_LOAD_THRESHOLD) {
+    loadReaderStreamChapter("previous");
+  }
+
+  if (includeNext) {
+    const remainingScroll = element.scrollHeight - element.clientHeight - element.scrollTop;
+    if (remainingScroll <= VERTICAL_STREAM_LOAD_THRESHOLD) loadReaderStreamChapter("next");
+  }
+};
+
+const setVerticalPreviousPullHeight = value => {
+  const height = Number(value);
+  verticalStreamPreviousPullHeight.value = Math.min(
+    VERTICAL_STREAM_PREVIOUS_PULL_MAX,
+    Math.max(0, Number.isFinite(height) ? height : 0)
+  );
+};
+
+const resetVerticalPreviousPullHeight = () => {
+  if (!verticalStreamPreviousLoading.value) setVerticalPreviousPullHeight(0);
+};
+
+const canShowPreviousPullIndicator = element =>
+  isVerticalReadMode.value &&
+  !loadingVisible.value &&
+  !hasBlockingReaderPanel() &&
+  !verticalStreamPreviousLoading.value &&
+  !streamChapterLoadTasks.previous &&
+  (element?.scrollTop || 0) <= VERTICAL_STREAM_PREVIOUS_LOAD_THRESHOLD;
+
+const suppressVerticalStreamBoundaryRequests = () => {
+  window.clearTimeout(verticalBoundarySuppressTimer);
+  verticalBoundaryRequestsSuppressed = true;
+  verticalBoundarySuppressTimer = window.setTimeout(() => {
+    verticalBoundaryRequestsSuppressed = false;
+    verticalBoundarySuppressTimer = 0;
+  }, 120);
 };
 
 const getVerticalStreamSectionByItem = item => {
@@ -893,6 +977,7 @@ const scrollVerticalToStreamItem = async (item, placement = "first") => {
   const section = getVerticalStreamSectionByItem(item);
   if (!section) return;
 
+  suppressVerticalStreamBoundaryRequests();
   section.scrollIntoView({
     block: placement === "last" ? "end" : "start",
     behavior: "auto"
@@ -909,6 +994,7 @@ const scrollVerticalToCurrentProgress = async () => {
   if (!element || !section) return;
 
   const sectionScrollableHeight = Math.max(0, section.scrollHeight - element.clientHeight);
+  suppressVerticalStreamBoundaryRequests();
   element.scrollTo({
     top: section.offsetTop + getVerticalProgressRatio() * sectionScrollableHeight,
     behavior: "auto"
@@ -932,7 +1018,76 @@ const handleVerticalScroll = event => {
 
   const element = event.target;
   updateVerticalReadingPosition(element);
-  requestVerticalStreamBoundary(element);
+  if (!verticalBoundaryRequestsSuppressed) {
+    requestVerticalStreamBoundary(element, { includePrevious: false });
+  }
+};
+
+const handleVerticalTouchStart = event => {
+  const point = getTouchPoint(event);
+  verticalTouchStartY = point?.y || 0;
+  verticalTouchStartScrollTop = verticalStreamRef.value?.scrollTop || 0;
+  resetVerticalPreviousPullHeight();
+};
+
+const handleVerticalTouchMove = event => {
+  if (!isVerticalReadMode.value || loadingVisible.value || hasBlockingReaderPanel()) return;
+
+  const element = verticalStreamRef.value;
+  const point = getTouchPoint(event);
+  if (!element || !point || !verticalTouchStartY) return;
+
+  const deltaY = point.y - verticalTouchStartY;
+  if (Math.abs(deltaY) < PAGE_TURN_DRAG_SLOP) return;
+
+  const isPullingPrevious =
+    deltaY > 0 &&
+    (verticalTouchStartScrollTop <= VERTICAL_STREAM_PREVIOUS_LOAD_THRESHOLD ||
+      element.scrollTop <= VERTICAL_STREAM_PREVIOUS_LOAD_THRESHOLD);
+  if (isPullingPrevious) {
+    if (!canShowPreviousPullIndicator(element)) {
+      resetVerticalPreviousPullHeight();
+      return;
+    }
+
+    event.preventDefault?.();
+    const pullHeight = Math.max(0, deltaY - verticalTouchStartScrollTop) * VERTICAL_STREAM_PREVIOUS_PULL_DAMPING;
+    setVerticalPreviousPullHeight(pullHeight);
+    return;
+  }
+
+  resetVerticalPreviousPullHeight();
+
+  requestVerticalStreamBoundary(element, {
+    includePrevious: false,
+    includeNext: deltaY < 0
+  });
+};
+
+const handleVerticalTouchEnd = () => {
+  const element = verticalStreamRef.value;
+  const shouldLoadPrevious =
+    verticalStreamPreviousPullHeight.value >= VERTICAL_STREAM_PREVIOUS_PULL_TRIGGER &&
+    (verticalTouchStartScrollTop <= VERTICAL_STREAM_PREVIOUS_LOAD_THRESHOLD ||
+      (element?.scrollTop || 0) <= VERTICAL_STREAM_PREVIOUS_LOAD_THRESHOLD) &&
+    canShowPreviousPullIndicator(element);
+
+  verticalTouchStartY = 0;
+  verticalTouchStartScrollTop = 0;
+
+  if (shouldLoadPrevious) {
+    setVerticalPreviousPullHeight(VERTICAL_STREAM_PREVIOUS_PULL_MAX);
+    loadReaderStreamChapter("previous");
+    return;
+  }
+
+  resetVerticalPreviousPullHeight();
+};
+
+const handleVerticalTouchCancel = () => {
+  verticalTouchStartY = 0;
+  verticalTouchStartScrollTop = 0;
+  resetVerticalPreviousPullHeight();
 };
 
 const getPendingReaderAnchor = () => {
@@ -981,7 +1136,7 @@ const requestVisibleVerticalStreamBoundary = async () => {
   if (!isVerticalReadMode.value) return;
 
   await nextTick();
-  requestVerticalStreamBoundary(verticalStreamRef.value);
+  requestVerticalStreamBoundary(verticalStreamRef.value, { includePrevious: false });
 };
 
 const applyReaderLayout = async ({ keepPosition }) => {
@@ -1030,23 +1185,37 @@ const streamChapterLoadTasks = { previous: null, next: null };
 const loadReaderStreamChapter = async direction => {
   if (!isPagedReadMode.value && !isVerticalReadMode.value) return false;
   if (streamChapterLoadTasks[direction]) return streamChapterLoadTasks[direction];
-  if (!hasAdjacentStreamChapter(direction)) return false;
 
   streamChapterLoadTasks[direction] = (async () => {
     const loadingStartedAt = performance.now();
     const shouldShowVerticalNextLoading = isVerticalReadMode.value && direction === "next";
+    const shouldShowVerticalPreviousLoading = isVerticalReadMode.value && direction === "previous";
     if (shouldShowVerticalNextLoading) verticalStreamNextLoading.value = true;
+    if (shouldShowVerticalPreviousLoading) {
+      setVerticalPreviousPullHeight(VERTICAL_STREAM_PREVIOUS_PULL_MAX);
+      verticalStreamPreviousLoading.value = true;
+    }
     try {
       const item = await loadAdjacentChapterStreamItem(direction);
       await waitRemainingTime(loadingStartedAt);
       if (!item) return false;
 
+      const verticalAnchor = shouldShowVerticalPreviousLoading ? captureVerticalStreamAnchor() : null;
+      if (shouldShowVerticalPreviousLoading) {
+        verticalStreamPreviousLoading.value = false;
+        setVerticalPreviousPullHeight(0);
+      }
       insertChapterStreamItem(item, direction);
       await nextTick();
+      restoreVerticalStreamAnchor(verticalAnchor);
       syncReaderLayoutMetrics();
       return item;
     } finally {
       if (shouldShowVerticalNextLoading) verticalStreamNextLoading.value = false;
+      if (shouldShowVerticalPreviousLoading) {
+        verticalStreamPreviousLoading.value = false;
+        setVerticalPreviousPullHeight(0);
+      }
       streamChapterLoadTasks[direction] = null;
     }
   })();
@@ -1420,8 +1589,17 @@ const handleReaderTouchCancel = () => {
 };
 
 const handleReaderWheel = event => {
-  if (!isPagedReadMode.value || loadingVisible.value || hasBlockingReaderPanel()) return;
-  if (isVerticalReadMode.value) return;
+  if (loadingVisible.value || hasBlockingReaderPanel()) return;
+
+  if (isVerticalReadMode.value) {
+    requestVerticalStreamBoundary(verticalStreamRef.value, {
+      includePrevious: false,
+      includeNext: event.deltaY > 0
+    });
+    return;
+  }
+
+  if (!isPagedReadMode.value) return;
 
   if (event.deltaY > 0) {
     turnReaderPageByCurrentMethod("next");
@@ -1576,6 +1754,7 @@ onBeforeUnmount(() => {
   abortReaderTask();
   cleanupLayoutScheduler();
   if (pageTurnAnimationTimer) window.clearTimeout(pageTurnAnimationTimer);
+  if (verticalBoundarySuppressTimer) window.clearTimeout(verticalBoundarySuppressTimer);
   cancelPendingPageTurnOffset();
   cleanupReadingHistoryPersistence();
   removeMouseDragListeners();
