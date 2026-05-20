@@ -1107,7 +1107,7 @@ const goPreviousChapterAction = async () => {
   if (!isPagedReadMode.value && !isVerticalReadMode.value) return;
 
   const previousItem = getSiblingPageChapterItem("previous") || await loadReaderStreamChapter("previous");
-  if (previousItem) await setActiveChapterItem(previousItem, "last");
+  if (previousItem) await setActiveChapterItem(previousItem, "first");
 };
 
 const getAdjacentChapterPlacement = direction =>

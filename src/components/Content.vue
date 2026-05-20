@@ -4,7 +4,7 @@
     class="reader-text-content"
     :style="containerStyle"
   >
-    <h3 data-pos="0">{{ displayTitle }}</h3>
+    <div class="reader-chapter-title" data-pos="0">{{ displayTitle }}</div>
     <p
       v-for="paragraph in paragraphs"
       :key="paragraph.pos"
@@ -102,6 +102,10 @@ const paragraphs = computed(() => {
 </script>
 
 <style lang="stylus" scoped>
+.reader-text-content {
+  display: flow-root;
+}
+
 p {
   display: block;
   word-wrap: break-word;
@@ -110,12 +114,13 @@ p {
   font-family: inherit;
   font-weight: inherit;
 }
-h3 {
+.reader-chapter-title {
   font-family: inherit;
   font-size: 28px;
   font-weight: inherit;
   line-height: 1.2;
-  margin: 1em 0;
+  margin: 0;
+  padding: 1em 0;
   text-align: center;
 }
 </style>
