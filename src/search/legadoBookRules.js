@@ -52,9 +52,6 @@ const getRuleValue = (rule, content, context, options = {}) => {
     const script = ruleText.replace(/^<js>/i, "").replace(/<\/js>$/i, "");
     return evaluateLegadoScript(script, createRuleContext(content, context), content);
   }
-  if (ruleText.startsWith("@js:")) {
-    return evaluateLegadoScript(ruleText.slice(4), createRuleContext(content, context), content);
-  }
   return getString(ruleText, content, context, options);
 };
 

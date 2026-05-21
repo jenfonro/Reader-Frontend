@@ -2,10 +2,32 @@ import { normalizeBaseUrl, toText } from "./legadoCommon.js";
 import { evaluateLegadoScript } from "./legadoScript.js";
 
 const htmlAccessors = new Set(["text", "html", "all", "textNodes", "ownText"]);
+const regexMatchMarker = "__readerLegadoRegexMatch";
 
 const isObject = value => value && typeof value === "object";
 const isElement = value => typeof Element !== "undefined" && value instanceof Element;
 const isDocument = value => typeof Document !== "undefined" && value instanceof Document;
+const isDomNode = value => isObject(value) && typeof value.nodeType === "number";
+const isRegexMatch = value => isObject(value) && value[regexMatchMarker] === true;
+
+const createRegexMatch = match => ({
+  [regexMatchMarker]: true,
+  value: match[0] || "",
+  groups: Array.from(match).slice(1),
+  index: Number.isFinite(match.index) ? match.index : -1
+});
+
+const getRegexGroupValue = (value, group) => {
+  if (!isRegexMatch(value)) return "";
+  const index = Number(group);
+  if (!Number.isInteger(index) || index < 0) return "";
+  return index === 0 ? toText(value.value) : toText(value.groups[index - 1]);
+};
+
+const expandRegexGroupReferences = (rule, content) => {
+  if (!isRegexMatch(content)) return rule;
+  return toText(rule).replace(/\$(\d+)/g, (match, group) => getRegexGroupValue(content, group));
+};
 
 export const parseRuleObject = value => {
   if (!value) return {};
@@ -33,6 +55,74 @@ const parseJson = value => {
 const parseHtml = value => {
   if (isElement(value) || isDocument(value)) return value;
   return new DOMParser().parseFromString(toText(value), "text/html");
+};
+
+const domNodeToText = value => {
+  if (!isDomNode(value)) return toText(value).trim();
+  if (value.nodeType === 2) return toText(value.value).trim();
+  return toText(value.textContent ?? value.nodeValue).trim();
+};
+
+const ruleValueToText = value => {
+  if (isRegexMatch(value)) return toText(value.value).trim();
+  if (isDomNode(value)) return domNodeToText(value);
+  return toText(value).trim();
+};
+
+const normalizeXPathIndex = index => {
+  const offset = Math.abs(Number(index)) - 1;
+  return offset > 0 ? `[last()-${offset}]` : "[last()]";
+};
+
+const normalizeXPathRule = rule => toText(rule)
+  .trim()
+  .replace(/^@?xpath:/i, "")
+  .replace(/\[(-\d+)\]/g, (match, index) => normalizeXPathIndex(index))
+  .trim();
+
+const isXPathRule = rule => {
+  const text = toText(rule).trim();
+  if (/^@?xpath:/i.test(text)) return true;
+  const xpath = normalizeXPathRule(text);
+  return xpath.startsWith("//")
+    || xpath.startsWith(".//")
+    || /^\/(?:html|body)(?:\/|$)/i.test(xpath)
+    || /^\.\/(?:[A-Za-z*]|@|text\(\))/.test(xpath);
+};
+
+const readXPathValues = (content, rule) => {
+  const xpath = normalizeXPathRule(rule);
+  if (!xpath || typeof XPathResult === "undefined") return [];
+
+  const root = parseHtml(content);
+  const ownerDocument = isDocument(root) ? root : root.ownerDocument;
+  if (!ownerDocument || typeof ownerDocument.evaluate !== "function") return [];
+
+  try {
+    const result = ownerDocument.evaluate(xpath, root, null, XPathResult.ANY_TYPE, null);
+    switch (result.resultType) {
+      case XPathResult.STRING_TYPE:
+        return compact([result.stringValue]);
+      case XPathResult.NUMBER_TYPE:
+        return Number.isFinite(result.numberValue) ? [String(result.numberValue)] : [];
+      case XPathResult.BOOLEAN_TYPE:
+        return [String(result.booleanValue)];
+      case XPathResult.UNORDERED_NODE_SNAPSHOT_TYPE:
+      case XPathResult.ORDERED_NODE_SNAPSHOT_TYPE:
+        return compact(Array.from({ length: result.snapshotLength }, (_, index) => result.snapshotItem(index)));
+      default: {
+        const values = [];
+        let node = result.iterateNext();
+        while (node) {
+          values.push(node);
+          node = result.iterateNext();
+        }
+        return compact(values);
+      }
+    }
+  } catch (error) {
+    return [];
+  }
 };
 
 const decodeHtmlEntities = value =>
@@ -69,9 +159,39 @@ const stripHtmlToText = value => decodeHtmlEntities(
 
 const compact = values => values.filter(value => value !== null && value !== undefined && value !== "");
 
+const splitTopLevel = (rule, operator) => {
+  const parts = [];
+  let start = 0;
+  let templateDepth = 0;
+
+  for (let index = 0; index < rule.length; index += 1) {
+    if (rule.startsWith("{{", index)) {
+      templateDepth += 1;
+      index += 1;
+      continue;
+    }
+    if (templateDepth && rule.startsWith("}}", index)) {
+      templateDepth -= 1;
+      index += 1;
+      continue;
+    }
+    if (!templateDepth && rule.startsWith(operator, index)) {
+      parts.push(rule.slice(start, index));
+      index += operator.length - 1;
+      start = index + 1;
+    }
+  }
+
+  if (!parts.length) return null;
+  parts.push(rule.slice(start));
+  return parts;
+};
+
 const splitByOperators = rule => {
-  if (rule.includes("||")) return { parts: rule.split("||"), operator: "||" };
-  if (rule.includes("&&")) return { parts: rule.split("&&"), operator: "&&" };
+  const orParts = splitTopLevel(rule, "||");
+  if (orParts) return { parts: orParts, operator: "||" };
+  const andParts = splitTopLevel(rule, "&&");
+  if (andParts) return { parts: andParts, operator: "&&" };
   return { parts: [rule], operator: "" };
 };
 
@@ -182,9 +302,9 @@ const selectFromElements = (items, segment) => {
 
 const getAccessorValues = (items, accessor) =>
   compact(items.map(item => {
-    if (accessor === "text") return isElement(item) ? item.textContent.trim() : toText(item).trim();
+    if (accessor === "text") return ruleValueToText(item);
     if (accessor === "ownText") {
-      if (!isElement(item)) return toText(item).trim();
+      if (!isElement(item)) return ruleValueToText(item);
       return Array.from(item.childNodes)
         .filter(node => node.nodeType === Node.TEXT_NODE)
         .map(node => node.textContent.trim())
@@ -192,15 +312,15 @@ const getAccessorValues = (items, accessor) =>
         .join("\n");
     }
     if (accessor === "textNodes") {
-      if (!isElement(item)) return toText(item).trim();
+      if (!isElement(item)) return ruleValueToText(item);
       return Array.from(item.childNodes)
         .filter(node => node.nodeType === Node.TEXT_NODE)
         .map(node => node.textContent.trim())
         .filter(Boolean)
         .join("\n");
     }
-    if (accessor === "html") return isElement(item) ? item.innerHTML.trim() : toText(item);
-    if (accessor === "all") return isElement(item) ? item.outerHTML.trim() : toText(item);
+    if (accessor === "html") return isElement(item) ? item.innerHTML.trim() : ruleValueToText(item);
+    if (accessor === "all") return isElement(item) ? item.outerHTML.trim() : ruleValueToText(item);
     if (isElement(item)) return item.getAttribute(accessor) || "";
     if (isObject(item)) return item[accessor] || "";
     return "";
@@ -227,7 +347,7 @@ const readHtmlRuleValues = (content, rule) => {
     if (!items.length) return [];
   }
 
-  return compact(items.map(item => (isElement(item) ? item.textContent.trim() : item)));
+  return compact(items);
 };
 
 const expandTemplateRule = (rule, content, context) =>
@@ -244,6 +364,78 @@ const createRuleContext = (content, context = {}) => ({
   getElements: rule => getElements(rule, content, context)
 });
 
+const readRegexMatches = (rule, content) => {
+  const regexRule = toText(rule).trim();
+  if (!regexRule) return [];
+
+  const { parts, operator } = splitByOperators(regexRule);
+  if (operator === "&&") {
+    let items = [content];
+    for (const part of parts) {
+      items = items.flatMap(item => readRegexMatches(part, ruleValueToText(item)));
+      if (!items.length) return [];
+    }
+    return items;
+  }
+
+  if (operator === "||") {
+    for (const part of parts) {
+      const values = readRegexMatches(part, content);
+      if (values.length) return values;
+    }
+    return [];
+  }
+
+  try {
+    return Array.from(toText(content).matchAll(new RegExp(regexRule, "g"))).map(createRegexMatch);
+  } catch (error) {
+    return [];
+  }
+};
+
+const readSingleRuleValues = (rule, content, context = {}, options = {}) => {
+  const sourceRule = toText(rule).trim();
+  if (!sourceRule) return [];
+  const hasTemplateRule = sourceRule.includes("{{");
+  const ruleText = expandTemplateRule(sourceRule, content, context).trim();
+  const expandedRuleText = /^\$\d+$/.test(ruleText) ? ruleText : expandRegexGroupReferences(ruleText, content);
+
+  if (/^\$\d+$/.test(expandedRuleText)) return compact([getRegexGroupValue(content, expandedRuleText.slice(1))]);
+  if (expandedRuleText.startsWith(":")) return readRegexMatches(expandedRuleText.slice(1), content);
+  if (isXPathRule(expandedRuleText)) return readXPathValues(content, expandedRuleText);
+  if (expandedRuleText.startsWith("$") && parseJson(content) !== null) return readJsonPath(content, expandedRuleText);
+  if (options.literalTemplate && hasTemplateRule) return compact([expandedRuleText]);
+  if (/^https?:\/\//i.test(expandedRuleText) || expandedRuleText.startsWith("/")) return compact([expandedRuleText]);
+  return readHtmlRuleValues(content, expandedRuleText);
+};
+
+const readRuleValues = (rule, content, context = {}, options = {}) => {
+  const sourceRule = toText(rule).trim();
+  if (!sourceRule) return [];
+  if (sourceRule.startsWith(":")) return readRegexMatches(sourceRule.slice(1), content);
+
+  const { parts, operator } = splitByOperators(sourceRule);
+  if (operator === "&&") {
+    return parts.flatMap(part => readSingleRuleValues(part, content, context, options));
+  }
+  if (operator === "||") {
+    for (const part of parts) {
+      const values = readSingleRuleValues(part, content, context, options);
+      if (values.length) return values;
+    }
+    return [];
+  }
+  return readSingleRuleValues(sourceRule, content, context, options);
+};
+
+const scriptNeedsArrayResult = script => /\bresult\s*(?:\[|\.length|\.map\b|\.forEach\b)/.test(script)
+  || /for\s*\([^)]*\bresult\b/.test(script);
+
+const createScriptInitialResult = (rule, content, context, options, script) => {
+  const values = readRuleValues(rule, content, context, options).map(ruleValueToText);
+  return scriptNeedsArrayResult(script) ? values : values.join("\n");
+};
+
 export const getElements = (rule, content, context = {}) => {
   const sourceRule = toText(rule).trim();
   if (!sourceRule) return [];
@@ -252,25 +444,7 @@ export const getElements = (rule, content, context = {}) => {
     const value = evaluateLegadoScript(script, createRuleContext(content, context), content);
     return Array.isArray(value) ? value : compact([value]);
   }
-  if (sourceRule.startsWith(":")) {
-    try {
-      return Array.from(toText(content).matchAll(new RegExp(sourceRule.slice(1), "g"))).map(match => match[0]);
-    } catch (error) {
-      return [];
-    }
-  }
-
-  const { parts, operator } = splitByOperators(sourceRule);
-  const results = [];
-  for (const part of parts) {
-    const text = expandTemplateRule(part.trim(), content, context).trim();
-    const values = text.startsWith("$") ? readJsonPath(content, text) : readHtmlRuleValues(content, text);
-    if (values.length) {
-      results.push(...values);
-      if (operator === "||") break;
-    }
-  }
-  return results;
+  return readRuleValues(sourceRule, content, context);
 };
 
 export const getString = (rule, content, context = {}, options = {}) => {
@@ -280,28 +454,21 @@ export const getString = (rule, content, context = {}, options = {}) => {
   if (jsIndex >= 0) {
     const beforeJs = rawRule.slice(0, jsIndex).trim();
     const jsRule = rawRule.slice(jsIndex).trim();
-    const initialResult = beforeJs ? getString(beforeJs, content, context, options) : toText(content);
-    const script = jsRule.startsWith("@js:")
-      ? jsRule.slice(4)
-      : jsRule.replace(/^<js>/i, "").replace(/<\/js>$/i, "");
+    const script = expandRegexGroupReferences(
+      jsRule.startsWith("@js:")
+        ? jsRule.slice(4)
+        : jsRule.replace(/^<js>/i, "").replace(/<\/js>$/i, ""),
+      content
+    );
+    const initialResult = beforeJs
+      ? createScriptInitialResult(beforeJs, content, context, options, script)
+      : ruleValueToText(content);
     return toText(evaluateLegadoScript(script, createRuleContext(content, context), initialResult));
   }
 
   const replaced = applyReplacement("", rawRule);
-  const hasTemplateRule = replaced.rule.includes("{{");
-  const ruleText = expandTemplateRule(replaced.rule, content, context).trim();
-  let values;
-  if (ruleText.startsWith("$") && parseJson(content) !== null) {
-    values = readJsonPath(content, ruleText);
-  } else if (hasTemplateRule) {
-    values = [ruleText];
-  } else if (/^https?:\/\//i.test(ruleText) || ruleText.startsWith("/")) {
-    values = [ruleText];
-  } else {
-    values = readHtmlRuleValues(content, ruleText);
-  }
-
-  let value = compact(values).map(toText).join("\n");
+  const values = readRuleValues(replaced.rule, content, context, { ...options, literalTemplate: true });
+  let value = compact(values).map(ruleValueToText).join("\n");
   value = applyReplacement(value, rawRule).value;
   if (options.isUrl && value) {
     try {
