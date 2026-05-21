@@ -935,9 +935,17 @@ const getClampedVerticalPreviousPullHeight = (value, maxHeight = VERTICAL_STREAM
 const getVerticalPreviousLoadingElement = () =>
   verticalStreamRef.value?.querySelector(".reader-vertical-stream__previous-loading") || null;
 
+const getValidVerticalPreviousPullHeight = height => {
+  const heightValue = Number(height);
+  return Number.isFinite(heightValue) ? Math.max(0, heightValue) : 0;
+};
+
 const renderVerticalPreviousPullHeight = height => {
-  const loadingElement = getVerticalPreviousLoadingElement();
-  if (loadingElement) loadingElement.style.height = `${height}px`;
+  const pullHeight = getValidVerticalPreviousPullHeight(height);
+  verticalStreamRef.value?.style.setProperty(
+    "--reader-vertical-previous-pull-height",
+    `${pullHeight}px`
+  );
 };
 
 const applyVerticalPreviousPullHeight = (
@@ -1234,8 +1242,9 @@ const handleVerticalTouchMove = event => {
 const handleVerticalTouchEnd = () => {
   flushVerticalPreviousPullHeightFrame();
   const element = verticalStreamRef.value;
+  const pullHeight = verticalPreviousPullHeightValue;
   const shouldLoadPrevious =
-    verticalStreamPreviousPullHeight.value >= VERTICAL_STREAM_PREVIOUS_PULL_TRIGGER &&
+    pullHeight >= VERTICAL_STREAM_PREVIOUS_PULL_TRIGGER &&
     (verticalTouchStartScrollTop <= VERTICAL_STREAM_PREVIOUS_LOAD_THRESHOLD ||
       (element?.scrollTop || 0) <= VERTICAL_STREAM_PREVIOUS_LOAD_THRESHOLD) &&
     canShowPreviousPullIndicator(element);
@@ -1250,7 +1259,7 @@ const handleVerticalTouchEnd = () => {
 
   if (shouldLoadPrevious) {
     setVerticalPreviousPullHeight(
-      Math.max(VERTICAL_STREAM_PREVIOUS_PULL_MAX, verticalStreamPreviousPullHeight.value),
+      Math.max(VERTICAL_STREAM_PREVIOUS_PULL_MAX, pullHeight),
       getVerticalPreviousPullMaxHeight()
     );
     loadReaderStreamChapter("previous");

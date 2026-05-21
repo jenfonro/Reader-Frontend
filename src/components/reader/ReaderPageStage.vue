@@ -66,38 +66,40 @@
                 <span class="reader-vertical-stream__previous-loading-text">正在加载</span>
               </template>
             </div>
-            <section
-              v-for="item in chapterStreamItems"
-              :key="item.key"
-              class="reader-vertical-stream__item"
-              :data-chapter-key="item.key"
-            >
-              <ReaderIntroPage
-                v-if="isIntroStreamItem(item)"
-                class="reader-readable-content reader-page__intro"
-                :book="readingBook"
-                :loading="introLoading"
-                :in-bookshelf="isReadingBookInShelf"
-                @toggle-bookshelf="emit('toggle-bookshelf')"
-                @start-reading="emit('start-reading')"
+            <div class="reader-vertical-stream__content">
+              <section
+                v-for="item in chapterStreamItems"
+                :key="item.key"
+                class="reader-vertical-stream__item"
+                :data-chapter-key="item.key"
+              >
+                <ReaderIntroPage
+                  v-if="isIntroStreamItem(item)"
+                  class="reader-readable-content reader-page__intro"
+                  :book="readingBook"
+                  :loading="introLoading"
+                  :in-bookshelf="isReadingBookInShelf"
+                  @toggle-bookshelf="emit('toggle-bookshelf')"
+                  @start-reading="emit('start-reading')"
+                />
+                <Content
+                  v-else
+                  class="reader-readable-content reader-text-flow"
+                  :title="item.title"
+                  :content="item.content"
+                  :show-content="show"
+                  :error="error"
+                  :style="contentStyle"
+                  :reader-config="config"
+                />
+              </section>
+              <ReaderLoadingBlock
+                v-if="verticalStreamNextLoading"
+                class="reader-vertical-stream__loading"
+                variant="compact"
+                text="正在加载"
               />
-              <Content
-                v-else
-                class="reader-readable-content reader-text-flow"
-                :title="item.title"
-                :content="item.content"
-                :show-content="show"
-                :error="error"
-                :style="contentStyle"
-                :reader-config="config"
-              />
-            </section>
-            <ReaderLoadingBlock
-              v-if="verticalStreamNextLoading"
-              class="reader-vertical-stream__loading"
-              variant="compact"
-              text="正在加载"
-            />
+            </div>
           </div>
         </template>
         <div
