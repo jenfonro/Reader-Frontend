@@ -1,6 +1,10 @@
 import { normalizeBaseUrl, toText } from "./legadoCommon.js";
 import { evaluateLegadoScript } from "./legadoScript.js";
-import { fetchWithEdgeOneProxy } from "./edgeOneProxy.js";
+import {
+  createEdgeOneServiceError,
+  fetchWithEdgeOneFetch,
+  isEdgeOneServiceErrorResponse
+} from "./edgeOneFetch.js";
 import {
   createFetchFailureError,
   createHttpError,
@@ -171,10 +175,10 @@ const normalizeResponseUrl = (response, fallbackUrl) => {
 export const fetchLegadoResponse = async (request, signal) => {
   let response;
   try {
-    const proxyResponse = await fetchWithEdgeOneProxy(request, signal);
-    if (!proxyResponse && isMixedContentRequest(request.url)) throw createMixedContentError(request.url);
+    const edgeOneResponse = await fetchWithEdgeOneFetch(request, signal);
+    if (!edgeOneResponse && isMixedContentRequest(request.url)) throw createMixedContentError(request.url);
 
-    response = proxyResponse || await fetch(request.url, {
+    response = edgeOneResponse || await fetch(request.url, {
       method: request.method,
       headers: request.headers,
       body: request.body,
@@ -188,7 +192,10 @@ export const fetchLegadoResponse = async (request, signal) => {
   }
 
   request.responseUrl = normalizeResponseUrl(response, request.url);
-  if (!response.ok) throw createHttpError(response, request.responseUrl);
+  if (!response.ok) {
+    if (isEdgeOneServiceErrorResponse(response)) throw await createEdgeOneServiceError(response);
+    throw createHttpError(response, request.responseUrl);
+  }
 
   const buffer = await response.arrayBuffer();
   const contentType = response.headers.get("content-type") || "";
