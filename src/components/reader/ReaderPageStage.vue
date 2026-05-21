@@ -33,7 +33,6 @@
                 'reader-vertical-stream__previous-loading--visible': verticalStreamPreviousLoadingHeight > 0,
                 'reader-vertical-stream__previous-loading--preview': verticalStreamPreviousPreviewVisible
               }"
-              :style="{ height: `${verticalStreamPreviousLoadingHeight}px` }"
               :role="verticalStreamPreviousPreviewVisible ? undefined : 'status'"
               :aria-live="verticalStreamPreviousPreviewVisible ? undefined : 'polite'"
             >

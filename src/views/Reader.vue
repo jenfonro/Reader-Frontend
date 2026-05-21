@@ -260,6 +260,7 @@ const verticalStreamNextLoading = ref(false);
 const verticalStreamPreviousLoading = ref(false);
 const verticalStreamPreviousPullHeight = ref(0);
 const verticalStreamPreviousPreviewItem = ref(null);
+let verticalPreviousPullHeightValue = 0;
 let verticalTouchStartY = 0;
 let verticalTouchStartScrollTop = 0;
 const verticalTouchActive = ref(false);
@@ -923,12 +924,34 @@ const getVerticalPreviousPullMaxHeight = () => {
   return Math.max(VERTICAL_STREAM_PREVIOUS_PULL_MAX, viewportHeight * VERTICAL_STREAM_PREVIOUS_PULL_VIEWPORT_RATIO);
 };
 
-const applyVerticalPreviousPullHeight = (value, maxHeight = VERTICAL_STREAM_PREVIOUS_PULL_MAX) => {
+const getClampedVerticalPreviousPullHeight = (value, maxHeight = VERTICAL_STREAM_PREVIOUS_PULL_MAX) => {
   const height = Number(value);
-  verticalStreamPreviousPullHeight.value = Math.min(
+  return Math.min(
     Math.max(VERTICAL_STREAM_PREVIOUS_PULL_MAX, maxHeight),
     Math.max(0, Number.isFinite(height) ? height : 0)
   );
+};
+
+const getVerticalPreviousLoadingElement = () =>
+  verticalStreamRef.value?.querySelector(".reader-vertical-stream__previous-loading") || null;
+
+const renderVerticalPreviousPullHeight = height => {
+  const loadingElement = getVerticalPreviousLoadingElement();
+  if (loadingElement) loadingElement.style.height = `${height}px`;
+};
+
+const applyVerticalPreviousPullHeight = (
+  value,
+  maxHeight = VERTICAL_STREAM_PREVIOUS_PULL_MAX,
+  { syncReactive = true } = {}
+) => {
+  const height = getClampedVerticalPreviousPullHeight(value, maxHeight);
+  verticalPreviousPullHeightValue = height;
+  renderVerticalPreviousPullHeight(height);
+  if (syncReactive || (height > 0 && verticalStreamPreviousPullHeight.value <= 0)) {
+    verticalStreamPreviousPullHeight.value = height;
+  }
+  return height;
 };
 
 const cancelVerticalPreviousPullHeightFrame = () => {
@@ -961,7 +984,9 @@ const scheduleVerticalPreviousPullHeight = (value, maxHeight = VERTICAL_STREAM_P
     verticalPreviousPullHeightFrame = 0;
     verticalPreviousPendingPullHeight = null;
     if (pendingPullHeight) {
-      applyVerticalPreviousPullHeight(pendingPullHeight.value, pendingPullHeight.maxHeight);
+      applyVerticalPreviousPullHeight(pendingPullHeight.value, pendingPullHeight.maxHeight, {
+        syncReactive: false
+      });
     }
   });
 };
@@ -982,10 +1007,9 @@ const resetVerticalPreviousPullHeight = () => {
 };
 
 const getVerticalPreviousSlotHeight = () => {
-  const element = verticalStreamRef.value;
-  const loadingElement = element?.querySelector(".reader-vertical-stream__previous-loading");
+  const loadingElement = getVerticalPreviousLoadingElement();
   const height = loadingElement?.getBoundingClientRect().height;
-  return Number.isFinite(height) ? height : verticalStreamPreviousLoadingHeight.value;
+  return Number.isFinite(height) ? height : verticalPreviousPullHeightValue;
 };
 
 const clearVerticalPreviousBoundaryState = () => {
@@ -995,6 +1019,7 @@ const clearVerticalPreviousBoundaryState = () => {
 };
 
 const prepareVerticalPreviousPreviewItem = item => {
+  flushVerticalPreviousPullHeightFrame();
   const slotHeight = getVerticalPreviousSlotHeight();
   verticalStreamPreviousPreviewItem.value = item;
   verticalStreamPreviousLoading.value = false;
