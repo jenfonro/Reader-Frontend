@@ -37,7 +37,7 @@
         title="EdgeOne 地址"
         title-id="readerEdgeOneUrlDialogTitle"
         label="地址"
-        placeholder="请输入 EdgeOne 接口地址"
+        placeholder="请输入 EdgeOne 地址，可填根地址或 /api/fetch"
         @close="closeUrlDialog"
         @submit="submitUrl"
       />

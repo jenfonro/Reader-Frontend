@@ -1,9 +1,10 @@
 import { getApiSettings } from "../data/apiSettings.js";
 import { toText } from "./legadoCommon.js";
 
+const EDGEONE_FETCH_ROUTE = "/api/fetch";
 const isHttpUrl = value => /^https?:\/\//i.test(value);
 
-const normalizeProxyEndpoint = ({ edgeOneUrl, edgeOneSecret }) => {
+const normalizeProxyEndpoint = ({ edgeOneUrl }) => {
   const rawUrl = toText(edgeOneUrl).trim();
   if (!rawUrl) return null;
 
@@ -17,24 +18,23 @@ const normalizeProxyEndpoint = ({ edgeOneUrl, edgeOneSecret }) => {
   if (!isHttpUrl(endpoint.toString())) return null;
 
   const pathname = endpoint.pathname.replace(/\/+$/, "");
-  if (!pathname) {
-    endpoint.pathname = "/proxy";
-  } else if (pathname.endsWith("/proxy")) {
-    endpoint.pathname = pathname;
-  } else {
-    endpoint.pathname = "/proxy";
-  }
-
-  const secret = toText(edgeOneSecret).trim();
-  if (secret) {
-    endpoint.searchParams.set("secret", secret);
-  }
-
-  if (!endpoint.searchParams.get("secret")) return null;
+  endpoint.pathname = pathname.endsWith(EDGEONE_FETCH_ROUTE)
+    ? pathname
+    : EDGEONE_FETCH_ROUTE;
+  endpoint.search = "";
+  endpoint.hash = "";
   return endpoint.toString();
 };
 
-export const getEdgeOneProxyEndpoint = () => normalizeProxyEndpoint(getApiSettings());
+const getEdgeOneProxySettings = () => {
+  const settings = getApiSettings();
+  const endpoint = normalizeProxyEndpoint(settings);
+  const secret = toText(settings.edgeOneSecret).trim();
+  if (!endpoint || !secret) return null;
+  return { endpoint, secret };
+};
+
+export const getEdgeOneProxyEndpoint = () => getEdgeOneProxySettings()?.endpoint || null;
 
 const normalizeProxyPayload = request => {
   const method = toText(request.method || "GET").trim().toUpperCase() || "GET";
@@ -45,7 +45,7 @@ const normalizeProxyPayload = request => {
     followRedirect: true
   };
 
-  if (method !== "GET" && method !== "HEAD" && request.body !== undefined) {
+  if (method === "POST" && request.body !== undefined) {
     payload.data = request.body;
   }
 
@@ -53,12 +53,13 @@ const normalizeProxyPayload = request => {
 };
 
 export const fetchWithEdgeOneProxy = async (request, signal) => {
-  const endpoint = getEdgeOneProxyEndpoint();
-  if (!endpoint) return null;
+  const settings = getEdgeOneProxySettings();
+  if (!settings) return null;
 
-  return fetch(endpoint, {
+  return fetch(settings.endpoint, {
     method: "POST",
     headers: {
+      "Authorization": `Bearer ${settings.secret}`,
       "Content-Type": "application/json;charset=UTF-8"
     },
     body: JSON.stringify(normalizeProxyPayload(request)),

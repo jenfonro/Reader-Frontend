@@ -157,9 +157,9 @@ export const buildSearchRequest = ({ source, keyword, page = 1 }) =>
   });
 
 const normalizeResponseUrl = (response, fallbackUrl) => {
-  const proxyFinalUrl = toText(response.headers.get("x-proxy-final-url")).trim();
+  const edgeFetchFinalUrl = toText(response.headers.get("x-edge-fetch-final-url")).trim();
   const responseUrl = toText(response.url).trim();
-  const nextUrl = proxyFinalUrl || responseUrl || fallbackUrl;
+  const nextUrl = edgeFetchFinalUrl || responseUrl || fallbackUrl;
 
   try {
     return new URL(nextUrl, fallbackUrl).toString();
