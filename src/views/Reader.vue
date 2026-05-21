@@ -162,7 +162,6 @@
       :vertical-stream-next-loading="verticalStreamNextLoading"
       :vertical-stream-previous-loading-height="verticalStreamPreviousLoadingHeight"
       :vertical-stream-previous-preview-item="verticalStreamPreviousPreviewItem"
-      :vertical-stream-previous-preview-offset="verticalStreamPreviousPreviewOffset"
       :vertical-stream-previous-preview-visible="verticalStreamPreviousPreviewVisible"
       :set-content-viewport-ref="setContentViewportRef"
       :set-vertical-stream-ref="setVerticalStreamRef"
@@ -261,11 +260,12 @@ const verticalStreamNextLoading = ref(false);
 const verticalStreamPreviousLoading = ref(false);
 const verticalStreamPreviousPullHeight = ref(0);
 const verticalStreamPreviousPreviewItem = ref(null);
-const verticalStreamPreviousPreviewContentHeight = ref(0);
 let verticalTouchStartY = 0;
 let verticalTouchStartScrollTop = 0;
 const verticalTouchActive = ref(false);
 let verticalPreviousPullGestureActive = false;
+let verticalPreviousPullHeightFrame = 0;
+let verticalPreviousPendingPullHeight = null;
 let verticalBoundaryRequestsSuppressed = false;
 let verticalBoundarySuppressTimer = 0;
 
@@ -375,16 +375,9 @@ const getPageContentTransformStyle = offset => ({
   transform: `translate3d(0, ${-offset}px, 0)`
 });
 const chapterStreamItems = computed(() => chapterStream.value);
-const measuredChapterStreamItems = computed(() => {
-  const items = isPagedReadMode.value
-    ? chapterStreamItems.value.filter(item => !isIntroStreamItem(item))
-    : [];
-  const previewItem = verticalStreamPreviousPreviewItem.value;
-  if (!previewItem || isIntroStreamItem(previewItem) || items.some(item => item.key === previewItem.key)) {
-    return items;
-  }
-  return [...items, previewItem];
-});
+const measuredChapterStreamItems = computed(() =>
+  isPagedReadMode.value ? chapterStreamItems.value.filter(item => !isIntroStreamItem(item)) : []
+);
 const chapterStreamItemMap = computed(() =>
   new Map(chapterStreamItems.value.map(item => [item.key, item]))
 );
@@ -408,16 +401,13 @@ const isReaderLoadingVisible = computed(() =>
 );
 const readerLoadingText = computed(() => loadingText.value);
 const verticalStreamPreviousPreviewVisible = computed(() =>
-  Boolean(verticalStreamPreviousPreviewItem.value && verticalStreamPreviousPreviewContentHeight.value > 0)
+  Boolean(verticalStreamPreviousPreviewItem.value)
 );
 const verticalStreamPreviousLoadingHeight = computed(() => {
   const pullHeight = verticalStreamPreviousPullHeight.value;
   if (!verticalStreamPreviousLoading.value && !verticalStreamPreviousPreviewItem.value) return pullHeight;
   return verticalTouchActive.value ? pullHeight : Math.max(VERTICAL_STREAM_PREVIOUS_PULL_MAX, pullHeight);
 });
-const verticalStreamPreviousPreviewOffset = computed(() =>
-  Math.max(0, verticalStreamPreviousPreviewContentHeight.value - verticalStreamPreviousLoadingHeight.value)
-);
 const bottomProgressMax = computed(() =>
   isVerticalReadMode.value ? VERTICAL_PROGRESS_MAX : totalPages.value
 );
@@ -933,7 +923,7 @@ const getVerticalPreviousPullMaxHeight = () => {
   return Math.max(VERTICAL_STREAM_PREVIOUS_PULL_MAX, viewportHeight * VERTICAL_STREAM_PREVIOUS_PULL_VIEWPORT_RATIO);
 };
 
-const setVerticalPreviousPullHeight = (value, maxHeight = VERTICAL_STREAM_PREVIOUS_PULL_MAX) => {
+const applyVerticalPreviousPullHeight = (value, maxHeight = VERTICAL_STREAM_PREVIOUS_PULL_MAX) => {
   const height = Number(value);
   verticalStreamPreviousPullHeight.value = Math.min(
     Math.max(VERTICAL_STREAM_PREVIOUS_PULL_MAX, maxHeight),
@@ -941,12 +931,47 @@ const setVerticalPreviousPullHeight = (value, maxHeight = VERTICAL_STREAM_PREVIO
   );
 };
 
+const cancelVerticalPreviousPullHeightFrame = () => {
+  if (verticalPreviousPullHeightFrame) window.cancelAnimationFrame(verticalPreviousPullHeightFrame);
+  verticalPreviousPullHeightFrame = 0;
+  verticalPreviousPendingPullHeight = null;
+};
+
+const flushVerticalPreviousPullHeightFrame = () => {
+  const pendingPullHeight = verticalPreviousPendingPullHeight;
+  if (verticalPreviousPullHeightFrame) window.cancelAnimationFrame(verticalPreviousPullHeightFrame);
+  verticalPreviousPullHeightFrame = 0;
+  verticalPreviousPendingPullHeight = null;
+  if (pendingPullHeight) {
+    applyVerticalPreviousPullHeight(pendingPullHeight.value, pendingPullHeight.maxHeight);
+  }
+};
+
+const setVerticalPreviousPullHeight = (value, maxHeight = VERTICAL_STREAM_PREVIOUS_PULL_MAX) => {
+  cancelVerticalPreviousPullHeightFrame();
+  applyVerticalPreviousPullHeight(value, maxHeight);
+};
+
+const scheduleVerticalPreviousPullHeight = (value, maxHeight = VERTICAL_STREAM_PREVIOUS_PULL_MAX) => {
+  verticalPreviousPendingPullHeight = { value, maxHeight };
+  if (verticalPreviousPullHeightFrame) return;
+
+  verticalPreviousPullHeightFrame = window.requestAnimationFrame(() => {
+    const pendingPullHeight = verticalPreviousPendingPullHeight;
+    verticalPreviousPullHeightFrame = 0;
+    verticalPreviousPendingPullHeight = null;
+    if (pendingPullHeight) {
+      applyVerticalPreviousPullHeight(pendingPullHeight.value, pendingPullHeight.maxHeight);
+    }
+  });
+};
+
 const getVerticalPreviousGestureHeight = deltaY =>
   Math.max(0, deltaY - verticalTouchStartScrollTop) * VERTICAL_STREAM_PREVIOUS_PULL_DAMPING;
 
 const setVerticalPreviousPullHeightByGesture = deltaY => {
   const pullHeight = getVerticalPreviousGestureHeight(deltaY);
-  setVerticalPreviousPullHeight(pullHeight, getVerticalPreviousPullMaxHeight());
+  scheduleVerticalPreviousPullHeight(pullHeight, getVerticalPreviousPullMaxHeight());
   return pullHeight;
 };
 
@@ -965,33 +990,15 @@ const getVerticalPreviousSlotHeight = () => {
 
 const clearVerticalPreviousBoundaryState = () => {
   verticalStreamPreviousPreviewItem.value = null;
-  verticalStreamPreviousPreviewContentHeight.value = 0;
   verticalStreamPreviousLoading.value = false;
   setVerticalPreviousPullHeight(0);
 };
 
-const getVerticalPreviousMeasureHeight = item => {
-  if (!item) return 0;
-  if (isIntroStreamItem(item)) {
-    return pageHeight.value || verticalStreamRef.value?.clientHeight || windowSize.value.height || 1;
-  }
-
-  const measureElement = Array.from(
-    contentViewportRef.value?.querySelectorAll(".reader-page-measure__content") || []
-  ).find(element => element.dataset.chapterKey === item.key);
-  const height = measureElement?.scrollHeight || measureElement?.getBoundingClientRect().height || 0;
-  return Math.max(1, Number.isFinite(height) ? height : 0);
-};
-
-const prepareVerticalPreviousPreviewItem = async item => {
+const prepareVerticalPreviousPreviewItem = item => {
   const slotHeight = getVerticalPreviousSlotHeight();
   verticalStreamPreviousPreviewItem.value = item;
-  verticalStreamPreviousPreviewContentHeight.value = 0;
   verticalStreamPreviousLoading.value = false;
   setVerticalPreviousPullHeight(slotHeight, getVerticalPreviousPullMaxHeight());
-  await nextTick();
-
-  verticalStreamPreviousPreviewContentHeight.value = getVerticalPreviousMeasureHeight(item);
   return item;
 };
 
@@ -999,10 +1006,10 @@ const getVerticalPreviousCommitScrollTop = ({ insertedHeight, slotHeight, scroll
   Math.max(0, insertedHeight - slotHeight + scrollTop);
 
 const commitVerticalPreviousStreamItem = async item => {
+  flushVerticalPreviousPullHeightFrame();
   const element = verticalStreamRef.value;
   const slotHeight = getVerticalPreviousSlotHeight();
   const scrollTop = element?.scrollTop || 0;
-  const fallbackInsertedHeight = verticalStreamPreviousPreviewContentHeight.value;
 
   insertChapterStreamItem(item, "previous");
   clearVerticalPreviousBoundaryState();
@@ -1011,7 +1018,6 @@ const commitVerticalPreviousStreamItem = async item => {
   const insertedSection = getVerticalStreamSectionByItem(item);
   const measuredInsertedHeight = insertedSection?.getBoundingClientRect().height ||
     insertedSection?.scrollHeight ||
-    fallbackInsertedHeight ||
     0;
   const insertedHeight = Math.max(
     0,
@@ -1033,7 +1039,7 @@ const commitVerticalPreviousStreamItem = async item => {
 
 const resolveVerticalPreviousStreamItem = async item => {
   if (verticalTouchActive.value && verticalPreviousPullGestureActive) {
-    return await prepareVerticalPreviousPreviewItem(item);
+    return prepareVerticalPreviousPreviewItem(item);
   }
   return await commitVerticalPreviousStreamItem(item);
 };
@@ -1201,6 +1207,7 @@ const handleVerticalTouchMove = event => {
 };
 
 const handleVerticalTouchEnd = () => {
+  flushVerticalPreviousPullHeightFrame();
   const element = verticalStreamRef.value;
   const shouldLoadPrevious =
     verticalStreamPreviousPullHeight.value >= VERTICAL_STREAM_PREVIOUS_PULL_TRIGGER &&
@@ -1229,6 +1236,7 @@ const handleVerticalTouchEnd = () => {
 };
 
 const handleVerticalTouchCancel = () => {
+  flushVerticalPreviousPullHeightFrame();
   const shouldCommitPreviousPreview = Boolean(verticalStreamPreviousPreviewItem.value);
   finishVerticalTouchGesture();
   if (shouldCommitPreviousPreview) {
@@ -1343,6 +1351,7 @@ const loadReaderStreamChapter = async direction => {
     const shouldShowVerticalPreviousLoading = isVerticalReadMode.value && direction === "previous";
     if (shouldShowVerticalNextLoading) verticalStreamNextLoading.value = true;
     if (shouldShowVerticalPreviousLoading) {
+      flushVerticalPreviousPullHeightFrame();
       setVerticalPreviousPullHeight(
         verticalTouchActive.value
           ? verticalStreamPreviousPullHeight.value

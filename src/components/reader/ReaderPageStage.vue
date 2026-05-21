@@ -40,7 +40,6 @@
               <template v-if="verticalStreamPreviousPreviewVisible && verticalStreamPreviousPreviewItem">
                 <div
                   class="reader-vertical-stream__previous-preview"
-                  :style="{ transform: `translate3d(0, -${verticalStreamPreviousPreviewOffset}px, 0)` }"
                 >
                   <ReaderIntroPage
                     v-if="isIntroStreamItem(verticalStreamPreviousPreviewItem)"
@@ -190,7 +189,6 @@ defineProps({
   verticalStreamNextLoading: { type: Boolean, default: false },
   verticalStreamPreviousLoadingHeight: { type: Number, default: 0 },
   verticalStreamPreviousPreviewItem: { type: Object, default: null },
-  verticalStreamPreviousPreviewOffset: { type: Number, default: 0 },
   verticalStreamPreviousPreviewVisible: { type: Boolean, default: false },
   setContentViewportRef: { type: Function, default: () => {} },
   setVerticalStreamRef: { type: Function, default: () => {} },
