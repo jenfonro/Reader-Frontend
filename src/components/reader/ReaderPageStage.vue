@@ -29,13 +29,44 @@
           >
             <div
               class="reader-vertical-stream__previous-loading"
-              :class="{ 'reader-vertical-stream__previous-loading--visible': verticalStreamPreviousLoadingHeight > 0 }"
+              :class="{
+                'reader-vertical-stream__previous-loading--visible': verticalStreamPreviousLoadingHeight > 0,
+                'reader-vertical-stream__previous-loading--preview': verticalStreamPreviousPreviewVisible
+              }"
               :style="{ height: `${verticalStreamPreviousLoadingHeight}px` }"
-              role="status"
-              aria-live="polite"
+              :role="verticalStreamPreviousPreviewVisible ? undefined : 'status'"
+              :aria-live="verticalStreamPreviousPreviewVisible ? undefined : 'polite'"
             >
-              <span class="reader-vertical-stream__previous-loading-spinner" aria-hidden="true"></span>
-              <span class="reader-vertical-stream__previous-loading-text">正在加载</span>
+              <template v-if="verticalStreamPreviousPreviewVisible && verticalStreamPreviousPreviewItem">
+                <div
+                  class="reader-vertical-stream__previous-preview"
+                  :style="{ transform: `translate3d(0, -${verticalStreamPreviousPreviewOffset}px, 0)` }"
+                >
+                  <ReaderIntroPage
+                    v-if="isIntroStreamItem(verticalStreamPreviousPreviewItem)"
+                    class="reader-readable-content reader-page__intro"
+                    :book="readingBook"
+                    :loading="introLoading"
+                    :in-bookshelf="isReadingBookInShelf"
+                    @toggle-bookshelf="emit('toggle-bookshelf')"
+                    @start-reading="emit('start-reading')"
+                  />
+                  <Content
+                    v-else
+                    class="reader-readable-content reader-text-flow"
+                    :title="verticalStreamPreviousPreviewItem.title"
+                    :content="verticalStreamPreviousPreviewItem.content"
+                    :show-content="show"
+                    :error="error"
+                    :style="contentStyle"
+                    :reader-config="config"
+                  />
+                </div>
+              </template>
+              <template v-else>
+                <span class="reader-vertical-stream__previous-loading-spinner" aria-hidden="true"></span>
+                <span class="reader-vertical-stream__previous-loading-text">正在加载</span>
+              </template>
             </div>
             <section
               v-for="item in chapterStreamItems"
@@ -158,6 +189,9 @@ defineProps({
   readingBook: { type: Object, required: true },
   verticalStreamNextLoading: { type: Boolean, default: false },
   verticalStreamPreviousLoadingHeight: { type: Number, default: 0 },
+  verticalStreamPreviousPreviewItem: { type: Object, default: null },
+  verticalStreamPreviousPreviewOffset: { type: Number, default: 0 },
+  verticalStreamPreviousPreviewVisible: { type: Boolean, default: false },
   setContentViewportRef: { type: Function, default: () => {} },
   setVerticalStreamRef: { type: Function, default: () => {} },
   show: { type: Boolean, default: false }
