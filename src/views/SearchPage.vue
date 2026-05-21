@@ -1,12 +1,22 @@
 <template>
   <PageLayout root-class="reader-search-page" body-class="reader-search-page__body">
     <template #header>
-      <SearchBar
-        v-model="keyword"
-        class="reader-search-page__header"
-        @submit="submitSearch"
-        @clear="clearSearch"
-      />
+      <div class="reader-search-page__header">
+        <button
+          type="button"
+          class="reader-page-topbar__button reader-page-topbar__back reader-search-page__back"
+          aria-label="返回"
+          @click="emit('back')"
+        >
+          <span aria-hidden="true">‹</span>
+        </button>
+        <SearchBar
+          v-model="keyword"
+          class="reader-search-page__bar"
+          @submit="submitSearch"
+          @clear="clearSearch"
+        />
+      </div>
     </template>
 
     <section class="reader-search-results" aria-label="搜索结果">
@@ -84,7 +94,7 @@ defineOptions({
   name: "SearchPage"
 });
 
-const emit = defineEmits(["enter-reader"]);
+const emit = defineEmits(["back", "enter-reader"]);
 const defaultCoverUrl = noImageUrl;
 
 const handleCoverError = result => {
