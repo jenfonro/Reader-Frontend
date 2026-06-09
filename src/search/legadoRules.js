@@ -350,18 +350,33 @@ const readHtmlRuleValues = (content, rule) => {
   return compact(items);
 };
 
-const expandTemplateRule = (rule, content, context) =>
-  rule.replace(/\{\{([\s\S]*?)\}\}/g, (_, expression) => {
+const replaceAsync = async (value, pattern, replacer) => {
+  const matches = Array.from(toText(value).matchAll(pattern));
+  if (!matches.length) return toText(value);
+
+  const replacements = await Promise.all(matches.map(match => replacer(...match)));
+  let result = "";
+  let cursor = 0;
+  matches.forEach((match, index) => {
+    result += toText(value).slice(cursor, match.index);
+    result += toText(replacements[index]);
+    cursor = match.index + match[0].length;
+  });
+  return result + toText(value).slice(cursor);
+};
+
+const expandTemplateRule = async (rule, content, context) =>
+  replaceAsync(rule, /\{\{([\s\S]*?)\}\}/g, async (_, expression) => {
     const script = expression.trim();
     if (script.startsWith("$.")) return getString(script, content, context);
-    return toText(evaluateLegadoScript(script, createRuleContext(content, context), ""));
+    return toText(await evaluateLegadoScript(script, createRuleContext(content, context), ""));
   });
 
 const createRuleContext = (content, context = {}) => ({
   ...context,
   content,
-  getString: rule => getString(rule, content, context),
-  getElements: rule => getElements(rule, content, context)
+  getString: (rule, nextContent = content) => getString(rule, nextContent, context),
+  getElements: (rule, nextContent = content) => getElements(rule, nextContent, context)
 });
 
 const readRegexMatches = (rule, content) => {
@@ -393,11 +408,11 @@ const readRegexMatches = (rule, content) => {
   }
 };
 
-const readSingleRuleValues = (rule, content, context = {}, options = {}) => {
+const readSingleRuleValues = async (rule, content, context = {}, options = {}) => {
   const sourceRule = toText(rule).trim();
   if (!sourceRule) return [];
   const hasTemplateRule = sourceRule.includes("{{");
-  const ruleText = expandTemplateRule(sourceRule, content, context).trim();
+  const ruleText = (await expandTemplateRule(sourceRule, content, context)).trim();
   const expandedRuleText = /^\$\d+$/.test(ruleText) ? ruleText : expandRegexGroupReferences(ruleText, content);
 
   if (/^\$\d+$/.test(expandedRuleText)) return compact([getRegexGroupValue(content, expandedRuleText.slice(1))]);
@@ -409,18 +424,22 @@ const readSingleRuleValues = (rule, content, context = {}, options = {}) => {
   return readHtmlRuleValues(content, expandedRuleText);
 };
 
-const readRuleValues = (rule, content, context = {}, options = {}) => {
+const readRuleValues = async (rule, content, context = {}, options = {}) => {
   const sourceRule = toText(rule).trim();
   if (!sourceRule) return [];
   if (sourceRule.startsWith(":")) return readRegexMatches(sourceRule.slice(1), content);
 
   const { parts, operator } = splitByOperators(sourceRule);
   if (operator === "&&") {
-    return parts.flatMap(part => readSingleRuleValues(part, content, context, options));
+    const values = [];
+    for (const part of parts) {
+      values.push(...await readSingleRuleValues(part, content, context, options));
+    }
+    return values;
   }
   if (operator === "||") {
     for (const part of parts) {
-      const values = readSingleRuleValues(part, content, context, options);
+      const values = await readSingleRuleValues(part, content, context, options);
       if (values.length) return values;
     }
     return [];
@@ -431,23 +450,23 @@ const readRuleValues = (rule, content, context = {}, options = {}) => {
 const scriptNeedsArrayResult = script => /\bresult\s*(?:\[|\.length|\.map\b|\.forEach\b)/.test(script)
   || /for\s*\([^)]*\bresult\b/.test(script);
 
-const createScriptInitialResult = (rule, content, context, options, script) => {
-  const values = readRuleValues(rule, content, context, options).map(ruleValueToText);
+const createScriptInitialResult = async (rule, content, context, options, script) => {
+  const values = (await readRuleValues(rule, content, context, options)).map(ruleValueToText);
   return scriptNeedsArrayResult(script) ? values : values.join("\n");
 };
 
-export const getElements = (rule, content, context = {}) => {
+export const getElements = async (rule, content, context = {}) => {
   const sourceRule = toText(rule).trim();
   if (!sourceRule) return [];
   if (/^<js>[\s\S]*<\/js>$/i.test(sourceRule)) {
     const script = sourceRule.replace(/^<js>/i, "").replace(/<\/js>$/i, "");
-    const value = evaluateLegadoScript(script, createRuleContext(content, context), content);
+    const value = await evaluateLegadoScript(script, createRuleContext(content, context), content);
     return Array.isArray(value) ? value : compact([value]);
   }
   return readRuleValues(sourceRule, content, context);
 };
 
-export const getString = (rule, content, context = {}, options = {}) => {
+export const getString = async (rule, content, context = {}, options = {}) => {
   const rawRule = toText(rule).trim();
   if (!rawRule) return "";
   const jsIndex = rawRule.search(/@js:|<js>/i);
@@ -461,13 +480,13 @@ export const getString = (rule, content, context = {}, options = {}) => {
       content
     );
     const initialResult = beforeJs
-      ? createScriptInitialResult(beforeJs, content, context, options, script)
+      ? await createScriptInitialResult(beforeJs, content, context, options, script)
       : ruleValueToText(content);
-    return toText(evaluateLegadoScript(script, createRuleContext(content, context), initialResult));
+    return toText(await evaluateLegadoScript(script, createRuleContext(content, context), initialResult));
   }
 
   const replaced = applyReplacement("", rawRule);
-  const values = readRuleValues(replaced.rule, content, context, { ...options, literalTemplate: true });
+  const values = await readRuleValues(replaced.rule, content, context, { ...options, literalTemplate: true });
   let value = compact(values).map(ruleValueToText).join("\n");
   value = applyReplacement(value, rawRule).value;
   if (options.isUrl && value) {
@@ -489,7 +508,17 @@ export const htmlToText = value => {
   return parseHtml(text).body.textContent.trim();
 };
 
-export const analyzeSearchBooks = ({ body, source, requestUrl, keyword, page = 1, variables }) => {
+export const analyzeSearchBooks = async ({
+  body,
+  source,
+  requestUrl,
+  keyword,
+  page = 1,
+  variables,
+  ajax,
+  removeCookie,
+  startBrowserAwait
+}) => {
   const rule = parseRuleObject(source.ruleSearch);
   const context = {
     source,
@@ -497,28 +526,32 @@ export const analyzeSearchBooks = ({ body, source, requestUrl, keyword, page = 1
     page,
     variables: variables || new Map(),
     baseUrl: requestUrl || normalizeBaseUrl(source.bookSourceUrl),
+    ajax,
+    removeCookie,
+    startBrowserAwait,
     book: {
       origin: normalizeBaseUrl(source.bookSourceUrl),
       originName: source.bookSourceName || ""
     }
   };
-  const items = getElements(rule.bookList || "", body, context);
+  const items = await getElements(rule.bookList || "", body, context);
   const targets = items.length ? items : [body];
+  const books = [];
 
-  return targets.map((item, index) => {
+  for (const [index, item] of targets.entries()) {
     const itemContext = { ...context, itemIndex: index };
-    const name = formatBookName(getString(rule.name, item, itemContext));
-    if (!name) return null;
-    const bookUrl = getString(rule.bookUrl, item, itemContext, { isUrl: true }) || requestUrl;
-    const coverUrl = getString(rule.coverUrl, item, itemContext, { isUrl: true });
-    return {
+    const name = formatBookName(await getString(rule.name, item, itemContext));
+    if (!name) continue;
+    const bookUrl = await getString(rule.bookUrl, item, itemContext, { isUrl: true }) || requestUrl;
+    const coverUrl = await getString(rule.coverUrl, item, itemContext, { isUrl: true });
+    books.push({
       key: `${source.bookSourceUrl || source.bookSourceName || "source"}:${bookUrl}:${name}`,
       name,
-      author: formatAuthor(getString(rule.author, item, itemContext)),
-      kind: getString(rule.kind, item, itemContext),
-      wordCount: getString(rule.wordCount, item, itemContext),
-      latestChapterTitle: getString(rule.lastChapter, item, itemContext),
-      intro: htmlToText(getString(rule.intro, item, itemContext)),
+      author: formatAuthor(await getString(rule.author, item, itemContext)),
+      kind: await getString(rule.kind, item, itemContext),
+      wordCount: await getString(rule.wordCount, item, itemContext),
+      latestChapterTitle: await getString(rule.lastChapter, item, itemContext),
+      intro: htmlToText(await getString(rule.intro, item, itemContext)),
       coverUrl,
       bookUrl,
       origin: normalizeBaseUrl(source.bookSourceUrl),
@@ -526,7 +559,9 @@ export const analyzeSearchBooks = ({ body, source, requestUrl, keyword, page = 1
       originOrder: Number(source.customOrder || 0),
       type: Number(source.bookSourceType || 0),
       sourceWeight: Number(source.weight || 0)
-    };
-  }).filter(Boolean);
+    });
+  }
+
+  return books;
 };
 

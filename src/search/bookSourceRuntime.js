@@ -7,6 +7,7 @@ import {
   finalizeChapterContent
 } from "./legadoBookRules.js";
 import { normalizeBaseUrl, toText } from "./legadoCommon.js";
+import { createLegadoRuntimeHelpers } from "./legadoRuntime.js";
 import { buildLegadoRequest, fetchLegadoResponse } from "./legadoUrl.js";
 
 const MAX_FOLLOW_PAGES = 10;
@@ -40,14 +41,23 @@ export const findSourceForBook = (book = {}) => {
 
 const createRuntimeVariables = () => new Map();
 
-const fetchRuntimeBody = async ({ source, ruleUrl, baseUrl, book, chapter, variables, signal }) => {
-  const request = buildLegadoRequest({
+const fetchRuntimeBody = async ({ source, ruleUrl, baseUrl, book, chapter, variables, signal, helpers }) => {
+  const runtimeHelpers = helpers || createLegadoRuntimeHelpers({
+    source,
+    variables,
+    signal,
+    baseUrl,
+    book,
+    chapter
+  });
+  const request = await buildLegadoRequest({
     source,
     ruleUrl,
     baseUrl,
     variables,
     book,
-    chapter
+    chapter,
+    ...runtimeHelpers
   });
   const body = await fetchLegadoResponse(request, signal);
   return { body, requestUrl: request.responseUrl || request.url, variables: request.variables };
@@ -57,15 +67,23 @@ export const loadBookInfo = async ({ source, book, signal }) => {
   const variables = createRuntimeVariables();
   const bookUrl = book.bookUrl || book.url;
   if (!bookUrl) throw new Error("书籍地址为空");
+  const helpers = createLegadoRuntimeHelpers({
+    source,
+    variables,
+    signal,
+    baseUrl: bookUrl || normalizeBaseUrl(source.bookSourceUrl),
+    book
+  });
   const { body, requestUrl } = await fetchRuntimeBody({
     source,
     ruleUrl: bookUrl,
     baseUrl: bookUrl || normalizeBaseUrl(source.bookSourceUrl),
     book,
     variables,
-    signal
+    signal,
+    helpers
   });
-  return analyzeBookInfo({ body, source, book, requestUrl, variables });
+  return analyzeBookInfo({ body, source, book, requestUrl, variables, ...helpers });
 };
 
 export const loadBookCatalog = async ({ source, book, signal }) => {
@@ -73,6 +91,13 @@ export const loadBookCatalog = async ({ source, book, signal }) => {
   const firstTocUrl = book.tocUrl || book.bookUrl || book.url;
   if (!firstTocUrl) throw new Error("目录地址为空");
 
+  const helpers = createLegadoRuntimeHelpers({
+    source,
+    variables,
+    signal,
+    baseUrl: firstTocUrl,
+    book
+  });
   const queue = [firstTocUrl];
   const seen = new Set();
   const chapters = [];
@@ -95,13 +120,14 @@ export const loadBookCatalog = async ({ source, book, signal }) => {
         baseUrl: book.bookUrl || book.tocUrl || normalizeBaseUrl(source.bookSourceUrl),
         book,
         variables,
-        signal
+        signal,
+        helpers
       });
       body = response.body;
       requestUrl = response.requestUrl;
     }
 
-    const pageResult = analyzeBookCatalogPage({ body, source, book, requestUrl, variables });
+    const pageResult = await analyzeBookCatalogPage({ body, source, book, requestUrl, variables, ...helpers });
     reverse = reverse || pageResult.reverse;
     chapters.push(...pageResult.chapters);
     pageResult.nextTocUrls.forEach(nextUrl => {
@@ -123,6 +149,15 @@ export const loadChapterContent = async ({ source, book, chapter, signal }) => {
   const variables = createRuntimeVariables();
   const firstChapterUrl = chapter.chapterUrl || chapter.url;
   if (!firstChapterUrl) throw new Error("章节地址为空");
+
+  const helpers = createLegadoRuntimeHelpers({
+    source,
+    variables,
+    signal,
+    baseUrl: firstChapterUrl,
+    book,
+    chapter
+  });
 
   if (isVolumeChapter(chapter)) {
     return {
@@ -156,18 +191,20 @@ export const loadChapterContent = async ({ source, book, chapter, signal }) => {
       book,
       chapter,
       variables,
-      signal
+      signal,
+      helpers
     });
     if (page === 0) firstUrl = requestUrl;
     visitedUrls.push(requestUrl);
 
-    const pageResult = analyzeChapterContentPage({
+    const pageResult = await analyzeChapterContentPage({
       body,
       source,
       book,
       chapter,
       requestUrl,
-      variables
+      variables,
+      ...helpers
     });
     if (pageResult.title) title = pageResult.title;
     if (pageResult.imageStyle) imageStyle = pageResult.imageStyle;
@@ -178,13 +215,14 @@ export const loadChapterContent = async ({ source, book, chapter, signal }) => {
     });
   }
 
-  const content = finalizeChapterContent({
+  const content = await finalizeChapterContent({
     content: parts.join("\n"),
     source,
     book,
     chapter,
     requestUrl: firstUrl,
-    variables
+    variables,
+    ...helpers
   });
 
   return {

@@ -1,5 +1,6 @@
 export const apiSettingsStorageKey = "reader.api.settings";
 export const bookSourcesStorageKey = "reader.bookSources";
+export const cookieJarStorageKey = "reader.cookieJar";
 export const shelfStorageKey = "reader.bookshelf.items";
 export const historyStorageKey = "reader.reading.history";
 export const replaceRulesStorageKey = "reader.replaceRules";
@@ -10,6 +11,7 @@ export const uiPreferencesStorageKey = "reader.ui.preferences";
 export const userDataStorageKeys = Object.freeze([
   apiSettingsStorageKey,
   bookSourcesStorageKey,
+  cookieJarStorageKey,
   shelfStorageKey,
   historyStorageKey,
   replaceRulesStorageKey,

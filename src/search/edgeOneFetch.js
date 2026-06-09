@@ -1,4 +1,10 @@
 import { getApiSettings } from "../data/apiSettings.js";
+import {
+  getCookieJarKeyForSource,
+  isCookieJarEnabledForSource,
+  readSourceCookieJar,
+  writeSourceCookieJar
+} from "../data/cookieJar.js";
 import { toText } from "./legadoCommon.js";
 import { SearchRequestError } from "./searchErrors.js";
 
@@ -15,12 +21,10 @@ const FORBIDDEN_HEADER_NAMES = new Set([
   "origin",
   "proxy-authenticate",
   "proxy-authorization",
-  "referer",
   "te",
   "trailer",
   "transfer-encoding",
-  "upgrade",
-  "user-agent"
+  "upgrade"
 ]);
 
 const createEdgeOneConfigError = message =>
@@ -110,27 +114,126 @@ const normalizeMethod = method => {
   return normalizedMethod;
 };
 
+const getEdgeOneRouteUrl = pathname => {
+  const settings = getEdgeOneFetchSettings();
+  if (!settings) throw createEdgeOneConfigError("请先配置 EdgeOne 地址和 Secret");
+
+  const endpoint = new URL(settings.endpoint);
+  endpoint.pathname = pathname;
+  endpoint.search = "";
+  endpoint.hash = "";
+  return endpoint.toString();
+};
+
+export const getEdgeOneVerificationAutoUrl = () => getEdgeOneRouteUrl("/api/verify/auto");
+
+export const getEdgeOneVerificationPageUrl = () => getEdgeOneRouteUrl("/api/verify/page");
+
+const shouldUseCookieJar = request => isCookieJarEnabledForSource(request?.source);
+
 const createEdgeOneFetchPayload = request => {
   const method = normalizeMethod(request?.method);
   const payload = {
     url: toText(request?.url).trim(),
     method,
     headers: normalizeHeaders(request?.headers),
-    followRedirect: true
+    followRedirect: true,
+    responseMode: "json"
   };
 
   if (method === "POST" && request.body !== undefined) {
     payload.data = request.body;
   }
 
+  if (shouldUseCookieJar(request)) {
+    payload.cookieJarKey = getCookieJarKeyForSource(request.source);
+    payload.cookieJar = readSourceCookieJar(request.source);
+  }
+
   return payload;
+};
+
+const decodeBase64Bytes = value => {
+  const base64 = toText(value).trim();
+  if (!base64) return new Uint8Array();
+
+  if (typeof atob === "function") {
+    const binary = atob(base64);
+    return Uint8Array.from(binary, char => char.charCodeAt(0));
+  }
+
+  if (typeof Buffer !== "undefined") {
+    return Uint8Array.from(Buffer.from(base64, "base64"));
+  }
+
+  return new Uint8Array();
+};
+
+const normalizeJsonResponseHeaders = value => {
+  const headers = new Headers();
+  if (!value || typeof value !== "object" || Array.isArray(value)) return headers;
+
+  Object.entries(value).forEach(([key, headerValue]) => {
+    const name = toText(key).trim();
+    if (!name || headerValue == null) return;
+    if (Array.isArray(headerValue)) {
+      headerValue.forEach(item => {
+        const text = toText(item).trim();
+        if (text) headers.append(name, text);
+      });
+      return;
+    }
+    const text = toText(headerValue).trim();
+    if (text) headers.set(name, text);
+  });
+  return headers;
+};
+
+const createTargetResponseFromJson = (data, request) => {
+  const headers = normalizeJsonResponseHeaders(data?.headers);
+  const targetUrl = toText(data?.targetUrl || request.url).trim();
+  const finalUrl = toText(data?.finalUrl || targetUrl).trim();
+  if (targetUrl) headers.set("x-edge-fetch-target", targetUrl);
+  if (finalUrl) headers.set("x-edge-fetch-final-url", finalUrl);
+  headers.set("x-edge-fetch-json", "1");
+
+  const status = Number(data?.status || 200);
+  const statusText = toText(data?.statusText);
+  const body = status === 204 || status === 304 ? null : decodeBase64Bytes(data?.bodyBase64);
+  return new Response(body, {
+    status,
+    statusText,
+    headers
+  });
+};
+
+const readJsonProxyResponse = async (response, request) => {
+  if (response.headers.get("x-edge-fetch-json") !== "1") return response;
+
+  const contentType = toText(response.headers.get("content-type")).toLowerCase();
+  if (!contentType.includes("application/json")) return response;
+
+  let data;
+  try {
+    data = await response.clone().json();
+  } catch (error) {
+    return response;
+  }
+
+  if (!data || data.ok !== true || data.bodyBase64 === undefined) return response;
+
+  if (shouldUseCookieJar(request) && data.cookieJar) {
+    writeSourceCookieJar(request.source, data.cookieJar);
+  }
+
+  return createTargetResponseFromJson(data, request);
 };
 
 export const fetchWithEdgeOneFetch = async (request, signal) => {
   const settings = getEdgeOneFetchSettings();
   if (!settings) return null;
 
-  return fetch(settings.endpoint, {
+  const response = await fetch(settings.endpoint, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${settings.secret}`,
@@ -141,6 +244,9 @@ export const fetchWithEdgeOneFetch = async (request, signal) => {
     redirect: "follow",
     signal
   });
+
+  if (!response.ok) return response;
+  return readJsonProxyResponse(response, request);
 };
 
 const readEdgeOneErrorMessage = async response => {

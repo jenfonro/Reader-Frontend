@@ -3,6 +3,7 @@ import { getSystemSettings } from "../data/systemSettings.js";
 import { buildSearchRequest, fetchSearchResponse } from "./legadoUrl.js";
 import { toText } from "./legadoCommon.js";
 import { analyzeSearchBooks } from "./legadoRules.js";
+import { createLegadoRuntimeHelpers } from "./legadoRuntime.js";
 
 const now = () => (typeof performance === "undefined" ? Date.now() : performance.now());
 
@@ -21,16 +22,27 @@ export const readSearchableSources = () => readBookSources()
   .filter(isSearchableSource);
 
 export const searchBookSource = async ({ source, keyword, page = 1, signal }) => {
-  const request = buildSearchRequest({ source, keyword, page });
+  const variables = new Map();
+  const helpers = createLegadoRuntimeHelpers({
+    source,
+    variables,
+    signal,
+    keyword,
+    page,
+    baseUrl: source.bookSourceUrl
+  });
+  const request = await buildSearchRequest({ source, keyword, page, variables, ...helpers });
   const body = await fetchSearchResponse(request, signal);
-  return analyzeSearchBooks({
+  const books = await analyzeSearchBooks({
     body,
     source,
     requestUrl: request.responseUrl || request.url,
     keyword,
     page,
-    variables: request.variables
-  }).map(book => ({
+    variables: request.variables,
+    ...helpers
+  });
+  return books.map(book => ({
     ...book,
     sourceKey: source.__sourceKey || book.sourceKey || ""
   }));

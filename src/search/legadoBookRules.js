@@ -13,8 +13,8 @@ import {
 const createRuleContext = (content, context = {}) => ({
   ...context,
   content,
-  getString: rule => getString(rule, content, context),
-  getElements: rule => getElements(rule, content, context)
+  getString: (rule, nextContent = content) => getString(rule, nextContent, context),
+  getElements: (rule, nextContent = content) => getElements(rule, nextContent, context)
 });
 
 const splitLeadingRuleFlag = rule => {
@@ -45,7 +45,7 @@ const stringsFromValue = value => {
     .filter(Boolean);
 };
 
-const getRuleValue = (rule, content, context, options = {}) => {
+const getRuleValue = async (rule, content, context, options = {}) => {
   const ruleText = toText(rule).trim();
   if (!ruleText) return "";
   if (/^<js>[\s\S]*<\/js>$/i.test(ruleText)) {
@@ -55,20 +55,34 @@ const getRuleValue = (rule, content, context, options = {}) => {
   return getString(ruleText, content, context, options);
 };
 
-const getRuleValues = (rule, content, context, options = {}) => {
+const getRuleValues = async (rule, content, context, options = {}) => {
   const ruleText = toText(rule).trim();
   if (!ruleText) return [];
-  const values = getElements(ruleText, content, context);
+  const values = await getElements(ruleText, content, context);
   if (values.length) return stringsFromValue(values);
-  return stringsFromValue(getRuleValue(ruleText, content, context, options));
+  return stringsFromValue(await getRuleValue(ruleText, content, context, options));
 };
 
-const createBookRuleContext = ({ source, requestUrl, keyword = "", page = 1, variables, book = {}, chapter = {} }) => ({
+const createBookRuleContext = ({
+  source,
+  requestUrl,
+  keyword = "",
+  page = 1,
+  variables,
+  book = {},
+  chapter = {},
+  ajax,
+  removeCookie,
+  startBrowserAwait
+}) => ({
   source,
   key: keyword,
   page,
   variables: variables || new Map(),
   baseUrl: requestUrl || book.tocUrl || book.bookUrl || normalizeBaseUrl(source.bookSourceUrl),
+  ajax,
+  removeCookie,
+  startBrowserAwait,
   book: {
     origin: normalizeBaseUrl(source.bookSourceUrl),
     originName: source.bookSourceName || "",
@@ -117,34 +131,34 @@ const dedupeChapters = chapters => {
   });
 };
 
-export const analyzeBookInfo = ({ body, source, book = {}, requestUrl, variables }) => {
+export const analyzeBookInfo = async ({ body, source, book = {}, requestUrl, variables, ajax, removeCookie, startBrowserAwait }) => {
   const rules = parseRuleObject(source.ruleBookInfo);
   const bookUrl = toAbsoluteUrl(book.bookUrl || requestUrl, requestUrl || normalizeBaseUrl(source.bookSourceUrl));
-  const context = createBookRuleContext({ source, requestUrl: requestUrl || bookUrl, variables, book });
+  const context = createBookRuleContext({ source, requestUrl: requestUrl || bookUrl, variables, book, ajax, removeCookie, startBrowserAwait });
   let pageValue = body;
   const initRule = toText(rules.init).trim();
   if (initRule) {
-    const initializedItems = getElements(initRule, body, context);
+    const initializedItems = await getElements(initRule, body, context);
     if (initializedItems.length === 1) {
       pageValue = initializedItems[0];
     } else if (initializedItems.length > 1) {
       pageValue = initializedItems;
     } else {
-      const initialized = getRuleValue(initRule, body, context);
+      const initialized = await getRuleValue(initRule, body, context);
       if (initialized !== "") pageValue = initialized;
     }
   }
 
   const parsed = {
-    name: formatBookName(getRuleValue(rules.name, pageValue, context)),
-    author: formatAuthor(getRuleValue(rules.author, pageValue, context)),
-    kind: getRuleValue(rules.kind, pageValue, context),
-    wordCount: getRuleValue(rules.wordCount, pageValue, context),
-    latestChapterTitle: getRuleValue(rules.lastChapter, pageValue, context),
-    intro: htmlToText(getRuleValue(rules.intro, pageValue, context)),
-    coverUrl: getRuleValue(rules.coverUrl, pageValue, context, { isUrl: true }),
-    tocUrl: getRuleValue(rules.tocUrl, pageValue, context, { isUrl: true }),
-    downloadUrls: getRuleValue(rules.downloadUrls, pageValue, context)
+    name: formatBookName(await getRuleValue(rules.name, pageValue, context)),
+    author: formatAuthor(await getRuleValue(rules.author, pageValue, context)),
+    kind: await getRuleValue(rules.kind, pageValue, context),
+    wordCount: await getRuleValue(rules.wordCount, pageValue, context),
+    latestChapterTitle: await getRuleValue(rules.lastChapter, pageValue, context),
+    intro: htmlToText(await getRuleValue(rules.intro, pageValue, context)),
+    coverUrl: await getRuleValue(rules.coverUrl, pageValue, context, { isUrl: true }),
+    tocUrl: await getRuleValue(rules.tocUrl, pageValue, context, { isUrl: true }),
+    downloadUrls: await getRuleValue(rules.downloadUrls, pageValue, context)
   };
   const allowRename = Boolean(toText(rules.canReName).trim());
   const coverUrl = toAbsoluteUrl(parsed.coverUrl, bookUrl);
@@ -178,38 +192,41 @@ export const analyzeBookInfo = ({ body, source, book = {}, requestUrl, variables
   return nextBook;
 };
 
-export const analyzeBookCatalogPage = ({ body, source, book = {}, requestUrl, variables }) => {
+export const analyzeBookCatalogPage = async ({ body, source, book = {}, requestUrl, variables, ajax, removeCookie, startBrowserAwait }) => {
   const rules = parseRuleObject(source.ruleToc);
   const { rule: chapterListRule, reverse } = splitLeadingRuleFlag(rules.chapterList || "");
-  const context = createBookRuleContext({ source, requestUrl, variables, book });
-  const items = chapterListRule ? getElements(chapterListRule, body, context) : [];
-  const chapters = items.map((item, index) => {
+  const context = createBookRuleContext({ source, requestUrl, variables, book, ajax, removeCookie, startBrowserAwait });
+  const items = chapterListRule ? await getElements(chapterListRule, body, context) : [];
+  const chapters = [];
+  for (const [index, item] of items.entries()) {
     const itemContext = { ...context, itemIndex: index };
-    const isVolume = toBoolean(getRuleValue(rules.isVolume, item, itemContext));
-    const isVip = toBoolean(getRuleValue(rules.isVip, item, itemContext));
-    const title = getRuleValue(rules.chapterName, item, itemContext).trim();
-    const updateTime = getRuleValue(rules.updateTime || rules.chapterInfo, item, itemContext).trim();
-    let chapterUrl = getRuleValue(rules.chapterUrl, item, itemContext, { isUrl: true }).trim();
+    const isVolume = toBoolean(await getRuleValue(rules.isVolume, item, itemContext));
+    const isVip = toBoolean(await getRuleValue(rules.isVip, item, itemContext));
+    const title = (await getRuleValue(rules.chapterName, item, itemContext)).trim();
+    const updateTime = (await getRuleValue(rules.updateTime || rules.chapterInfo, item, itemContext)).trim();
+    let chapterUrl = (await getRuleValue(rules.chapterUrl, item, itemContext, { isUrl: true })).trim();
     if (!chapterUrl) {
       chapterUrl = isVolume ? `${title}${index}` : requestUrl;
     } else if (!isVolume || !chapterUrl.startsWith(title)) {
       chapterUrl = toAbsoluteUrl(chapterUrl, requestUrl || book.tocUrl || book.bookUrl);
     }
     const chapterTitle = isVip && title && !title.startsWith("🔒") ? `🔒${title}` : title;
-    return {
-      index,
-      name: chapterTitle,
-      title: chapterTitle,
-      chapterUrl,
-      url: chapterUrl,
-      isVolume,
-      isVip,
-      updateTime,
-      time: updateTime
-    };
-  }).filter(chapter => chapter.title);
+    if (chapterTitle) {
+      chapters.push({
+        index,
+        name: chapterTitle,
+        title: chapterTitle,
+        chapterUrl,
+        url: chapterUrl,
+        isVolume,
+        isVip,
+        updateTime,
+        time: updateTime
+      });
+    }
+  }
 
-  const nextTocUrls = getRuleValues(rules.nextTocUrl, body, context, { isUrl: true })
+  const nextTocUrls = (await getRuleValues(rules.nextTocUrl, body, context, { isUrl: true }))
     .map(value => toAbsoluteUrl(value, requestUrl || book.tocUrl || book.bookUrl))
     .filter(value => value && !sameUrl(value, requestUrl));
 
@@ -224,14 +241,14 @@ export const finalizeBookCatalog = (chapters, reverse = false) => {
   }));
 };
 
-export const analyzeChapterContentPage = ({ body, source, book = {}, chapter = {}, requestUrl, variables }) => {
+export const analyzeChapterContentPage = async ({ body, source, book = {}, chapter = {}, requestUrl, variables, ajax, removeCookie, startBrowserAwait }) => {
   const rules = parseRuleObject(source.ruleContent);
-  const context = createBookRuleContext({ source, requestUrl, variables, book, chapter });
-  const title = getRuleValue(rules.title, body, context).trim();
+  const context = createBookRuleContext({ source, requestUrl, variables, book, chapter, ajax, removeCookie, startBrowserAwait });
+  const title = (await getRuleValue(rules.title, body, context)).trim();
   const content = toText(rules.content).trim()
-    ? getRuleValue(rules.content, body, context)
+    ? await getRuleValue(rules.content, body, context)
     : requestUrl;
-  const nextContentUrls = getRuleValues(rules.nextContentUrl, body, context, { isUrl: true })
+  const nextContentUrls = (await getRuleValues(rules.nextContentUrl, body, context, { isUrl: true }))
     .map(value => toAbsoluteUrl(value, requestUrl || chapter.url || chapter.chapterUrl || book.tocUrl || book.bookUrl))
     .filter(value => value && !sameUrl(value, requestUrl));
 
@@ -243,13 +260,13 @@ export const analyzeChapterContentPage = ({ body, source, book = {}, chapter = {
   };
 };
 
-export const finalizeChapterContent = ({ content, source, book = {}, chapter = {}, requestUrl, variables }) => {
+export const finalizeChapterContent = async ({ content, source, book = {}, chapter = {}, requestUrl, variables, ajax, removeCookie, startBrowserAwait }) => {
   const rules = parseRuleObject(source.ruleContent);
   let nextContent = toText(content);
   const replaceRule = toText(rules.replaceRegex).trim();
   if (replaceRule) {
-    const context = createBookRuleContext({ source, requestUrl, variables, book, chapter });
-    const replaced = getRuleValue(replaceRule, nextContent, context);
+    const context = createBookRuleContext({ source, requestUrl, variables, book, chapter, ajax, removeCookie, startBrowserAwait });
+    const replaced = await getRuleValue(replaceRule, nextContent, context);
     if (toText(replaced).trim()) nextContent = toText(replaced);
   }
   return decodeHtmlEntities(nextContent);

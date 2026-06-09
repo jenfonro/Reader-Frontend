@@ -19,29 +19,44 @@ const forbiddenHeaderNames = new Set([
   "content-length",
   "cookie",
   "host",
-  "origin",
-  "referer",
-  "user-agent"
+  "origin"
 ]);
 
 const encodePathSearch = value => toText(value).trim();
+
+const replaceAsync = async (value, pattern, replacer) => {
+  const source = toText(value);
+  const matches = Array.from(source.matchAll(pattern));
+  if (!matches.length) return source;
+
+  const replacements = await Promise.all(matches.map(match => replacer(...match)));
+  let result = "";
+  let cursor = 0;
+  matches.forEach((match, index) => {
+    result += source.slice(cursor, match.index);
+    result += toText(replacements[index]);
+    cursor = match.index + match[0].length;
+  });
+  return result + source.slice(cursor);
+};
+
 const replaceTemplates = (value, context) =>
-  toText(value).replace(/\{\{([\s\S]*?)\}\}/g, (_, expression) => {
+  replaceAsync(value, /\{\{([\s\S]*?)\}\}/g, async (_, expression) => {
     const script = expression.trim();
     if (script === "key") return context.key;
     if (script === "page") return String(context.page);
-    const evaluated = evaluateLegadoScript(script, context, "");
+    const evaluated = await evaluateLegadoScript(script, context, "");
     return toText(evaluated);
   });
 
-const evaluateScriptBlocks = (ruleUrl, context) => {
+const evaluateScriptBlocks = async (ruleUrl, context) => {
   let nextRuleUrl = toText(ruleUrl);
   if (nextRuleUrl.trimStart().startsWith("@js:")) {
-    return toText(evaluateLegadoScript(nextRuleUrl.trimStart().slice(4), context, nextRuleUrl));
+    return toText(await evaluateLegadoScript(nextRuleUrl.trimStart().slice(4), context, nextRuleUrl));
   }
 
-  nextRuleUrl = nextRuleUrl.replace(/<js>([\s\S]*?)<\/js>/gi, (_, script) =>
-    toText(evaluateLegadoScript(script, context, ""))
+  nextRuleUrl = await replaceAsync(nextRuleUrl, /<js>([\s\S]*?)<\/js>/gi, async (_, script) =>
+    toText(await evaluateLegadoScript(script, context, ""))
   );
   return nextRuleUrl;
 };
@@ -95,7 +110,7 @@ const normalizeBody = (body, headers) => {
   return body;
 };
 
-export const buildLegadoRequest = ({
+export const buildLegadoRequest = async ({
   source,
   ruleUrl,
   keyword = "",
@@ -103,7 +118,10 @@ export const buildLegadoRequest = ({
   baseUrl = "",
   variables = new Map(),
   book = {},
-  chapter = {}
+  chapter = {},
+  ajax,
+  removeCookie,
+  startBrowserAwait
 }) => {
   const sourceBaseUrl = normalizeBaseUrl(source?.bookSourceUrl);
   const context = {
@@ -113,13 +131,16 @@ export const buildLegadoRequest = ({
     key: keyword,
     page,
     baseUrl: normalizeBaseUrl(baseUrl) || sourceBaseUrl,
-    variables
+    variables,
+    ajax,
+    removeCookie,
+    startBrowserAwait
   };
-  let requestRule = evaluateScriptBlocks(ruleUrl || "", context);
-  requestRule = replaceTemplates(requestRule, context);
-  context.variables.forEach((value, key) => {
-    context.variables.set(key, replaceTemplates(value, context));
-  });
+  let requestRule = await evaluateScriptBlocks(ruleUrl || "", context);
+  requestRule = await replaceTemplates(requestRule, context);
+  for (const [key, value] of context.variables.entries()) {
+    context.variables.set(key, await replaceTemplates(value, context));
+  }
 
   const { url: rawUrl, optionText } = splitUrlOption(requestRule);
   const option = parseUrlOption(optionText);
@@ -139,25 +160,31 @@ export const buildLegadoRequest = ({
     page,
     book,
     chapter,
-    variables: context.variables
+    variables: context.variables,
+    ajax,
+    removeCookie,
+    startBrowserAwait
   };
 
   if (method === "POST") {
-    const body = replaceTemplates(toText(option.body), context);
+    const body = await replaceTemplates(toText(option.body), context);
     request.body = normalizeBody(body, headers);
   }
 
   return request;
 };
 
-export const buildSearchRequest = ({ source, keyword, page = 1 }) =>
+export const buildSearchRequest = ({ source, keyword, page = 1, variables = new Map(), ajax, removeCookie, startBrowserAwait }) =>
   buildLegadoRequest({
     source,
     ruleUrl: source.searchUrl || "",
     keyword,
     page,
     baseUrl: normalizeBaseUrl(source.bookSourceUrl),
-    variables: new Map()
+    variables,
+    ajax,
+    removeCookie,
+    startBrowserAwait
   });
 
 const normalizeResponseUrl = (response, fallbackUrl) => {
@@ -172,13 +199,12 @@ const normalizeResponseUrl = (response, fallbackUrl) => {
   }
 };
 
-export const fetchLegadoResponse = async (request, signal) => {
-  let response;
+const fetchRequestResponse = async (request, signal) => {
   try {
     const edgeOneResponse = await fetchWithEdgeOneFetch(request, signal);
     if (!edgeOneResponse && isMixedContentRequest(request.url)) throw createMixedContentError(request.url);
 
-    response = edgeOneResponse || await fetch(request.url, {
+    return edgeOneResponse || await fetch(request.url, {
       method: request.method,
       headers: request.headers,
       body: request.body,
@@ -190,13 +216,9 @@ export const fetchLegadoResponse = async (request, signal) => {
     if (error?.name === "AbortError" || error?.name === "SearchRequestError") throw error;
     throw createFetchFailureError(request.url, error);
   }
+};
 
-  request.responseUrl = normalizeResponseUrl(response, request.url);
-  if (!response.ok) {
-    if (isEdgeOneServiceErrorResponse(response)) throw await createEdgeOneServiceError(response);
-    throw createHttpError(response, request.responseUrl);
-  }
-
+const decodeResponseBody = async (response, request) => {
   const buffer = await response.arrayBuffer();
   const contentType = response.headers.get("content-type") || "";
   const matchedCharset = /charset=([^;]+)/i.exec(contentType);
@@ -208,5 +230,21 @@ export const fetchLegadoResponse = async (request, signal) => {
   }
 };
 
-export const fetchSearchResponse = fetchLegadoResponse;
+const finalizeLegadoResponse = async (request, response) => {
+  request.responseUrl = normalizeResponseUrl(response, request.url);
+  if (isEdgeOneServiceErrorResponse(response)) throw await createEdgeOneServiceError(response);
 
+  const body = await decodeResponseBody(response, request);
+  if (!response.ok) {
+    throw createHttpError(response, request.responseUrl);
+  }
+
+  return body;
+};
+
+export const fetchLegadoResponse = async (request, signal) => {
+  const response = await fetchRequestResponse(request, signal);
+  return finalizeLegadoResponse(request, response);
+};
+
+export const fetchSearchResponse = fetchLegadoResponse;
